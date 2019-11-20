@@ -1,0 +1,772 @@
+[[materialized.query.tables.chapter]]
+== Materialized Query Tables
+
+=== Introduction
+
+A materialized query table contains the results of a query. The Db2 optimizer knows this and can, if appropriate, redirect a query that is against the source table(s) to use the materialized query table instead. This can make the query run much faster. The following statement defines a materialized query table:
+
+.Sample materialized query table DDL
+[source,sql]
+....
+CREATE TABLE staff_summary AS
+(SELECT dept
+      , COUNT(*) AS count_rows
+      , SUM(id) AS sum_id
+ FROM staff
+ GROUP BY dept)
+ DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+Below on the left is a query that is very similar to the one used in the above CREATE. The Db2 optimizer can convert this query into the optimized equivalent on the right, which uses the materialized query table. Because (in this case) the data in the materialized query table is maintained in sync with the source table, both statements will return the same answer.
+
+ORIGINAL QUERY:
+
+.Original and optimized queries
+[source,sql]
+....
+SELECT dept
+     , AVG(id)
+FROM staff
+GROUP BY dept
+
+-- OPTIMIZED QUERY:
+
+SELECT Q1.dept AS "dept"
+     , Q1.sum_id / Q1.count_rows
+FROM staff_summary AS Q1
+....
+
+When used appropriately, materialized query tables can cause dramatic improvements in query performance. For example, if in the above STAFF table there was, on average, about 5,000 rows per individual department, referencing the STAFF_SUMMARY table instead of the STAFF table in the sample query might be about 1,000 times faster.
+
+=== Db2 Optimizer Issues
+
+In order for a materialized query table to be considered for use by the Db2 optimizer, the following has to be true:
+
+* The table has to be refreshed at least once.
+* The table MAINTAINED BY parameter and the related Db2 special registers must correspond. For example, if the table is USER maintained, then the CURRENT REFRESH AGE special register must be set to ANY, and the CURRENT MAINTAINED TABLE TYPES FOR OPTIMIZATION special register must be set to USER or ALL. 
+See <<optimizer.options>> for more details on these registers.
+
+==== Usage Notes
+
+A materialized query table is defined using a variation of the standard CREATE TABLE statement. Instead of providing an element list, one supplies a SELECT statement, and defines the refresh option. 
+===Syntax Options 
+====Refresh
+
+*REFRESH DEFERRED*: The data is refreshed whenever one does a REFRESH TABLE. At this point, Db2 will first delete all of the existing rows in the table, then run the select statement defined in the CREATE to (you guessed it) repopulate.
+
+*REFRESH IMMEDIATE*: Once created, this type of table has to be refreshed once using the REFRESH statement. From then on, Db2 will maintain the materialized query table in sync with the source table as changes are made to the latter.
+
+Materialized query tables that are defined REFRESH IMMEDIATE are obviously more useful in that the data in them is always current. But they may cost quite a bit to maintain, and not all queries can be defined thus.
+
+===== Query Optimization
+
+*ENABLE*: The table is used for query optimization when appropriate. This is the default. The table can also be queried directly.
+
+*DISABLE*: The table will not be used for query optimization. It can be queried directly.
+
+===== Maintained By
+
+*SYSTEM*: The data in the materialized query table is maintained by the system. This is the default.
+
+*USER*: The user is allowed to perform insert, update, and delete operations against the materialized query table. The table cannot be refreshed. This type of table can be used when you want to maintain your own materialized query table (e.g. using triggers) to support features not provided by Db2. The table can also be defined to enable query optimization, but the optimizer will probably never use it as a substitute for a real table.
+
+*FEDERATED_TOOL*: The data in the materialized query table is maintained by the replication tool. Only a REFRESH DEFERRED table can be maintained using this option.
+
+==== Options vs. Actions
+
+The following table compares materialized query table options to subsequent actions:
+
+.Materialized query table options vs. allowable actions
+....
+MATERIALIZED QUERY TABLE                ALLOWABLE ACTIONS ON TABLE
+REFRESH     MAINTAINED BY               REFRESH TABLE   INSERT/UPDATE/DELETE
+---------   -------------               -------------   --------------------
+DEFERRED    SYSTEM                      yes             no
+            USER                        no              yes
+IMMEDIATE   SYSTEM                      yes             no
+....
+
+=== Select Statement
+
+Various restrictions apply to the select statement that is used to define the materialized query table. In general, materialized query tables defined refresh-immediate need simpler queries than those defined refresh-deferred.
+
+*Refresh Deferred Tables*
+
+* The query must be a valid SELECT statement.
+* Every column selected must have a name.
+* An ORDER BY is not allowed.
+* Reference to a typed table or typed view is not allowed.
+* Reference to declared temporary table is not allowed.
+* Reference to a nickname or materialized query table is not allowed.
+* Reference to a system catalogue table is not allowed. Reference to an explain table is allowed, but is impudent.
+* Reference to NODENUMBER, PARTITION, or any other function that depends on physical characteristics, is not allowed.
+* Reference to a datalink type is not allowed.
+* Functions that have an external action are not allowed.
+* Scalar functions, or functions written in SQL, are not allowed. So SUM(SALARY) is fine, but SUM(INT(SALARY)) is not allowed.
+
+===Refresh Immediate Tables
+
+All of the above restrictions apply, plus the following:
+
+* If the query references more than one table or view, it must define as inner join, yet not use the INNER JOIN syntax (i.e. must use old style).
+* If there is a GROUP BY, the SELECT list must have a COUNT(_) or COUNT_BIG(_) column.
+* Besides the COUNT and COUNT_BIG, the only other column functions supported are SUM and GROUPING - all with the DISTINCT phrase. Any field that allows nulls, and that is summed, but also have a COUNT(column name) function defined.
+* Any field in the GROUP BY list must be in the SELECT list.
+* The table must have at least one unique index defined, and the SELECT list must include (amongst other things) all the columns of this index.
+* Grouping sets, CUBE an ROLLUP are allowed. The GROUP BY items and associated GROUPING column functions in the select list must for a unique key of the result set.
+* The HAVING clause is not allowed.
+* The DISTINCT clause is not allowed.
+* Non-deterministic functions are not allowed.
+* Special registers are not allowed.
+* If REPLICATED is specified, the table must have a unique key.
+
+[[optimizer.options]]
+=== Optimizer Options
+
+A materialized query table that has been defined ENABLE QUERY OPTIMIZATION, and has been refreshed, is a candidate for use by the Db2 optimizer if, and only if, three Db2 special registers are set to match the table status:
+
+* CURRENT MAINTAINED TABLE TYPES FOR OPTIMIZATION.
+* CURRENT QUERY OPTIMIZATION.
+* CURRENT REFRESH AGE.
+
+Each of the above are discussed below.
+
+*CURRENT REFRESH AGE*
+
+The refresh age special register tells the Db2 optimizer how up-to-date the data in an materialized query table has to be in order to be considered. There are only two possible values:
+
+* 0: Only use those materialized query tables that are defined as refresh-immediate are eligible. This is the default.
+* 99,999,999,999,999: Consider all valid materialized query tables. This is the same as ANY.
+
+NOTE: The above number is a 26-digit decimal value that is a timestamp duration, but without the microsecond component. The value ANY is logically equivalent.
+
+The database default value can be changed using the following command:
+
+.Changing default refresh age for database
+[source,sql]
+....
+UPDATE DATABASE CONFIGURATION USING dft_refresh_age ANY;
+....
+
+The database default value can be overridden within a thread using the SET REFRESH AGE statement.
+
+Below are some examples of the SET command:
+
+.Set refresh age command, examples
+[source,sql]
+....
+SET CURRENT REFRESH AGE 0;
+SET CURRENT REFRESH AGE = ANY;
+SET CURRENT REFRESH AGE = 99999999999999;
+....
+
+*CURRENT MAINTAINED TYPES*
+
+The current maintained types special register tells the Db2 optimizer what types of materialized query table that are defined refresh deferred are to be considered - assuming that the refresh-age parameter is not set to zero:
+
+* *ALL*: All refresh-deferred materialized query tables are to be considered. If this option is chosen, no other option can be used.
+* *NONE*: No refresh-deferred materialized query tables are to be considered. If this option is chosen, no other option can be used.
+* *SYSTEM*: System-maintained refresh-deferred materialized query tables are to be considered. This is the default.
+* *USER*: User-maintained refresh-deferred materialized query tables are to be considered.
+* *FEDERATED TOOL*: Federated-tool-maintained refresh-deferred materialized query tables are to be considered, but only if the CURRENT QUERY OPTIMIZATION special register is 2 or greater than 5.
+* *CURRENT MAINTAINED TABLE TYPES FOR OPTIMIZATION*: The existing values for this special register are used.
+
+The database default value can be changed using the following command:
+
+.Changing default maintained type for database
+[source,sql]
+....
+UPDATE DATABASE CONFIGURATION USING dft_refresh_age ANY;
+....
+
+The database default value can be overridden within a thread using the SET REFRESH AGE statement. Below are some examples of the SET command:
+
+.Set maintained type command, examples
+[source,sql]
+....
+SET CURRENT MAINTAINED TYPES = ALL;
+SET CURRENT MAINTAINED TABLE TYPES = SYSTEM;
+SET CURRENT MAINTAINED TABLE TYPES FOR OPTIMIZATION = USER, SYSTEM;
+....
+
+*CURRENT QUERY OPTIMIZATION*
+
+The current query optimization special register tells the Db2 optimizer what set of optimization techniques to use. The value can range from zero to nine - except for four or eight. A value of five or above will cause the optimizer to consider using materialized query tables.
+
+The database default value can be changed using the following command:
+
+.Changing default maintained type for database
+[source,sql]
+....
+UPDATE DATABASE CONFIGURATION USING DFT_QUERYOPT 5;
+....
+
+The database default value can be overridden within a thread using the SET CURRENT QUERY OPTIMIZATION statement.
+
+Below are an example of the SET command:
+
+.Set query optimization, example
+[source,sql]
+....
+SET CURRENT QUERY OPTIMIZATION = 9;
+....
+
+==== What Matches What
+
+Assuming that the current query optimization special register is set to five or above, the Db2 optimizer will consider using a materialized query table (instead of the base table) when any of the following conditions are true:
+
+.When Db2 will consider using a materialized query table
+....
+       MQT DEFINITION         DATABASE/APPLICATION STATUS        DB2
+========================== ===================================   USE
+REFRESH    MAINTAINED-BY   REFRESH-AGE  MAINTAINED-TYPE          MQT
+========= ==============   =========== =====================     ===
+IMMEDIATE  SYSTEM             -                -                 Yes
+DEFERRED   SYSETM            ANY           ALL or SYSTEM         Yes
+DEFERRED   USER              ANY           ALL or USER           Yes
+DEFERRED   FEDERATED-TOOL    ANY           ALL or FEDERATED-TOOL Yes
+....
+
+==== Selecting Special Registers
+
+One can select the relevant special register to see what the values are:
+
+.Selecting special registers
+[source,sql]
+....
+SELECT CURRENT REFRESH AGE        AS age_ts
+     , CURRENT TIMESTAMP          AS current_ts
+     , CURRENT QUERY OPTIMIZATION AS q_opt
+FROM sysibm.sysdummy1;
+....
+
+==== Refresh Deferred Tables
+
+A materialized query table defined REFRESH DEFERRED can be periodically updated using the REFRESH TABLE command. Below is an example of a such a table that has one row per qualifying department in the STAFF table:
+
+.Refresh deferred materialized query table DD
+[source,sql]
+....
+CREATE TABLE staff_names AS
+(SELECT dept
+      , COUNT(*)          AS count_rows
+      , SUM(salary)       AS sum_salary
+      , AVG(salary)       AS avg_salary
+      , MAX(salary)       AS max_salary
+      , MIN(salary)       AS min_salary
+      , STDDEV(salary)    AS std_salary
+      , VARIANCE(salary)  AS var_salary
+      , CURRENT TIMESTAMP AS last_change
+FROM staff
+WHERE TRANSLATE(name) LIKE '%A%'
+AND salary > 10000
+GROUP BY dept
+HAVING COUNT(*) = 1
+) DATA INITIALLY DEFERRED REFRESH DEFERRED;
+....
+
+==== Refresh Immediate Tables
+
+A materialized query table defined REFRESH IMMEDIATE is automatically maintained in sync with the source table by Db2. As with any materialized query table, it is defined by referring to a query. Below is a table that refers to a single source table:
+
+.Refresh immediate materialized query table DDL
+[source,sql]
+....
+CREATE TABLE emp_summary AS
+(SELECT emp.workdept
+      , COUNT(*) AS num_rows
+      , COUNT(emp.salary) AS num_salary
+      , SUM(emp.salary) AS sum_salary
+      , COUNT(emp.comm) AS num_comm
+      , SUM(emp.comm) AS sum_comm
+ FROM employee emp
+ GROUP BY emp.workdept
+) DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+Below is a query that can use the above materialized query table in place of the base table:
+
+.Query that uses materialized query table (1 of 3)
+[source,sql]
+....
+SELECT emp.workdept
+     , DEC(SUM(emp.salary),8,2)  AS sum_sal
+     , DEC(AVG(emp.salary),7,2)  AS avg_sal
+     , SMALLINT(COUNT(emp.comm)) AS #comms
+     , SMALLINT(COUNT(*))        AS #emps
+FROM employee emp
+WHERE emp.workdept > 'C'
+GROUP BY emp.workdept
+HAVING COUNT(*) <> 5
+AND SUM(emp.salary) > 50000
+ORDER BY sum_sal DESC;
+....
+
+The next query can also use the materialized query table. This time, the data returned from the materialized query table is qualified by checking against a sub-query:
+
+.Query that uses materialized query table (2 of 3)
+[source,sql]
+....
+SELECT emp.workdept
+     , COUNT(*) AS #rows
+FROM employee emp
+WHERE emp.workdept IN
+    (SELECT deptno
+     FROM department
+     WHERE deptname LIKE '%S%'
+    )
+GROUP BY emp.workdept
+HAVING SUM(salary) > 50000;
+....
+
+This last example uses the materialized query table in a nested table expression:
+
+.Query that uses materialized query table (3 of 3)
+[source,sql]
+....
+SELECT #emps
+     , DEC(SUM(sum_sal), 9, 2) AS sal_sal
+     , SMALLINT(COUNT(*))      AS #depts
+FROM
+    (SELECT emp.workdept
+          , DEC(SUM(emp.salary), 8, 2) AS sum_sal
+          , MAX(emp.salary)            AS max_sal
+          , SMALLINT(COUNT(*))         AS #emps
+     FROM employee emp
+     GROUP BY emp.workdept
+    ) AS XXX
+GROUP BY #emps
+HAVING COUNT(*) > 1
+ORDER BY #emps
+FETCH FIRST 3 ROWS ONLY
+OPTIMIZE FOR 3 ROWS;
+....
+
+==== Using Materialized Query Tables to Duplicate Data
+
+All of the above materialized query tables have contained a GROUP BY in their definition. But this is not necessary. To illustrate, we will first create a simple table:
+
+.Create source table
+[source,sql]
+....
+CREATE TABLE staff_all
+( id      SMALLINT      NOT NULL
+, name    VARCHAR(9)    NOT NULL
+, job     CHAR(5)
+, salary  DECIMAL(7, 2)
+, PRIMARY KEY(id));
+....
+
+As long as the above table has a primary key, which it does, we can define a duplicate of the above using the following code:
+
+.Create duplicate data table
+[source,sql]
+....
+CREATE TABLE staff_all_dup AS
+(SELECT *
+ FROM staff_all)
+DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+We can also decide to duplicate only certain rows:
+
+.Create table - duplicate certain rows only
+[source,sql]
+....
+CREATE TABLE staff_all_dup_some AS
+(SELECT *
+ FROM staff_all
+ WHERE id < 30)
+ DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+Imagine that we had another table that listed all those staff that we are about to fire:
+
+.Create source table
+[source,sql]
+....
+CREATE TABLE staff_to_fire
+( id SMALLINT     NOT NULL
+, name VARCHAR(9) NOT NULL
+, dept SMALLINT
+, PRIMARY KEY(id));
+....
+
+We can create materialized query table that joins the above two staff tables as long as the following is true:
+
+* Both tables have identical primary keys (i.e. same number of columns).
+* The join is an inner join on the common primary key fields.
+* All primary key columns are listed in the SELECT.
+
+Now for an example:
+
+.Materialized query table on join
+[source,sql]
+....
+CREATE TABLE staff_combo AS
+(SELECT aaa.id    AS id1
+      , aaa.job   AS job
+      , fff.id    AS id2
+      , fff.dept  AS dept
+ FROM staff_all     aaa
+    , staff_to_fire fff
+ WHERE aaa.id = fff.id)
+DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+See <<multi.table.materialized.query.tables>> for more examples of join usage.
+
+==== Queries that don't use Materialized Query Table
+
+Below is a query that can not use the EMP_SUMMARY table because of the reference to the MAX function. Ironically, this query is exactly the same as the nested table expression above, but in the prior example the MAX is ignored because it is never actually selected:
+
+.Query that doesn't use materialized query table (1 of 2)
+[source,sql]
+....
+SELECT emp.workdept
+     , DEC(SUM(emp.salary), 8, 2) AS sum_sal
+     , MAX(emp.salary)            AS max_sal
+FROM employee emp
+GROUP BY emp.workdept;
+....
+
+The following query can't use the materialized query table because of the DISTINCT clause:
+
+.Query that doesn't use materialized query table (2 of 2)
+[source,sql]
+....
+SELECT emp.workdept
+     , DEC(SUM(emp.salary), 8, 2) AS sum_sal
+     , COUNT(DISTINCT salary) AS #salaries
+FROM employee emp
+GROUP BY emp.workdept;
+....
+
+==== Usage Notes and Restrictions
+
+* A materialized query table must be refreshed before it can be queried. If the table is defined refresh immediate, then the table will be maintained automatically after the initial refresh.
+* Make sure to commit after doing a refresh. The refresh does not have an implied commit.
+* Run RUNSTATS after refreshing a materialized query table.
+* One can not load data into materialized query tables.
+* One can not directly update materialized query tables.
+
+To refresh a materialized query table, use either of the following commands:
+
+.Materialized query table refresh commands
+[source,sql]
+....
+REFRESH TABLE emp_summary;
+COMMIT;
+SET INTEGRITY FOR emp_summary iMMEDIATE CHECKED;
+COMMIT;
+....
+
+[[multi.table.materialized.query.tables]]
+==== Multi-table Materialized Query Tables
+
+Single-table materialized query tables save having to look at individual rows to resolve a GROUP BY. Multi-table materialized query tables do this, and also avoid having to resolve a join.
+
+.Multi-table materialized query table DDL
+[source,sql]
+....
+CREATE TABLE dept_emp_summary AS
+(SELECT emp.workdept
+      , dpt.deptname
+      , COUNT(*) AS num_rows
+      , COUNT(emp.salary) AS num_salary
+      , SUM(emp.salary) AS sum_salary
+      , COUNT(emp.comm) AS num_comm
+      , SUM(emp.comm) AS sum_comm
+ FROM employee   emp
+    , department dpt
+ WHERE dpt.deptno = emp.workdept
+ GROUP BY emp.workdept
+        , dpt.deptname
+) DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+The following query is resolved using the above materialized query table:
+
+.Query that uses materialized query table
+[source,sql]
+....
+SELECT d.deptname
+, d.deptno
+, DEC(AVG(e.salary), 7, 2) AS avg_sal
+, SMALLINT(COUNT(*)) AS #emps
+FROM department d
+   , employee e
+WHERE e.workdept = d.deptno
+AND d.deptname LIKE '%S%'
+GROUP BY d.deptname
+       , d.deptno
+HAVING SUM(e.comm) > 4000
+ORDER BY avg_sal DESC;
+....
+
+Here is the SQL that Db2 generated internally to get the answer:
+
+.Db2 generated query to use materialized query table
+[source,sql]
+....
+SELECT Q2.$C0 AS "deptname"
+     , Q2.$C1 AS "deptno"
+     , Q2.$C2 AS "avg_sal"
+     , Q2.$C3 AS "#emps"
+FROM
+    (SELECT Q1.deptname                              AS $C0
+          , Q1.workdept                              AS $C1
+          , DEC((Q1.sum_salary / Q1.num_salary),7,2) AS $C2
+          , SMALLINT(Q1.num_rows)                    AS $C3
+     FROM dept_emp_summary                           AS Q1
+     WHERE (Q1.deptname LIKE '%S%')
+     AND (4000 < Q1.sum_comm)
+    ) AS Q2
+ORDER BY Q2.$C2 DESC;
+....
+
+==== Rules and Restrictions
+
+* The join must be an inner join, and it must be written in the old style syntax.
+* Every table accessed in the join (except one?) must have a unique index.
+* The join must not be a Cartesian product.
+* The GROUP BY must include all of the fields that define the unique key for every table (except one?) in the join.
+
+==== Three-table Example
+
+.Three-table materialized query table DDL
+[source,sql]
+....
+CREATE TABLE dpt_emp_act_sumry AS
+(SELECT emp.workdept
+      , dpt.deptname
+      , emp.empno
+      , emp.firstnme
+      , SUM(act.emptime) AS sum_time
+      , COUNT(act.emptime) AS num_time
+      , COUNT(*) AS num_rows
+ FROM department dpt
+    , employee   emp
+    , emp_act    act
+ WHERE dpt.deptno = emp.workdept
+ AND emp.empno = act.empno
+ GROUP BY emp.workdept
+        , dpt.deptname
+        , emp.empno
+        , emp.firstnme
+) DATA INITIALLY DEFERRED REFRESH IMMEDIATE;
+....
+
+Now for a query that will use the above:
+
+.Query that uses materialized query table
+[source,sql]
+....
+SELECT d.deptno
+     , d.deptname
+     , DEC(AVG(a.emptime),5,2) AS avg_time
+FROM department d
+   , employee   e
+   , emp_act    a
+WHERE d.deptno = e.workdept
+AND   e.empno  = a.empno
+AND d.deptname LIKE '%S%'
+AND e.firstnme LIKE '%S%'
+GROUP BY d.deptno
+       , d.deptname
+ORDER BY 3 DESC;
+....
+
+And here is the Db2 generated SQL:
+
+.Db2 generated query to use materialized query table
+[source,sql]
+....
+SELECT Q4.$C0 AS "deptno"
+     , Q4.$C1 AS "deptname"
+     , Q4.$C2 AS "avg_time"
+FROM 
+    (SELECT Q3.$C3 AS $C0
+          , Q3.$C2 AS $C1
+          , DEC((Q3.$C1 / Q3.$C0),5,2) AS $C2
+     FROM (SELECT SUM(Q2.$C2) AS $C0
+                , SUM(Q2.$C3) AS $C1
+                , Q2.$C0 AS $C2
+                , Q2.$C1 AS $C3
+           FROM (SELECT Q1.deptname AS $C0
+                      , Q1.workdept AS $C1
+                      , Q1.num_time AS $C2
+                      , Q1.sum_time AS $C3
+                 FROM dpt_emp_act_sumry AS Q1
+                 WHERE (Q1.firstnme LIKE '%S%')
+                 AND (Q1.DEPTNAME LIKE '%S%')
+                ) AS Q2
+           GROUP BY Q2.$C1
+                  , Q2.$C0
+          ) AS Q3
+    ) AS Q4
+ORDER BY Q4.$C2 DESC;
+....
+
+==== Indexes on Materialized Query Tables
+
+To really make things fly, one can add indexes to the materialized query table columns. Db2 will then use these indexes to locate the required data. Certain restrictions apply:
+
+* Unique indexes are not allowed.
+* The materialized query table must not be in a "check pending" status when the index is defined. Run a refresh to address this problem.
+
+Below are some indexes for the DPT_EMP_ACT_SUMRY table that was defined above:
+
+.Indexes for DPT_EMP_ACT_SUMRY materialized query table
+[source,sql]
+....
+CREATE INDEX dpt_emp_act_sumx1
+ON dpt_emp_act_sumry ( workdept
+                     , deptname
+                     , empno
+                     , firstnme);
+
+CREATE INDEX dpt_emp_act_sumx2
+ON dpt_emp_act_sumry (num_rows);
+....
+
+The next query will use the first index (i.e. on WORKDEPT):
+
+.Sample query that use WORKDEPT index
+[source,sql]
+....
+SELECT d.deptno
+     , d.deptname
+     , e.empno
+     , e.firstnme
+     , INT(AVG(a.emptime)) AS avg_time
+FROM department d
+   , employee   e
+   , emp_act    a
+WHERE d.deptno =    e.workdept
+AND e.empno    =    a.empno
+AND d.deptno   LIKE 'D%'
+GROUP BY d.deptno
+       , d.deptname
+       , e.empno
+       , e.firstnme
+ORDER BY 1, 2, 3, 4;
+....
+
+The next query will use the second index (i.e. on NUM_ROWS):
+
+.Sample query that uses NUM_ROWS index
+[source,sql]
+....
+SELECT d.deptno
+     , d.deptname
+     , e.empno
+     , e.firstnme
+     , COUNT(*) AS #acts
+FROM department d
+   , employee   e
+   , emp_act    a
+WHERE d.deptno = e.workdept
+AND e.empno = a.empno
+GROUP BY d.deptno
+       , d.deptname
+       , e.empno
+       , e.firstnme
+HAVING COUNT(*) > 4
+ORDER BY 1, 2, 3, 4;
+....
+
+=== Organizing by Dimensions
+
+The following materialized query table is organized (clustered) by the two columns that are referred to in the GROUP BY. Under the covers, Db2 will also create a dimension index on each column, and a block index on both columns combined:
+
+.Materialized query table organized by dimensions
+[source,sql]
+....
+CREATE TABLE emp_sum AS
+(SELECT workdept
+      , job
+      , SUM(salary)        AS sum_sal
+      , COUNT(*)           AS #emps
+      , GROUPING(workdept) AS grp_dpt
+      , GROUPING(job)      AS grp_job
+ FROM employee
+ GROUP BY CUBE( workdept
+             , job)
+)
+DATA INITIALLY DEFERRED REFRESH DEFERRED
+ORGANIZE BY DIMENSIONS (workdept, job)
+IN tsempsum;
+....
+
+WARNING: Multi-dimensional tables may perform very poorly when created in the default tablespace, or in a system-maintained tablespace. Use a database-maintained tablespace with the right extent size, and/or run the Db2EMPFA command.
+
+Don't forget to run RUNSTATS!
+
+==== Using Staging Tables
+
+A staging table can be used to incrementally maintain a materialized query table that has been defined refresh deferred. Using a staging table can result in a significant performance saving (during the refresh) if the source table is very large, and is not changed very often. 
+
+NOTE: To use a staging table, the SQL statement used to define the target materialized query table must follow the rules that apply for a table that is defined refresh immediate even though it is defined refresh deferred.
+
+The staging table CREATE statement has the following components:
+
+* The name of the staging table.
+* A list of columns (with no attributes) in the target materialized query table. The column names do not have to match those in the target table.
+* Either two or three additional columns with specific names- as provided by Db2.
+* The name of the target materialized query table.
+
+To illustrate, below is a typical materialized query table:
+
+[source,sql]
+....
+CREATE TABLE emp_sumry AS
+(SELECT workdept      AS dept
+      , COUNT(*)      AS #rows
+      , COUNT(salary) AS #sal
+      , SUM(salary)   AS sum_sal
+ FROM employee emp
+ GROUP BY emp.workdept
+) DATA INITIALLY DEFERRED REFRESH DEFERRED;
+....
+
+Here is a staging table for the above:
+
+.Staging table for the above materialized query table
+[source,sql]
+....
+CREATE TABLE emp_sumry_s
+( dept
+, num_rows
+, num_sal
+, sum_sal
+, GLOBALTRANSID
+, GLOBALTRANSTIME
+) FOR emp_sumry PROPAGATE IMMEDIATE;
+....
+
+===== Additional Columns
+
+The two, or three, additional columns that every staging table must have are as follows:
+
+* *GLOBALTRANSID*: The global transaction ID for each propagated row.
+* *GLOBALTRANSTIME*: The transaction timestamp
+* *OPERATIONTYPE*: The operation type (i.e. insert, update, or delete).
+This column is needed if the target materialized query table does not contain a GROUP BY statement.
+
+===== Using a Staging Table
+
+To activate the staging table one must first use the SET INTEGRITY command to remove the check pending flag, and then do a full refresh of the target materialized query table. After this is done, the staging table will record all changes to the source table. Use the refresh incremental command to apply the changes recorded in the staging table to the target materialized query table.
+
+.Enabling and the using a staging table
+[source,sql]
+....
+SET INTEGRITY FOR emp_sumry_s STAGING IMMEDIATE UNCHECKED;
+REFRESH TABLE emp_sumry;
+<< make changes to the source table (i.e. employee) >>
+REFRESH TABLE emp_sumry INCREMENTAL;
+....
+
+A multi-row update (or insert, or delete) uses the same CURRENT TIMESTAMP for all rows changed, and for all invoked triggers. Therefore, the #CHANGING_SQL field is only incremented when a new timestamp value is detected.
+
+

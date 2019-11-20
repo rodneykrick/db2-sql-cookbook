@@ -1,0 +1,157 @@
+== Table Functions
+
+A table function is very similar to a scalar function, except that it returns a set of rows and columns, rather than a single value. Here is an example:
+
+.Simple table function
+[source,sql]
+....
+CREATE FUNCTION get_staff()
+RETURNS TABLE (  ID   SMALLINT
+               , name VARCHAR(9)
+               , YR   SMALLINT)
+RETURN 
+  SELECT id
+  , name
+  , years
+  FROM staff;
+
+SELECT *
+FROM TABLE(get_staff()) AS s
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |YR
+|10|Sanders |7
+|20|Pernal  |8
+|30|Marenghi|5
+|===
+
+Note the following:
+
+* The TABLE keyword, the function name (obviously), the two sets of parenthesis , and a correlation name, are all required.
+* If the function has input parameters, they are all required, and their type must match.
+* Optionally, one can list all of the columns that are returned by the function, giving each an assigned name.
+
+Below is an example of a function that uses all of the above features:
+
+.Table function with parameters
+[source,sql]
+....
+CREATE FUNCTION get_st(inval INTEGER)
+RETURNS 
+  TABLE (  id   SMALLINT
+         , name VARCHAR(9)
+         , yr   SMALLINT)
+RETURN 
+  SELECT id
+       , name
+       , years
+  FROM staff
+  WHERE id = inval;
+
+SELECT *
+FROM TABLE(get_st(30)) AS sss (id, nnn, yy) *
+....
+
+_ANSWER_
+|===
+|ID|NNN     |YY
+|30|Marenghi| 5
+|===
+
+Examples
+
+A table function returns a table, but it doesn't have to touch a table. To illustrate, the following function creates the data on the fly:
+
+.Table function that creates data
+[source,sql]
+....
+CREATE FUNCTION make_data()
+RETURNS
+  TABLE ( KY SMALLINT
+        , DAT CHAR(5))
+RETURN
+  WITH temp1 (k#) AS
+  (VALUES (1),(2),(3))
+  SELECT k#
+       , DIGITS(SMALLINT(k#))
+  FROM temp1;
+
+SELECT *
+FROM TABLE(make_data()) AS ttt;
+....
+
+_ANSWER_
+|===
+|KY|DAT
+|1 |00001
+|2 |00002
+|3 |00003
+|===
+
+The next example uses compound SQL to first flag an error if one of the input values is too low, then find the maximum salary and related ID in the matching set of rows, then fetch the same rows - returning the two previously found values at the same time:
+
+IMPORTANT: This example uses an "!" as the stmt delimiter.
+
+.Table function with compound SQL
+[source,sql]
+....
+CREATE FUNCTION staff_list(lo_key INTEGER
+                         , lo_sal INTEGER)
+RETURNS
+  TABLE ( id      SMALLINT
+        , salary  DECIMAL(7,2)
+        , max_sal DECIMAL(7,2)
+        , id_max SMALLINT)
+LANGUAGE SQL
+READS SQL DATA
+EXTERNAL ACTION
+DETERMINISTIC
+BEGIN ATOMIC
+  DECLARE hold_sal DECIMAL(7,2) DEFAULT 0;
+  DECLARE hold_key SMALLINT;
+  IF lo_sal < 0 THEN
+    SIGNAL SQLSTATE '75001'
+    SET MESSAGE_TEXT = 'Salary too low';
+  END IF;
+  FOR get_max AS
+    SELECT id     AS in_key
+         , salary As in_sal
+    FROM staff
+    WHERE id >= lo_key
+  DO
+    IF in_sal > hold_sal THEN
+      SET hold_sal = in_sal;
+      SET hold_key = in_key;
+    END IF;
+  END FOR;
+RETURN
+  SELECT id
+       , salary
+       , hold_sal
+       , hold_key
+  FROM staff
+  WHERE id >= lo_key;
+END!
+
+
+SELECT *
+FROM TABLE(staff_list(66,1)) AS ttt
+WHERE id < 111
+ORDER BY id!
+....
+
+_ANSWER_
+|===
+|ID |SALARY  |MAX_SAL |ID_MAX
+|70 |76502.83|91150.00|140
+|80 |43504.60|91150.00|140
+|90 |38001.75|91150.00|140
+|100|78352.80|91150.00|140
+|110|42508.20|91150.00|140
+|===
+
+

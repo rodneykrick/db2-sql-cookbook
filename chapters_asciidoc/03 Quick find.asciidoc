@@ -1,0 +1,480 @@
+== Quick find
+
+=== Index of Concepts
+
+==== Join rows
+
+To combine matching rows in multiple tables, use a join (see <<join.chapter>>).
+
+EMP_NM
+
+[cols=",",options="header",]
+|===
+|ID |NAME
+|10 |Sanders
+|20 |Pernal
+|50 |Hanes
+|===
+
+EMP_JB
+
+[cols=",",options="header",]
+|===
+|ID |JOB
+|10 |Sales
+|20 |Clerk
+|===
+
+.Join example
+[source,sql]
+....
+SELECT nm.id
+     , nm.name
+	 , jb.job 
+FROM emp_nm nm
+   , emp_jb jb 
+WHERE nm.id = jb.id 
+ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols=",",options="header",]
+|===
+| ID | NAME    | JOB 
+| 10 | Sanders | Sales 
+| 20 | Pernal  |Clerk
+|===
+
+
+==== Outer Join
+
+To get all of the rows from one table, plus the matching rows from another table (if there are any), use an outer join (see <<join.types>>).
+
+EMP_NM
+
+[cols=",",options="header",]
+|===
+|ID |NAME
+|10 |Sanders
+|20 |Pernal
+|50 |Hanes
+|===
+
+EMP_JB
+
+[cols=",",options="header",]
+|===
+|ID |JOB
+|10 |Sales
+|20 |Clerk
+|===
+
+.Left-outer-join example
+[source,sql]
+....
+SELECT nm.id ,nm.name ,jb.job 
+FROM emp_nm nm 
+LEFT OUTER JOIN emp_jb jb 
+ON nm.id = jb.id 
+ORDER BY nm.id;
+....
+
+_ANSWER_
+
+[cols=",",options="header",]
+|===
+| ID | NAME    | JOB 
+| 10 | Sanders | Sales
+| 20 | Pernal  | Clerk 
+| 50 | Hanes   | - 
+|===
+
+
+To get rows from either side of the join, regardless of whether they match (the join) or not, use a full outer join (see <<full.outer.joins>>).
+
+[[null-values--replace]]
+==== Null Values – Replace
+
+Use the COALESCE function (see <<coalesce.function>>) to replace a null value (e.g. generated in an outer join) with a non-null value.
+
+==== Select Where No Match
+
+To get the set of the matching rows from one table where something is true or false in another table (e.g. no corresponding row), use a sub-query (see <<subquery.chapter>>).
+
+EMP_NM
+
+[cols=",",options="header",]
+|===
+|ID |NAME
+|10 |Sanders
+|20 |Pernal
+|50 |Hanes
+|===
+
+EMP_JB
+
+[cols=",",options="header",]
+|===
+| ID | JOB 
+| 10 | Sales 
+| 20 | Clerk 
+|===
+
+.Sub-query example
+[source,sql]
+....
+SELECT * FROM emp_nm nm 
+WHERE NOT EXISTS 
+  (SELECT * FROM emp_jb jb 
+   WHERE nm.id = jb.id) 
+ORDER BY id;
+....
+
+_ANSWER_
+
+[cols=",",options="header",]
+|===
+|ID |NAME
+|50 |Hanes
+|===
+
+
+
+==== Append Rows
+
+To add (append) one set of rows to another set of rows, use a union (see <<union.chapter>>). 
+
+EMP_NM
+
+[cols=",",options="header",]
+|===
+|ID |NAME
+|10 |Sanders
+|20 |Pernal
+|50 |Hanes
+|===
+
+EMP_JB
+
+[cols=",",options="header",]
+|===
+|ID |JOB
+|10 |Sales
+|20 |Clerk
+|===
+
+.Union example
+[source,sql]
+....
+SELECT * 
+FROM emp_nm
+WHERE emp_nm name < 'S'
+  UNION 
+SELECT *
+FROM emp_jb 
+ORDER BY 1, 2;
+....
+
+_ANSWER_
+
+[cols=",",options="header",]
+|===
+|ID| 2
+|10| Sales 
+|20 |Clerk 
+|20 |Pernal 
+|50 |Hanes
+|===
+
+
+==== Assign Output Numbers
+
+To assign line numbers to SQL output, use the ROW_NUMBER function (see <<row_number.function>>). 
+
+EMP_JB
+
+[cols=",",options="header",]
+|===
+|ID |JOB
+|10 |Sales
+|20 |Clerk
+|===
+
+.Assign row-numbers example
+[source,sql]
+....
+SELECT id
+     , job
+     , ROW_NUMBER() OVER(ORDER BY job) AS R 
+FROM emp_jb 
+ORDER BY job;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|ID | JOB  | R 
+|20 | Clerk| 1 
+|10 | Sales| 2 
+|===
+
+
+==== Assign Unique Key Numbers
+
+To make each row inserted into a table automatically get a unique key value, use an identity column, or a sequence, when creating the table (see <<identity.columns.chapter>>).
+
+==== If-Then-Else Logic
+
+To include if-then-else logical constructs in SQL stmts, use the CASE phrase (see <<case.expression>>).
+
+EMP_JB
+|===
+|ID |JOB
+|10 |Sales 
+|20 |Clerk 
+|===
+
+.Case stmt example
+[source,sql]
+....
+SELECT id
+     , job
+     , CASE 
+         WHEN job = 'Sales' THEN 'Fire' 
+         ELSE 'Demote' 
+       END AS STATUS 
+ FROM emp_jb;
+....
+
+_ANSWER_
+
+|===
+|ID | JOB | STATUS 
+|10 | Sales | Fire 
+|20 | Clerk | Demote |
+|===
+
+
+==== Get Dependents
+
+To get all of the dependents of some object, regardless of the degree of separation from the parent to the child, use recursion (see <<recursive.sql.chapter>>).
+
+FAMILY
+|===
+| PARNT | CHILD 
+| GrDad | Dad 
+| Dad   | Dghtr 
+| Dghtr | GrSon 
+| Dghtr | GrDtr 
+|===
+
+.Recursion example
+[source,sql]
+....
+WITH temp (persn, lvl) 
+AS (SELECT parnt, 1 
+    FROM family 
+    WHERE parnt = 'Dad' 
+      UNION ALL 
+    SELECT child, Lvl + 1 
+    FROM temp, family 
+    WHERE persn = parnt) 
+SELECT * FROM temp;
+....
+
+_ANSWER_
+
+|===
+| PERSN | LVL
+| Dad   | 1 
+| Dghtr | 2 
+| GrSon | 3 
+| GrDtr | 3 
+|===
+
+
+==== Convert String to Rows
+
+To convert a (potentially large) set of values in a string (character field) into separate rows (e.g. one row per word), use recursion (see <<recursive.sql.chapter>>). 
+
+*INPUT DATA* "Some silly text" 
+Use Recursive SQL 
+
+_ANSWER_
+
+.Convert string to rows
+|===
+|TEXT  |LINE#
+|Some  | 1 
+|silly | 2
+|text  | 3
+|===
+
+Be warned - in many cases, the code is not pretty.
+
+==== Convert Rows to String
+
+To convert a (potentially large) set of values that are in multiple rows into a single combined field, use recursion (see <<recursive.sql.chapter>>). 
+
+INPUT DATA 
+|===
+|TEXT LINE#
+|Some |1
+|silly|2 
+|text |3 
+|===
+Use Recursive SQL
+
+ANSWER: "Some silly text" 
+
+==== Fetch First "n" Rows
+
+To fetch the first "n" matching rows, use the FETCH FIRST notation (see <<fetch.first.clause>>). 
+
+EMP_NM
+|===
+|ID|NAME
+|10|Sanders
+|20|Pernal
+|50|Hanes
+|===
+
+.Fetch first "n" rows example
+[source,sql]
+....
+SELECT * FROM 
+emp_nm 
+ORDER BY id DESC 
+FETCH FIRST 2 ROWS ONLY;
+....
+
+_ANSWER_
+
+|===
+|ID | NAME
+|50 | Hanes 
+|20 | Pernal
+|===
+
+Another way to do the same thing is to assign row numbers to the output, and then fetch those rows where the row-number is less than "n" (see <<selecting.n.rows>>).
+
+==== Fetch Subsequent "n" Rows
+
+To the fetch the "n" through "n + m" rows, first use the ROW_NUMBER function to assign output numbers, then put the result in a nested-table-expression, and then fetch the rows with desired numbers.
+
+==== Fetch Uncommitted Data
+
+To retrieve data that may have been changed by another user, but which they have yet to commit, use the WITH UR (Uncommitted Read) notation.
+
+EMP_NM
+|===
+|ID| NAME
+|10| Sanders
+|20| Pernal
+|50| Hanes
+|===
+
+.Fetch WITH UR example
+[source,sql]
+....
+SELECT * 
+FROM emp_nm 
+WHERE name like 'S%' 
+WITH UR;
+....
+
+_ANSWER_
+
+|===
+|ID| NAME
+|10| Sanders
+|===
+
+
+Using this option can result in one fetching data that is subsequently rolled back, and so was never valid. Use with extreme care.
+
+==== Summarize Column Contents
+
+Use a column function (see <<column.function.chapter>>) to summarize the contents of a column. 
+
+EMP_NM 
+|===
+|ID|NAME
+|10|Sanders
+|20|Pernal
+|50|Hanes|
+|===
+
+.Column Functions example
+[source,sql]
+....
+SELECT AVG(id)AS avg
+      ,MAX(name) AS maxn 
+      ,COUNT(*) AS #rows 
+FROM emp_nm;
+....
+
+_ANSWER_
+
+|===
+|AVG|MAXN    |#ROWS
+|26 |Sanders |3
+|===
+
+==== Subtotals and Grand Totals
+
+To obtain subtotals and grand-totals, use the ROLLUP or CUBE statements (see <<rollup.statement>>).
+
+.Subtotal and Grand-total example
+[source,sql]
+....
+SELECT job 
+      ,dept 
+      ,SUM(salary) AS sum_sal 
+      ,COUNT(*) AS #emps 
+FROM staff 
+WHERE dept < 30 
+AND salary < 90000 
+AND job < 'S' 
+GROUP BY ROLLUP(job, dept) 
+ORDER BY job, dept;
+....
+
+ANSWER
+
+|===
+|JOB  |DEPT|SUM_SAL  |#EMPS
+|Clerk|15  |84766.70 |2 
+|Clerk|20  |77757.35 |2 
+|Clerk|-   |162524.05|4 
+|Mgr  |10  |243453.45|3 
+|Mgr  |15  |80659.80 |1 
+|Mgr  |-   |324113.25|4
+|     |    |486637.30|8 
+|===
+
+==== Enforcing Data Integrity
+
+When a table is created, various Db2 features can be used to ensure that the data entered in the table is always correct:
+
+* Uniqueness (of values) can be enforced by creating unique indexes.
+* Check constraints can be defined to limit the values that a column can have.
+* Default values (for a column) can be defined - to be used when no value is provided.
+* Identity columns (see <<identity.columns.chapter>>), can be defined to automatically generate unique numeric values (e.g. invoice numbers) for all of the rows in a table. Sequences can do the same thing over multiple tables.
+* Referential integrity rules can be created to enforce key
+relationships between tables.
+* Triggers can be defined to enforce more complex integrity rules, and also to do things (e.g. populate an audit trail) whenever data is changed.
+
+See the Db2 manuals for documentation or page 341 for more information about the above.
+
+==== Hide Complex SQL
+
+One can create a view (see <<view.definition>>) to hide complex SQL that is run repetitively. Be warned however that doing so can make it significantly harder to tune the SQL - because some of the logic will be in the user code, and some in the view definition.
+
+=== Summary Table
+
+Some queries that use a GROUP BY can be made to run much faster by defining a summary table (see <<materialized.query.tables.chapter>>) that Db2 automatically maintains. Subsequently, when the user writes the original GROUP BY against the source-data table, the optimizer substitutes with a much simpler (and faster) query against the summary table.
+
+

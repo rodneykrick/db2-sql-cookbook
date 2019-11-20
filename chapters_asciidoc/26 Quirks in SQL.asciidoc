@@ -1,0 +1,1224 @@
+== Quirks in SQL
+
+One might have noticed by now that not all SQL statements are easy to comprehend. Unfortunately, the situation is perhaps a little worse than you think. In this section we will discuss some SQL statements that are correct, but which act just a little funny.
+
+=== Trouble with Timestamps
+
+When does one timestamp not equal another with the same value? The answer is, when one value uses a 24 hour notation to represent midnight and the other does not. To illustrate, the following two timestamp values represent the same point in time, but not according to Db2:
+
+.Timestamp comparison - Incorrect
+[source,sql]
+....
+WITH temp1 (c1, t1, t2) AS
+(VALUES('A', TIMESTAMP('1996-05-01-24.00.00.000000'), TIMESTAMP('1996-05-02-00.00.00.000000')))
+SELECT c1
+FROM temp1
+WHERE t1 = t2;
+....
+
+_ANSWER_: No rows
+
+To make Db2 think that both timestamps are actually equal (which they are), all we have to do is fiddle around with them a bit:
+
+.Timestamp comparison - Correct
+[source,sql]
+....
+WITH temp1 (c1,t1,t2) 
+AS (VALUES('A', TIMESTAMP('1996-05-01-24.00.00.000000'), TIMESTAMP('1996-05-02-00.00.00.000000')))
+SELECT c1
+FROM temp1
+WHERE t1 + 0 MICROSECOND = t2 + 0 MICROSECOND;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|C1
+|A
+|===
+
+Be aware that, as with everything else in this section, what is shown above is not a bug. It is the way that it is because it makes perfect sense, even if it is not intuitive. 
+
+=== Using 24 Hour Notation
+
+One might have to use the 24-hour notation, if one needs to record (in Db2) external actions that happen just before midnight - with the correct date value. To illustrate, imagine that we have the following table, which records supermarket sales:
+
+.Sample Table
+[source,sql]
+....
+CREATE TABLE supermarket_sales
+( sales_ts TIMESTAMP NOT NULL
+, sales_val DECIMAL(8, 2) NOT NULL
+, PRIMARY KEY(sales_ts));
+....
+
+In this application, anything that happens before midnight, no matter how close, is deemed to have happened on the specified day. So if a transaction comes in with a timestamp value that is a tiny fraction of a microsecond before midnight, we should record it thus:
+
+.Insert row
+[source,sql]
+....
+INSERT INTO supermarket_sales
+VALUES ('2003-08-01-24.00.00.000000', 123.45);
+....
+
+Now, if we want to select all of the rows that are for a given day, we can write this:
+
+.Select rows for given date
+[source,sql]
+....
+SELECT *
+FROM supermarket_sales
+WHERE DATE(sales_ts) = '2003-08-01'
+ORDER BY sales_ts;
+....
+
+Or this:
+
+.Select rows for given date
+[source,sql]
+....
+SELECT *
+FROM supermarket_sales
+WHERE sales_ts BETWEEN '2003-08-01-00.00.00' AND '2003-08-01-24.00.00'
+ORDER BY sales_ts;
+....
+
+Db2 will never internally generate a timestamp value that uses the 24 hour notation. But it is provided so that you can use it yourself, if you need to.
+
+[[no.rows.match]]
+=== No Rows Match
+
+How many rows are returned by a query when no rows match the provided predicates? The answer is that sometimes you get none, and sometimes you get one:
+
+.Query with no matching rows (1 of 8)
+[source,sql]
+....
+SELECT creator
+FROM sysibm.systables
+WHERE creator = 'ZZZ';
+....
+
+_ANSWER_: no row
+
+.Query with no matching rows (2 of 8)
+[source,sql]
+....
+SELECT MAX(creator)
+FROM sysibm.systables
+WHERE creator = 'ZZZ';
+....
+
+_ANSWER_: Null
+
+.Query with no matching rows (3 of 8)
+[source,sql]
+....
+SELECT MAX(creator)
+FROM sysibm.systables
+WHERE creator = 'ZZZ'
+HAVING MAX(creator) IS NOT NULL;
+....
+
+_ANSWER_: no row
+
+.Query with no matching rows (4 of 8)
+[source,sql]
+....
+SELECT MAX(creator)
+FROM sysibm.systables
+WHERE creator = 'ZZZ'
+HAVING MAX(creator) = 'ZZZ';
+....
+
+_ANSWER_: no row
+
+.Query with no matching rows (5 of 8)
+[source,sql]
+....
+SELECT MAX(creator)
+FROM sysibm.systables
+WHERE creator = 'ZZZ'
+GROUP BY creator;
+....
+
+_ANSWER_: no row
+
+.Query with no matching rows (6 of 8)
+[source,sql]
+....
+SELECT creator
+FROM sysibm.systables
+WHERE creator = 'ZZZ'
+GROUP BY creator;
+....
+
+_ANSWER_: no row
+
+.Query with no matching rows (7 of 8)
+[source,sql]
+....
+SELECT COUNT(*)
+FROM sysibm.systables
+WHERE creator = 'ZZZ'
+GROUP BY creator;
+....
+
+_ANSWER_: no row
+
+.Query with no matching rows (8 of 8)
+[source,sql]
+....
+SELECT COUNT(*)
+FROM sysibm.systables
+WHERE creator = 'ZZZ';
+....
+
+_ANSWER_: 0
+
+There is a pattern to the above, and it goes thus:
+
+* When there is no column function (e.g. MAX, COUNT) in the SELECT then, if there are no matching rows, no row is returned.
+* If there is a column function in the SELECT, but nothing else, then the query will always return a row - with zero if the function is a COUNT, and null if it is something else.
+* If there is a column function in the SELECT, and also a HAVING phrase in the query, a row will only be returned if the HAVING predicate is true.
+* If there is a column function in the SELECT, and also a GROUP BY phrase in the query, a row will only be returned if there was one that matched.
+
+Imagine that one wants to retrieve a list of names from the STAFF table, but when no names match, one wants to get a row/column with the phrase "NO NAMES", rather than zero rows. The next query does this by first generating a "not found" row using the SYSDUMMY1 table, and then left-outer-joining to the set of matching rows in the STAFF table. The COALESCE function will return the STAFF data, if there is any, else the not-found data:
+
+.Always get a row, example 1 of 2
+[source,sql]
+....
+SELECT COALESCE(name,noname)  AS nme
+     , COALESCE(salary,nosal) AS sal
+FROM (SELECT 'NO NAME' AS noname
+           , 0 AS nosal
+      FROM sysibm.sysdummy1) AS nnn
+LEFT OUTER JOIN
+    (SELECT *
+     FROM staff
+     WHERE id < 5) AS xxx
+ON 1 = 1
+ORDER BY name;
+....
+
+_ANSWER_
+|===
+|NME    |SAL 
+|NO NAME|0.00
+|===
+
+The next query is logically the same as the prior, but it uses the WITH phrase to generate the "not found" row in the SQL statement:
+
+.Always get a row, example 2 of 2
+[source,sql]
+....
+WITH nnn (noname, nosal) AS
+(VALUES ('NO NAME', 0))
+SELECT COALESCE(name, noname) AS nme
+     , COALESCE(salary,nosal) AS sal
+FROM nnn
+LEFT OUTER JOIN
+    (SELECT *
+     FROM staff
+     WHERE id < 5) AS xxx
+ON 1 = 1
+ORDER BY NAME;
+....
+
+_ANSWER_
+|===
+|NME    | SAL 
+|NO NAME| 0.00
+|===
+
+=== Dumb Date Usage
+
+Imagine that you have some character value that you convert to a Db2 date. The correct way to do it is given below:
+
+.Convert value to Db2 date, right
+[source,sql]
+....
+SELECT DATE('2001-09-22')
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_: 2001-09-22
+
+What happens if you accidentally leave out the quotes in the DATE function? The function still works, but the result is not correct:
+
+.Convert value to Db2 date, wrong
+[source,sql]
+....
+SELECT DATE(2001-09-22)
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_: 0006-05-24
+
+Why the 2,000 year difference in the above results? When the DATE function gets a character string as input, it assumes that it is valid character representation of a Db2 date, and converts it accordingly. By contrast, when the input is numeric, the function assumes that it represents the number of days minus one from the start of the current era (i.e. 0001-01-01). In the above query the input was 2001-09-22, which equals (2001-9)-22, which equals 1970 days.
+
+[[rand.in.predicate]]
+=== RAND in Predicate
+
+The following query was written with intentions of getting a single random row out of the matching set in the STAFF table. Unfortunately, it returned two rows:
+
+.Get random rows - Incorrect
+[source,sql]
+....
+SELECT id
+     , name
+FROM staff
+WHERE id <= 100
+AND id = (INT(RAND()* 10) * 10) + 10
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME
+|30|Marenghi 
+|60|Quigley
+|===
+
+The above SQL returned more than one row because the RAND function was reevaluated for each matching row. Thus the RAND predicate was being dynamically altered as rows were being fetched. To illustrate what is going on above, consider the following query. The results of the RAND function are displayed in the output. Observe that there are multiple rows where the function output (suitably massaged) matched the ID value.
+In theory, anywhere between zero and all rows could match:
+
+.Get random rows - Explanation
+[source,sql]
+....
+WITH temp AS
+(SELECT id
+      , name
+      , (INT(RAND(0)* 10) * 10) + 10 AS ran
+ FROM staff
+ WHERE id <= 100)
+SELECT t.*
+     , CASE id
+         WHEN ran THEN 'Y'
+         ELSE ' '
+       END AS eql
+FROM temp t
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |NAME    |RAN|EQL
+|10 |Sanders |10 |Y 
+|20 |Pernal  |30 |
+|30 |Marenghi|70 |
+|40 |O'Brien |10 |
+|50 |Hanes   |30 |
+|60 |Quigley |40 |
+|70 |Rothman |30 |
+|80 |James   |100|
+|90 |Koonitz |40 |
+|100|Plotz   |100 |Y
+|===
+
+NOTE: To randomly select some fraction of the rows in a table efficiently and consistently, use the TABLESAMPLE feature. See <<randomly.sample.data>> for more details.
+
+=== Getting "n" Random Rows
+
+There are several ways to always get exactly "n" random rows from a set of matching rows. In the following example, three rows are required:
+
+.Get random rows - Non-distinct
+[source,sql]
+....
+WITH staff_numbered AS
+(SELECT s.*
+      , ROW_NUMBER() OVER() AS row#
+ FROM staff s
+ WHERE id <= 100)
+, count_rows AS
+(SELECT MAX(row#) AS #rows
+ FROM staff_numbered)
+, random_values (RAN#) AS
+(VALUES (RAND())
+      , (RAND())
+      , (RAND()))
+, rows_t0_get AS
+(SELECT INT(ran# * #rows) + 1 AS get_row
+ FROM random_values
+    , count_rows)
+SELECT id
+     , name
+FROM staff_numbered
+   , rows_t0_get
+WHERE row# = get_row
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|90|Koonitz
+|===
+
+The above query works as follows:
+
+* First, the matching rows in the STAFF table are assigned a row number.
+* Second, a count of the total number of matching rows is obtained.
+* Third, a temporary table with three random values is generated.
+* Fourth, the three random values are joined to the row-count value, resulting in three new row-number values (of type integer) within the correct range.
+* Finally, the three row-number values are joined to the original temporary table.
+
+There are some problems with the above query:
+
+* If more than a small number of random rows are required, the random values cannot be defined using the VALUES phrase. Some recursive code can do the job.
+* In the extremely unlikely event that the RAND function returns the value "one", no row will match. CASE logic can be used to address this issue.
+* Ignoring the problem just mentioned, the above query will always return three rows, but the rows may not be different rows. Depending on what the three RAND calls generate, the query may even return just one row - repeated three times. 
+
+In contrast to the above query, the following will always return three different random rows:
+
+.Get random rows - Distinct
+[source,sql]
+....
+SELECT id
+     , name
+FROM (SELECT s2.*
+           , ROW_NUMBER() OVER(ORDER BY r1) AS r2
+      FROM (SELECT s1.*
+                 , RAND() AS r1
+            FROM staff s1
+            WHERE id <= 100) AS s2
+     ) as s3
+WHERE r2 <= 3
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME 
+|10|Sanders 
+|40|O'Brien 
+|60|Quigley
+|===
+
+In this query, the matching rows are first numbered in random order, and then the three rows with the lowest row number are selected. 
+
+=== Summary of Issues
+
+The lesson to be learnt here is that one must consider exactly how random one wants to be when one goes searching for a set of random rows:
+
+* Does one want the number of rows returned to be also somewhat random?
+* Does one want exactly "n" rows, but it is OK to get the same row twice?
+* Does one want exactly "n" distinct (i.e. different) random rows?
+
+=== Date/Time Manipulation
+
+I once had a table that contained two fields - the timestamp when an event began, and the elapsed time of the event. To get the end-time of the event, I added the elapsed time to the begin-timestamp - as in the following SQL:
+
+.Date/Time manipulation - wrong
+[source,sql]
+....
+WITH temp1 (bgn_tstamp, elp_sec) AS
+(VALUES (TIMESTAMP('2001-01-15-01.02.03.000000'), 1.234)
+      , (TIMESTAMP('2001-01-15-01.02.03.123456'), 1.234))
+SELECT bgn_tstamp
+     , elp_sec
+     , bgn_tstamp + elp_sec SECONDS AS end_tstamp
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|BGN_TSTAMP                |ELP_SEC|END_TSTAMP
+|2001-01-15-01.02.03.000000|1.234  |2001-01-15-01.02.04.000000
+|2001-01-15-01.02.03.123456|1.234  |2001-01-15-01.02.04.123456
+|===
+
+As you can see, my end-time is incorrect. In particular, the factional part of the elapsed time has not been used in the addition. I subsequently found out that Db2 never uses the fractional part of a number in date/time calculations. So to get the right answer I multiplied my elapsed time by one million and added microseconds: 
+
+.Date/Time manipulation - right
+[source,sql]
+....
+WITH temp1 (bgn_tstamp, elp_sec) AS
+(VALUES (TIMESTAMP('2001-01-15-01.02.03.000000'), 1.234)
+      , (TIMESTAMP('2001-01-15-01.02.03.123456'), 1.234))
+SELECT bgn_tstamp
+     , elp_sec
+     , bgn_tstamp + (elp_sec * 1E6) MICROSECONDS AS end_tstamp
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|BGN_TSTAMP                |ELP_SEC|END_TSTAMP 
+|2001-01-15-01.02.03.000000|1.234  |2001-01-15-01.02.04.234000
+|2001-01-15-01.02.03.123456|1.234  |2001-01-15-01.02.04.357456
+|===
+
+Db2 doesn't use the fractional part of a number in date/time calculations because such a value often makes no sense. For example, 3.3 months or 2.2 years are meaningless values - given that neither a month nor a year has a fixed length.
+
+==== The Solution
+
+When one has a fractional date/time value (e.g. 5.1 days, 4.2 hours, or 3.1 seconds) that is for a period of fixed length that one wants to use in a date/time calculation, one has to convert the value into some whole number of a more precise time period. For example:
+
+* 5.1 days times 86,400 returns the equivalent number of seconds.
+* 6.2 seconds times 1,000,000 returns the equivalent number of microseconds.
+
+=== Use of LIKE on VARCHAR
+
+Sometimes one value can be EQUAL to another, but is not LIKE the same. To illustrate, the following SQL refers to two fields of interest, one CHAR, and the other VARCHAR. Observe below that both rows in these two fields are seemingly equal:
+
+.Use LIKE on CHAR field
+[source,sql]
+....
+WITH temp1 (c0, c1, v1) AS 
+(VALUES('A', CHAR(' ', 1), VARCHAR(' ', 1))
+     , ('B', CHAR(' ', 1), VARCHAR('' , 1)))
+SELECT c0
+FROM temp1
+WHERE c1 = v1
+AND c1 LIKE ' ';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|C0
+|A
+|B
+|===
+
+Look what happens when we change the final predicate from matching on C1 to V1. Now only one row matches our search criteria.
+
+.Use LIKE on VARCHAR field
+[source,sql]
+....
+WITH temp1 (c0, c1, v1) AS 
+(VALUES ('A',CHAR(' ', 1),VARCHAR(' ', 1))
+      , ('B',CHAR(' ', 1),VARCHAR('' , 1)))
+SELECT c0
+FROM temp1
+WHERE c1 = v1
+AND v1 LIKE ' ';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|C0
+|A
+|===
+
+To explain, observe that one of the VARCHAR rows above has one blank byte, while the other has no data. When an EQUAL check is done on a VARCHAR field, the value is padded with blanks (if needed) before the match. This is why C1 equals C2 for both rows. However, the LIKE check does not pad VARCHAR fields with blanks. So the LIKE test in the second SQL statement only matched on one row. The RTRIM function can be used to remove all trailing blanks and so get around this problem: 
+
+.Use RTRIM to remove trailing blanks
+[source,sql]
+....
+WITH temp1 (c0,c1,v1) AS 
+(VALUES ('A',CHAR(' ',1),VARCHAR(' ',1))
+      , ('B',CHAR(' ',1),VARCHAR('' ,1)))
+SELECT c0
+FROM temp1
+WHERE c1 = v1
+AND RTRIM(v1) LIKE '';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|C0
+|A
+|B
+|===
+
+[[comparing.weeks]]
+=== Comparing Weeks
+
+One often wants to compare what happened in part of one year against the same period in another year. For example, one might compare January sales over a decade period. This may be a perfectly valid thing to do when comparing whole months, but it rarely makes sense when comparing weeks or individual days. The problem with comparing weeks from one year to the next is that the same week (as defined by Db2) rarely encompasses the same set of days. The following query illustrates this point by showing the set of days that make up week 33 over a ten-year period. Observe that some years have almost no overlap with the next:
+
+.Comparing week 33 over 10 years
+[source,sql]
+....
+WITH temp1 (yymmdd) AS
+(VALUES DATE('2000-01-01')
+   UNION ALL
+ SELECT yymmdd + 1 DAY
+ FROM temp1
+ WHERE yymmdd < '2010-12-31')
+SELECT yy                     AS year
+     , CHAR(MIN(yymmdd), ISO) AS min_dt
+     , CHAR(MAX(yymmdd), ISO) AS max_dt
+FROM (SELECT yymmdd
+           , YEAR(yymmdd) yy
+           , WEEK(yymmdd) wk
+      FROM temp1
+      WHERE WEEK(yymmdd) = 33) AS xxx
+GROUP BY yy
+       , wk;
+....
+
+_ANSWER_
+|===
+|YEAR|MIN_DT    |MAX_DT 
+|2000|2000-08-06|2000-08-12 
+|2001|2001-08-12|2001-08-18 
+|2002|2002-08-11|2002-08-17 
+|2003|2003-08-10|2003-08-16 
+|2004|2004-08-08|2004-08-14 
+|2005|2005-08-07|2005-08-13
+|2006|2006-08-13|2006-08-19 
+|2007|2007-08-12|2007-08-18 
+|2008|2008-08-10|2008-08-16 
+|2009|2009-08-09|2009-08-15 
+|2010|2010-08-08|2010-08-14
+|===
+
+=== Db2 Truncates, not Rounds
+
+When converting from one numeric type to another where there is a loss of precision, Db2 always truncates not rounds. For this reason, the S1 result below is not equal to the S2 result:
+
+.Db2 data truncation
+[source,sql]
+....
+SELECT SUM(INTEGER(salary)) AS s1
+     , INTEGER(SUM(salary)) AS s2
+FROM staff;
+....
+
+_ANSWER_
+|===
+|S1    |S2 
+|583633|583647
+|===
+
+If one must do scalar conversions before the column function, use the ROUND function to improve the accuracy of the result: 
+
+.Db2 data rounding
+[source,sql]
+....
+SELECT SUM(INTEGER(ROUND(salary, -1))) AS s1
+     , INTEGER(SUM(salary))            AS s2
+FROM staff;
+....
+
+_ANSWER_
+|===
+|S1    |S2 
+|583640|583647
+|===
+
+[[case.checks.in.wrong.sequence]]
+=== CASE Checks in Wrong Sequence
+
+The case WHEN checks are processed in the order that they are found. The first one that matches is the one used. To illustrate, the following statement will always return the value 'FEM' in the SXX field:
+
+.Case WHEN Processing - Incorrect
+[source,sql]
+....
+SELECT lastname
+     , sex
+     , CASE
+         WHEN sex >= 'F' THEN 'FEM'
+         WHEN sex >= 'M' THEN 'MAL'
+       END AS sxx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|LASTNAME |SX|SXX 
+|JEFFERSON|M |FEM 
+|JOHNSON  |F |FEM
+|JONES    |M |FEM
+|===
+
+By contrast, in the next statement, the SXX value will reflect the related SEX value:
+
+.Case WHEN Processing - Correct
+[source,sql]
+....
+SELECT lastname
+     , sex
+     , CASE
+         WHEN sex >= 'M' THEN 'MAL'
+         WHEN sex >= 'F' THEN 'FEM'
+       END AS sxx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|LASTNAME |SX|SXX 
+|JEFFERSON|M |MAL 
+|JOHNSON  |F |FEM
+|JONES    |M |MAL
+|===
+
+=== Division and Average
+
+The following statement gets two results, which is correct?
+
+.Division and Average
+[source,sql]
+....
+SELECT AVG(salary) / AVG(comm) AS a1
+     , AVG(salary / comm)      AS a2
+FROM staff;
+....
+
+_ANSWER_
+|===
+|A1 |A2 
+|-32|61.98
+|===
+
+Arguably, either answer could be correct - depending upon what the user wants. In practice, the first answer is almost always what they intended. The second answer is somewhat flawed because it gives no weighting to the absolute size of the values in each row (i.e. a big SALARY divided by a big COMM is the same as a small divided by a small). 
+
+=== Date Output Order
+
+Db2 has a bind option (called DATETIME) that specifies the default output format of datetime data. This bind option has no impact on the sequence with which date-time data is presented. It simply defines the output template used. To illustrate, the plan that was used to run the following SQL defaults to the USA date-time-format bind option. Observe that the month is the first field printed, but the rows are sequenced by year:
+
+.DATE output in year, month, day order
+[source,sql]
+....
+SELECT hiredate
+FROM employee
+WHERE hiredate < '1960-01-01'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|HIREDATE
+|1947-05-05
+|1949-08-17
+|1958-05-16
+|===
+
+When the CHAR function is used to convert the date-time value into a character value, the sort order is now a function of the display sequence, not the internal date-time order:
+
+.DATE output in month, day, year order
+[source,sql]
+....
+SELECT CHAR(hiredate, USA)
+FROM employee
+WHERE hiredate < '1960-01-01'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|HIREDATE
+|05/05/1947
+|05/16/1958
+|08/17/1949
+|===
+
+In general, always bind plans so that date-time values are displayed in the preferred format. Using the CHAR function to change the format can be unwise.
+
+=== Ambiguous Cursors
+
+The following pseudo-code will fetch all of the rows in the STAFF table (which has ID's ranging from 10 to 350) and, then while still fetching, insert new rows into the same STAFF table that are the same as those already there, but with ID's that are 500 larger.
+
+.Ambiguous Cursor
+[source,sql]
+....
+EXEC-SQL
+  DECLARE fred CURSOR FOR
+    SELECT *
+    FROM staff
+    WHERE id < 1000
+    ORDER BY id;
+END-EXEC;
+EXEC-SQL
+  OPEN fred
+END-EXEC;
+DO UNTIL SQLCODE = 100;
+  EXEC-SQL
+    FETCH fred INTO :HOST-VARS
+  END-EXEC;
+  IF SQLCODE <> 100 THEN DO;
+    SET HOST-VAR.ID = HOST-VAR.ID + 500;
+    EXEC-SQL
+      INSERT INTO staff VALUES (:HOST-VARS)
+    END-EXEC;
+  END-DO;
+END-DO;
+EXEC-SQL
+  CLOSE fred
+END-EXEC;
+....
+
+We want to know how many rows will be fetched, and so inserted? The answer is that it depends upon the indexes available. If there is an index on ID, and the cursor uses that index for the ORDER BY, there will 70 rows fetched and inserted. If the ORDER BY is done using a row sort (i.e. at OPEN CURSOR time) only 35 rows will be fetched and inserted.
+
+Be aware that Db2, unlike some other database products, does NOT (always) retrieve all of the matching rows at OPEN CURSOR time. Furthermore, understand that this is a good thing for it means that Db2 (usually) does not process any row that you do not need. Db2 is very good at always returning the same answer, regardless of the access path used. It is equally good at giving consistent results when the same logical statement is written in a different manner (e.g. A=B vs. B=A).
+What it has never done consistently (and never will) is guarantee that concurrent read and write statements (being run by the same user) will always give the same results.
+
+=== Multiple User Interactions
+
+There was once a mythical company that wrote a query to list all orders in the ORDER table for a particular DATE, with the output sequenced by REGION and STATUS. To make the query fly, there was a secondary index on the DATE, REGION, and STATUS columns, in addition to the primary unique index on the ORDER-NUMBER column:
+
+.Select from ORDER table
+[source,sql]
+....
+SELECT region_code  AS region
+     , order_status AS status
+     , order_number AS order#
+     , order_value  AS value
+FROM order_table
+WHERE order_date = '2006-03-12'
+ORDER BY region_code
+       , order_status
+WITH CS;
+....
+
+When the users ran the above query, they found that some orders were seemingly listed twice:
+|===
+|REGION|STATUS |ORDER#|VALUE 
+|EAST  |PAID   |111   |4.66 (_) 
+|EAST  |PAID   |222   |6.33 
+|EAST  |PAID   |333   |123.45 
+|EAST  |SHIPPED|111   |4.66 (_)
+|EAST  |SHIPPED|444   |123.45
+|===
+(*) Same ORDER#
+
+While the above query was running (i.e. traversing the secondary index) another user had come along and updated the STATUS for ORDER# 111 from PAID to SHIPPED, and then committed the change. This update moved the pointer for the row down the secondary index, so that the query subsequently fetched the same row twice.
+
+==== Explanation
+
+In the above query, Db2 is working exactly as intended. Because the result may seem a little odd, a simple example will be used to explain what is going on:
+
+Imagine that one wants to count the number of cars parked on a busy street by walking down the road from one end to the other, counting each parked car as you walk past. By the time you get to the end of the street, you will have a number, but that number will not represent the number of cars parked on the street at any point in time. And if a car that you counted at the start of the street was moved to the end of the street while you were walking, you will have counted that particular car twice. Likewise, a car that was moved from the end of the street to the start of the street while you were walking in the middle of the street would not have been counted by you, even though it never left the street during your walk. 
+
+One way to get a true count of cars on the street is to prevent car movement while you do your walk. This can be unpopular, but it works. The same can be done in Db2 by changing the WITH phrase (i.e. isolation level) at the bottom of the above query: 
+
+==== WITH RR - Repeatable Read
+
+A query defined with repeatable read can be run multiple times and will always return the same result, with the following qualifications:
+
+* References to special registers, like CURRENT TIMESTAMP, may differ.
+* Rows changed by the user will show in the query results.
+
+No row will ever be seen twice with this solution, because once a row is read it cannot be changed. And the query result is a valid representation of the state of the table, or at least of the matching rows, as of when the query finished. In the car-counting analogy described above, this solution is akin to locking down sections of the street as you walk past, regardless of whether there is a car parked there or not. As long as you do not move a car yourself, each traverse of the street will always get the same count, and no car will ever be counted more than once. In many cases, defining a query with repeatable read will block all changes by other users to the target table for the duration. In theory, rows can be changed if they are outside the range of the query predicates, but this is not always true. In the case of the order system described above, it was not possible to use this solution because orders were coming in all the time. 
+
+==== WITH RS - Read Stability
+
+A query defined with read-stability can be run multiple times, and each row processed previously will always look the same the next time that the query is run - with the qualifications listed above. But rows can be inserted into the table that match the query predicates. These will show in the next run. No row will ever be inadvertently read twice. In our car-counting analogy, this solution is akin to putting a wheel-lock on each parked car as you walk past. The car can't move, ut new cars can be parked in the street while you are counting. The new cars can also leave subsequently, as you long as you don't lock them in your next walk down the street. No car will ever be counted more than once in a single pass, but nor will your count ever represent the true state of the street. As with repeatable read, defining a query with read stability will often block all updates by other users to the target table for the duration. It is not a great way to win friends.
+
+==== WITH CS - Cursor Stability
+
+A query defined with cursor stability will read every committed matching row, occasionally more than once. If the query is run multiple times, it may get a different result each time. In our car-counting analogy, this solution is akin to putting a wheel-lock on each parked car as you count it, but then removing the lock as soon as you move on to the next car. A car that you are not currently counting can be moved anywhere in the street, including to where you have yet to count. In the latter case, you will count it again. This is what happened during our mythical query of the ORDER table. Queries defined with cursor stability still need to take locks, and thus can be delayed if another user has updated a matching row, but not yet done a commit. In extreme cases, the query may get a timeout or deadlock.
+
+==== WITH UR - Uncommitted Read
+
+A query defined with uncommitted read will read every matching row, including those that have not yet been committed. Rows may occasionally be read more than once. If the query is run multiple times, it may get a different result each time. In our car-counting analogy, this solution is akin to counting each stationary car as one walks past, regardless of whether or not the car is permanently parked. Queries defined with uncommitted read do not take locks, and thus are not delayed by other users who have changed rows, but not yet committed. But some of the rows read may be subsequently rolled back, and so were never valid. Below is a summary of the above options: 
+
+.WITH Option vs. Actions
+....
+                      SAME RESULT  FETCH SAME UNCOMMITTED ROWS
+CURSOR "WITH" OPTION  IF RUN TWICE ROW > ONCE ROWS SEEN   LOCKED
+===================== ============ ========== =========== ========
+RR - Repeatable Read  Yes          Never      Never       Many/All
+RS - Read Stability   No (inserts) Never      Never       Many/All
+CS - Cusor Stability  No (all DML) Maybe      Never       Current
+UR - Uncommitted Read No (all DML) Maybe      Yes         None
+....
+
+=== Check for Changes, Using Trigger
+
+The target table can have a column of type timestamp that is set to the current timestamp value (using triggers) every time a row is inserted or updated. The query scanning the table can have a predicate (see below) so it only fetches those rows that were updated before the current timestamp, which is the time when the query was opened:
+
+.Select from ORDER table
+[source,sql]
+....
+SELECT region_code  AS region
+     , order_status AS status
+      , order_number AS order#
+     , order_value  AS value
+FROM order_table
+WHERE order_date = '2006-03-12'
+AND update_ts < CURRENT TIMESTAMP      -- <= New predicate
+ORDER BY region_code
+       , order_status
+WITH CS;
+....
+
+This solution is almost certainly going to do the job, but it is not quite perfect. There is a very small chance that one can still fetch the same row twice. To illustrate, imagine the following admittedly very improbable sequence of events: 
+
+.Sequence of events required to fetch same row twice
+....
+#1 UPDATE statement begins (will run for a long time).
+#2 QUERY begins (will also run for a long time).
+#3 QUERY fetches target row (via secondary index).
+#4 QUERY moves on to the next row, etc...
+#5 UPDATE changes target row - moves it down index.
+#6 UPDATE statement finishes, and commits.
+#7 QUERY fetches target row again (bother).
+....
+
+=== Check for Changes, Using Generated TS
+
+A similar solution that will not suffer from the above problem involves adding a timestamp column to the table that is defined GENERATED ALWAYS. This column will be assigned the latest timestamp value (sort of) every time a row is inserted or updated – on a row-by-row basis. Below is an example of a table with this column type:
+
+.Table with ROW CHANGE TIMESTAMP column
+[source,sql]
+....
+CREATE TABLE order_table
+( order#       SMALLINT  NOT NULL
+, order_date   DATE      NOT NULL
+, order_status CHAR(1)   NOT NULL
+, order_value  DEC(7, 2) NOT NULL
+, order_rct    TIMESTAMP NOT NULL
+               GENERATED ALWAYS FOR EACH ROW ON UPDATE
+               AS ROW CHANGE TIMESTAMP
+, PRIMARY KEY (order#));
+....
+
+A query accessing this table that wants to ensure that it does not select the same row twice will include a predicate to check that the order_rct column value is less than or equal to the current timestamp: 
+
+.Select from ORDER table
+[source,sql]
+....
+SELECT region_code AS region
+     , order_status AS status
+     , order_number AS order#
+     , order_value AS value
+FROM order_table
+WHERE order_date = '2006-03-12'
+AND order_rct <= CURRENT TIMESTAMP  --  <= New predicate
+ORDER BY region_code
+       , order_status
+WITH CS;
+....
+
+There is just one minor problem with this solution: The generated timestamp value is not always exactly the current timestamp. Sometimes it is every so slightly higher. If this occurs, the above query will not retrieve the affected rows. This problem only occurs during a multi-row insert or update. The generated timestamp value is always unique. To enforce uniqueness, the first row (in a multi-row insert or update) gets the current timestamp special register value. Subsequent rows get the same value, plus "n" microseconds, where "n" incremented by one for each row changed. To illustrate this problem, consider the following statement, which inserts three rows into the above table, but only returns one row- because only the first row inserted has an order_rct value that is equal to or less than the current timestamp special register:
+
+.SELECT from INSERT
+[source,sql]
+....
+SELECT order#
+FROM FINAL TABLE
+    (INSERT INTO order_table (order#, order_date, order_status, order_value)
+     VALUES (1, '2007-11-22', 'A', 123.45)
+          , (2,'2007-11-22','A',123.99)
+          , (3,'2007-11-22','A',123.99))
+WHERE order_rct <= CURRENT TIMESTAMP;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|order#
+|1
+|===
+
+The same problem can occur when a query is run immediately after the above insert (i.e. before a commit is done). Occasionally, but by no means always, this query will be use the same current timestamp special register value as the previous insert. If this happens, only the first row inserted will show. *NOTE*: This problem arises in Db2 running on Windows, which has a somewhat imprecise current timestamp value. It should not occur in environments where Db2 references a system clock with microsecond, or sub-microsecond precision.
+
+=== Other Solutions - Good and Bad
+
+Below are some alternatives to the above:
+
+* *Lock Table*: If one wanted to see the state of the table as it was at the start of the query, one could use a LOCK TABLE command - in share or exclusive mode. Doing this may not win you many friends with other users.
+* *Drop Secondary Indexes*: The problem described above does not occur if one accesses the table using a tablespace scan, or via the primary index. However, if the table is large, secondary indexes will probably be needed to get the job done. 
+* *Two-part Query*: One can do the query in two parts: First get a list of DISTINCT primary key values, then join back to the original table using the primary unique index to get the rest of the row: 
+
+.Two-part query
+[source,sql]
+....
+SELECT region_code  AS region
+     , order_status AS status
+	 , order_number AS order#
+	 , order_value  AS value 
+FROM (SELECT DISTINCT order_number AS distinct_order# 
+      FROM order_table 
+	  WHERE order_date = '2006-03-12' ) AS xxx
+	  , order_table 
+WHERE order_number = distinct_order# 
+ORDER BY region_code
+       , order_status 
+WITH CS;
+....
+
+This solution will do the job, but it is probably going to take about twice as long to complete as the original query.
+
+* *Use Versions*: See the chapter titled "Retaining a Record" for a schema that uses lots of complex triggers and views, and that lets one see consistent views of the rows in the table as of any point in time.
+
+=== What Time is It
+
+The *CURRENT TIMESTAMP* special register returns the current time – in local time. There are two other ways to get the something similar the current timestamp. This section discusses the differences:
+
+* *Current Timestamp Special Register*: As its name implies, this special register returns the current timestamp. The value will be the same for all references within a single SQL statement, and possibly between SQL statements and/or between users.
+* *Generate Unique Scalar Function*: With a bit of fudging, this scalar function will return a timestamp value that is unique for every invocation. The value will be close to the current timestamp, but may be a few seconds behind.
+* *Generate Always Column Type*: This timestamp value will be unique (within a table) for every row changed. In a multi-row insert or update, the first row changed will get the current timestamp. Subsequent rows get the same value, plus "n" microseconds, where "n" incremented by one for each row changed.
+
+The following table will hold the above three values:
+
+.Create table to hold timestamp values
+[source,sql]
+....
+CREATE TABLE test_table
+( test# SMALLINT NOT NULL
+, current_ts TIMESTAMP NOT NULL
+, generate_u TIMESTAMP NOT NULL
+, generate_a TIMESTAMP NOT NULL
+             GENERATED ALWAYS FOR EACH ROW ON UPDATE
+             AS ROW CHANGE TIMESTAMP);
+....
+
+The next statement will insert four rows into the above table:
+
+.Insert four rows
+[source,sql]
+....
+INSERT INTO test_table (test#, current_ts, generate_u)
+WITH temp1 (t1) AS
+(VALUES (1),(2),(3),(4))
+, temp2 (t1, ts1, ts2) AS
+(SELECT t1
+      , CURRENT TIMESTAMP
+      , TIMESTAMP(GENERATE_UNIQUE()) + CURRENT TIMEZONE
+ FROM temp1)
+SELECT *
+FROM temp2;
+....
+
+Below are the contents of the table after the above insert. Observe the different values:
+.Table after insert
+|===
+|TEST#|CURRENT_TS                |GENERATE_U                |GENERATE_A 
+|1    |2007-11-13-19.12.43.139000|2007-11-13-19.12.42.973805|2007-11-13-19.12.43.139000 
+|2    |2007-11-13-19.12.43.139000|2007-11-13-19.12.42.974254|2007-11-13-19.12.43.154000 
+|3    |2007-11-13-19.12.43.139000|2007-11-13-19.12.42.974267|2007-11-13-19.12.43.154001 
+|4    |2007-11-13-19.12.43.139000|2007-11-13-19.12.42.974279|2007-11-13-19.12.43.154002
+|===
+
+[[floating.point.numbers]]
+=== Floating Point Numbers
+
+The following SQL repetitively multiplies a floating-point number by ten:
+
+.Multiply floating-point number by ten
+[source,sql]
+....
+WITH temp (f1) AS
+(VALUES FLOAT(1.23456789)
+   UNION ALL
+ SELECT f1 * 10
+ FROM temp
+ WHERE f1 < 1E18)
+SELECT f1           AS float1
+     , DEC(f1,31,8) AS decimal1
+     , BIGINT(f1)   AS bigint1
+FROM temp;
+....
+
+After a while, things get interesting:
+|===
+|FLOAT1                | DECIMAL1                    | BIGINT1
+|+1.23456789000000E+000| 1.23456789                  | 1 
+|+1.23456789000000E+001| 12.34567890                 | 12 
+|+1.23456789000000E+002| 123.45678900                | 123
+|+1.23456789000000E+003| 1234.56789000               | 1234 
+|+1.23456789000000E+004| 12345.67890000              | 12345 
+|+1.23456789000000E+005| 123456.78900000             | 123456
+|+1.23456789000000E+006| 1234567.89000000            | 1234567
+|+1.23456789000000E+007| 12345678.90000000           | 12345678
+|+1.23456789000000E+008| 123456789.00000000          | 123456788
+|+1.23456789000000E+009| 1234567890.00000000         | 1234567889
+|+1.23456789000000E+010| 12345678900.00000000        | 12345678899
+|+1.23456789000000E+011| 123456789000.00000000       | 123456788999
+|+1.23456789000000E+012| 1234567890000.00000000      | 1234567889999
+|+1.23456789000000E+013| 12345678900000.00000000     | 12345678899999
+|+1.23456789000000E+014| 123456789000000.00000000    | 123456788999999
+|+1.23456789000000E+015| 1234567890000000.00000000   | 1234567889999999
+|+1.23456789000000E+016| 12345678900000000.00000000  | 12345678899999998
+|+1.23456789000000E+017| 123456789000000000.00000000 | 123456788999999984
+|+1.23456789000000E+018| 1234567890000000000.00000000| 1234567889999999744
+|===
+
+Why do the BIGINT values differ from the original float values? The answer is that they don't, it is the decimal values that differ. Because this is not what you see in front of your eyes, we need to explain. Note that there are no bugs here, everything is working fine. Perhaps the most insidious problem involved with using floating point numbers is that the number you see is not always the number that you have. Db2 stores the value internally in binary format, and when it displays it, it shows a decimal approximation of the underlying binary value. This can cause you to get very strange results like the following: 
+
+.Two numbers that look equal, but aren't equal
+[source,sql]
+....
+WITH temp (f1, f2) AS
+(VALUES (FLOAT(1.23456789E1 * 10 * 10 * 10 * 10 * 10 * 10 * 10)
+       , FLOAT(1.23456789E8)))
+SELECT f1
+     , f2
+FROM temp
+WHERE f1 <> f2;
+....
+
+ANSWER
+|===
+|F1                    |F2 
+|+1.23456789000000E+008|+1.23456789000000E+008
+|===
+
+We can use the HEX function to show that, internally, the two numbers being compared above are not equal:
+
+.Two numbers that look equal, but aren't equal, shown in HEX
+[source,sql]
+....
+WITH temp (f1, f2) AS
+(VALUES (FLOAT(1.23456789E1 * 10 * 10 * 10 * 10 * 10 * 10 * 10)
+       , FLOAT(1.23456789E8)))
+SELECT HEX(f1) AS hex_f1
+     , HEX(f2) AS hex_f2
+FROM temp
+WHERE f1 <> f2;
+....
+
+_ANSWER_
+|===
+|HEX_F1          | HEX_F2 
+|FFFFFF53346F9D41| 00000054346F9D41
+|===
+
+Now we can explain what is going on in the recursive code shown at the start of this section. The same value is being displayed using three different methods:
+
+* The floating-point representation (on the left) is really a decimal approximation (done using rounding) of the underlying binary value.
+* When the floating-point data was converted to decimal (in the middle), it was rounded using the same method that is used when it is displayed directly.
+* When the floating-point data was converted to BIGINT (on the right), no rounding was done because both formats hold binary values.
+
+In any computer-based number system, when you do division, you can get imprecise results due to rounding. For example, when you divide 1 by 3 you get "one third", which can not be stored accurately in either a decimal or a binary number system. 
+Because they store numbers internally differently, dividing the same number in floating-point vs. decimal can result in different results. Here is an example:
+
+.Comparing float and decimal division
+[source,sql]
+....
+WITH temp1 (dec1, dbl1) AS
+(VALUES (DECIMAL(1),DOUBLE(1)))
+, temp2 (dec1, dec2, dbl1, dbl2) AS
+(SELECT dec1
+      , dec1 / 3 AS dec2
+      , dbl1
+      , dbl1 / 3 AS dbl2
+ FROM temp1)
+SELECT *
+FROM temp2
+WHERE dbl2 <> dec2;
+....
+
+_ANSWER (1 row returned)_
+
+....
+DEC1 = 1.0
+DEC2 = 0.33333333333333333333
+DBL1 = +1.00000000000000E+000
+DBL2 = +3.33333333333333E-001
+....
+
+When you do multiplication of a fractional floating-point number, you can also encounter rounding differences with respect to decimal. To illustrate this, the following SQL starts with two numbers that are the same, and then keeps multiplying them by ten:
+
+.Comparing float and decimal multiplication
+[source,sql]
+....
+WITH temp (f1, d1) AS
+(VALUES (FLOAT(1.23456789)
+       , DEC(1.23456789,20,10))
+   UNION ALL
+ SELECT f1 * 10
+      , d1 * 10
+ FROM temp
+ WHERE f1 < 1E9)
+SELECT f1
+     , d1
+     , CASE 
+         WHEN d1 = f1 THEN 'SAME'
+         ELSE 'DIFF'
+       END AS compare
+FROM temp;
+....
+
+Here is the answer:
+|===
+|F1                    |D1                   |COMPARE
+|+1.23456789000000E+000|1.2345678900         |SAME 
+|+1.23456789000000E+001|12.3456789000        |SAME
+|+1.23456789000000E+002|123.4567890000       |DIFF 
+|+1.23456789000000E+003|1234.5678900000      |DIFF 
+|+1.23456789000000E+004|12345.6789000000     |DIFF
+|+1.23456789000000E+005|123456.7890000000    |DIFF
+|+1.23456789000000E+006|1234567.8900000000   |SAME
+|+1.23456789000000E+007|12345678.9000000000  |DIFF
+|+1.23456789000000E+008|123456789.0000000000 |DIFF
+|+1.23456789000000E+009|1234567890.0000000000|DIFF
+|===
+
+As we mentioned earlier, both floating-point and decimal fields have trouble accurately storing certain fractional values. For example, neither can store "one third". There are also some numbers that can be stored in decimal, but not in floating-point. One common value is "one tenth", which as the following SQL shows, is approximated in floating-point:
+
+.Internal representation of "one tenth" in floating-point
+[source,sql]
+....
+WITH temp (f1) AS
+(VALUES FLOAT(0.1))
+SELECT f1
+     , HEX(f1) AS hex_f1
+FROM temp
+WHERE f1 <> 1.0;
+....
+
+_ANSWER_
+|===
+|F1                    |HEX_F1
+|+1.00000000000000E-001|9A9999999999B93F
+|===
+
+In conclusion, a floating-point number is, in many ways, only an approximation of a true integer or decimal value. For this reason, this field type should not be used for monetary data, nor for other data where exact precision is required.
+
+=== DECFLOAT Usage
+
+We can avoid the problems described above if we use a DECFLOAT value. To illustrate, the following query is exactly the same as that shown on page 442, except that base value is now of type DECFLOAT: 
+
+.Multiply DECFLOAT number by ten
+[source,sql]
+....
+WITH temp (f1) AS
+(VALUES DECFLOAT(1.23456789)
+   UNION ALL
+ SELECT f1 * 10
+ FROM temp
+ WHERE f1 < 1E18)
+SELECT f1           AS float1
+     , DEC(f1,31,8) AS decimal1
+     , BIGINT(f1)   AS bigint1
+FROM temp;
+....
+
+Now we get the result that we expect:
+|===
+|FLOAT1                |DECIMAL1                    |BIGINT1
+|+1.23456789000000E+000|1.23456789                  |1 
+|+1.23456789000000E+001|12.34567890                 |12 
+|+1.23456789000000E+002|123.45678900                |123
+|+1.23456789000000E+003|1234.56789000               |1234 
+|+1.23456789000000E+004|12345.67890000              |12345 
+|+1.23456789000000E+005|123456.78900000             |123456
+|+1.23456789000000E+006|1234567.89000000            |1234567
+|+1.23456789000000E+007|12345678.90000000           |12345678
+|+1.23456789000000E+008|123456789.00000000          |123456789
+|+1.23456789000000E+009|1234567890.00000000         |1234567890
+|+1.23456789000000E+010|12345678900.00000000        |12345678900
+|+1.23456789000000E+011|123456789000.00000000       |123456789000
+|+1.23456789000000E+012|1234567890000.00000000      |1234567890000
+|+1.23456789000000E+013|12345678900000.00000000     |12345678900000
+|+1.23456789000000E+014|123456789000000.00000000    |123456789000000
+|+1.23456789000000E+015|1234567890000000.00000000   |1234567890000000
+|+1.23456789000000E+016|12345678900000000.00000000  |12345678900000000
+|+1.23456789000000E+017|123456789000000000.00000000 |123456789000000000
+|+1.23456789000000E+018|1234567890000000000.00000000|1234567890000000000
+|===
+
+
+

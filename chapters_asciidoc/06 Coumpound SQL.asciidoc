@@ -1,0 +1,542 @@
+[[compound.sql.chapter]]
+== Compound SQL
+
+A compound statement groups multiple independent SQL statements into a single executable. In addition, simple processing logic can be included to create what is, in effect, a very basic program. Such statements can be embedded in triggers, SQL functions, SQL methods, and dynamic SQL statements.
+
+=== Introduction
+
+A compound SQL statement begins with an (optional) name, followed by the variable declarations, followed by the procedural logic.
+
+Below is a compound statement that reads a set of rows from the STAFF table and, for each row fetched, updates the COMM field to equal the current fetch number.
+
+.Sample Compound SQL statement
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE cntr SMALLINT DEFAULT 1;
+    FOR V1 AS
+        SELECT id as idval
+        FROM staff
+        WHERE id < 80
+        ORDER BY id
+    DO
+        UPDATE staff
+            SET comm = cntr
+            WHERE id = idval;
+        SET cntr = cntr + 1;
+    END FOR;
+END
+....
+
+==== Statement Delimiter
+
+Db2 SQL does not come with a designated statement delimiter
+(terminator), though a semicolon is typically used. However, a semi-colon cannot be used in a compound SQL statement because that character is used to differentiate the sub-components of the statement. In Db2BATCH, one can run the SET DELIMITER command (intelligent comment) to use something other than a semi-colon. The following script illustrates this usage:
+
+.Set Delimiter example
+[source,sql]
+....
+--#SET DELIMITER !
+SELECT NAME FROM STAFF WHERE id = 10!
+--#SET DELIMITER ;
+SELECT NAME FROM STAFF WHERE id = 20;
+....
+
+In the Db2 command processor one can do the same thing using the terminator keyword:
+
+.Set Terminator example
+[source,sql]
+....
+--#SET TERMINATOR !
+SELECT NAME FROM STAFF WHERE id = 10!
+--#SET TERMINATOR ;
+SELECT NAME FROM STAFF WHERE id = 20;
+....
+
+==== SQL Statement Usage
+
+When used in dynamic SQL, the following control statements can be used:
+
+* FOR statement
+* GET DIAGNOSTICS statement
+* IF statement
+* ITERATE statement
+* LEAVE statement
+* SIGNAL statement
+* WHILE statement
+
+NOTE: There are many more PSM control statements than what is shown above. But only these ones can be used in Compound SQL statements.
+
+The following SQL statements can be issued:
+
+* fullselect
+* UPDATE
+* DELETE
+* INSERT
+* SET variable statement
+
+==== DECLARE Variables
+
+All variables have to be declared at the start of the compound statement. Each variable must be given a name and a type and, optionally, a default (start) value.
+
+.DECLARE examples
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE aaa, bbb, ccc SMALLINT DEFAULT 1;
+    DECLARE ddd CHAR(10) DEFAULT NULL;
+    DECLARE eee INTEGER;
+    SET eee = aaa + 1;
+    UPDATE staff
+    SET comm   = aaa
+      , salary = bbb
+      , years  = eee
+    WHERE id = 10;
+END
+....
+
+*FOR Statement*
+
+The FOR statement executes a group of statements for each row fetched from a query.
+
+In the next example one row is fetched per year of service (for selected years) in the STAFF table. That row is then used to do two independent updates to the three matching rows:
+
+.FOR statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    FOR V1 AS
+        SELECT years   AS yr_num
+             , max(id) AS max_id
+        FROM staff
+        WHERE years < 4
+        GROUP BY years
+        ORDER BY years
+    DO
+        UPDATE staff
+            SET salary = salary / 10
+            WHERE id = max_id; 
+        UPDATE staff
+            set comm = 0
+            WHERE years = yr_num;
+    END FOR;
+END
+....
+
+*BEFORE*
+|===
+|ID | SALARY  | COMM
+|180| 37009.75| 236.50
+|230| 83369.80| 189.65
+|330| 49988.00| 55.50
+|===
+*AFTER*
+|===
+|ID | SALARY  | COMM
+|180| 37009.75| 0.00
+|230| 8336.98 | 0.00
+|330| 4998.80 | 0.00
+|===
+
+==== GET DIAGNOSTICS Statement
+
+The GET DIAGNOSTICS statement returns information about the most recently run SQL statement. One can either get the number of rows processed (i.e. inserted, updated, or deleted), or the return status (for an external procedure call).
+
+In the example below, some number of rows are updated in the STAFF table. Then the count of rows updated is obtained, and used to update a row in the STAFF table:
+
+.GET DIAGNOSTICS statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE numrows INT DEFAULT 0;
+    UPDATE staff
+    SET salary = 12345
+    WHERE id < 100;
+    GET DIAGNOSTICS numrows = ROW_COUNT;
+    UPDATE staff
+        SET salary = numrows
+        WHERE id = 10;
+END
+....
+
+==== IF Statement
+
+The IF statement is used to do standard if-then-else branching logic. It always begins with an IF THEN statement and ends with and END IF statement.
+
+The next example uses if-then-else logic to update one of three rows in the STAFF table, depending on the current timestamp value:
+
+.IF statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE cur INT;
+    SET cur = MICROSECOND(CURRENT TIMESTAMP);
+    IF cur > 600000 THEN
+        UPDATE staff
+            SET name = CHAR(cur)
+            WHERE id = 10;
+    ELSEIF cur > 300000 THEN
+        UPDATE staff
+            SET name = CHAR(cur)
+            WHERE id = 20;
+    ELSE
+        UPDATE staff
+            SET name = CHAR(cur)
+            WHERE id = 30;
+    END IF;
+END
+....
+
+==== ITERATE Statement
+
+The ITERATE statement causes the program to return to the beginning of the labeled loop.
+
+In next example, the second update statement will never get performed because the ITERATE will always return the program to the start of the loop:
+
+.ITERATE statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE cntr INT DEFAULT 0;
+    whileloop:
+    WHILE cntr < 60 DO
+        SET cntr = cntr + 10;
+        UPDATE staff
+            SET salary = cntr
+            WHERE id = cntr;
+        ITERATE whileloop;
+        UPDATE staff
+            SET comm = cntr + 1
+            WHERE id = cntr;
+    END WHILE;
+END
+....
+
+==== LEAVE Statement
+
+The LEAVE statement exits the labeled loop.
+
+In the next example, the WHILE loop would continue forever, if left to its own devices. But after some random number of iterations, the LEAVE statement will exit the loop:
+
+.LEAVE statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE cntr INT DEFAULT 1;
+    whileloop:
+    WHILE 1 <> 2 DO
+        SET cntr = cntr + 1;
+        IF RAND() > 0.99 THEN
+            LEAVE whileloop;
+        END IF;
+    END WHILE;
+    UPDATE staff
+        SET salary = cntr
+        WHERE id = 10;
+END
+....
+
+[[signal.statement]]
+==== SIGNAL Statement
+
+The SIGNAL statement is used to issue an error or warning message.
+
+The next example loops a random number of times, and then generates an error message using the SIGNAL command, saying how many loops were done:
+
+.SIGNAL statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE cntr INT DEFAULT 1;
+    DECLARE emsg CHAR(20);
+    whileloop:
+    WHILE RAND() < .99 DO
+        SET cntr = cntr + 1;
+    END WHILE;
+    SET emsg = '#loops: ' || CHAR(cntr);
+    SIGNAL SQLSTATE '75001' SET MESSAGE_TEXT = emsg;
+END
+....
+
+==== WHILE Statement
+
+The WHILE statement repeats one or more statements while some condition is true.
+
+The next statement has two nested WHILE loops, and then updates the STAFF table:
+
+.WHILE statement example
+[source,sql]
+....
+BEGIN ATOMIC
+    DECLARE c1, C2 INT DEFAULT 1;
+    WHILE c1 < 10 DO
+        WHILE c2 < 20 DO
+            SET c2 = c2 + 1;
+        END WHILE;
+        SET c1 = c1 + 1;
+    END WHILE;
+    UPDATE staff 
+        SET salary = c1
+          , comm = c2
+        WHERE id = 10;
+END
+....
+
+==== Other Usage
+
+The following Db2 objects also support the language elements described above:
+
+* Triggers
+* Stored procedures
+* User-defined functions
+* Embedded compound SQL (in programs).
+
+Some of the above support many more language elements. For example stored procedures that are written in SQL also allow the following:
+`ASSOCIATE, CASE, GOTO, LOOP, REPEAT, RESIGNAL` , and `RETURN` .
+
+==== Test Query
+
+To illustrate some of the above uses of compound SQL, we are going to get from the STAFF table a complete list of departments, and the number of rows in each department. Here is the basic query, with the related answer:
+
+.List departments in STAFF table
+[source,sql]
+....
+SELECT dept
+     , count(*) as #rows
+FROM staff
+GROUP BY dept
+ORDER BY dept;
+....
+
+*ANSWER*
+|===
+|DEPT| #ROWS
+|10  | 4
+|15  | 4
+|20  | 4
+|38  | 5
+|42  | 4
+|51  | 5
+|66  | 5
+|84  | 4
+|===
+
+If all you want to get is this list, the above query is the way to go.
+But we will get the same answer using various other methods, just to show how it can be done using compound SQL statements.
+
+===== Trigger
+
+One cannot get an answer using a trigger. All one can do is alter what happens during an insert, update, or delete. With this in mind, the following example does the following:
+
+* Sets the statement delimiter to an "!". Because we are using compound SQL inside the trigger definition, we cannot use the usual semi-colon.
+* Creates a new table (note: triggers are not allowed on temporary tables).
+* Creates an INSERT trigger on the new table. This trigger gets the number of rows per department in the STAFF table - for each row (department) inserted.
+* Inserts a list of departments into the new table.
+* Selects from the new table.
+
+Now for the code:
+
+.Trigger with compound SQL
+[source,sql]
+....
+--#SET DELIMITER !
+CREATE TABLE dpt
+( dept   SMALLINT NOT NULL
+, #names SMALLINT
+, PRIMARY KEY(dept))!
+COMMIT!
+
+CREATE TRIGGER dpt1 AFTER INSERT ON dpt
+REFERENCING NEW AS NNN
+FOR EACH ROW
+MODE Db2SQL
+BEGIN ATOMIC
+    DECLARE namecnt SMALLINT DEFAULT 0;
+    FOR getnames AS
+        SELECT COUNT(*) AS #n
+        FROM staff
+        WHERE dept = nnn.dept
+    DO
+        SET namecnt = #n;
+    END FOR;
+    UPDATE dpt
+    SET #names = namecnt
+    WHERE dept = nnn.dept;
+    END!
+COMMIT!
+
+INSERT INTO dpt (dept)
+    SELECT DISTINCT dept
+    FROM staff!
+COMMIT!
+SELECT *
+FROM dpt
+ORDER BY dept!
+....
+
+NOTE: This example uses an "!" as the stmt delimiter.
+
+*ANSWER*
+|===
+|DEPT| #NAMES
+|10  | 4
+|15  | 4
+|20  | 4
+|38  | 5
+|42  | 4
+|51  | 5
+|66  | 5
+|84  | 4
+|===
+
+NOTE: The above code was designed to be run in Db2BATCH. The "set delimiter" notation will probably not work in other environments.
+
+===== Scalar Function
+
+One can do something very similar to the above that is almost as stupid using a user-defined scalar function, that calculates the number of rows in a given department. The basic logic will go as follows:
+
+* Set the statement delimiter to an "!".
+* Create the scalar function.
+* Run a query that first gets a list of distinct departments, then calls the function.
+
+Here is the code:
+
+.Scalar Function with compound SQL
+[source,sql]
+....
+--#SET DELIMITER !
+CREATE FUNCTION dpt1 (deptin SMALLINT)
+RETURNS SMALLINT
+BEGIN ATOMIC
+    DECLARE num_names SMALLINT;
+    FOR getnames AS
+        SELECT COUNT(*) AS #n
+        FROM staff
+        WHERE dept = deptin
+    DO
+        SET num_names = #n;
+    END FOR;
+    RETURN num_names;
+END!
+
+COMMIT!
+
+SELECT XXX.*
+     , dpt1(dept) as #names
+FROM
+    (SELECT dept
+     FROM staff
+     GROUP BY dept
+    ) AS XXX
+ORDER BY dept!
+....
+
+NOTE: This example uses an "!" as the stmt delimiter.
+
+*ANSWER*
+|===
+|DEPT| #NAMES
+|10  | 4
+|15  | 4
+|20  | 4
+|38  | 5
+|42  | 4
+|51  | 5
+|66  | 5
+|84  | 4
+|===
+
+Because the query used in the above function will only ever return one row, we can greatly simplify the function definition thus:
+
+.Scalar Function with compound SQL
+[source,sql]
+....
+--#SET DELIMITER !
+CREATE FUNCTION dpt1 (deptin SMALLINT)
+RETURNS SMALLINT
+BEGIN ATOMIC
+    RETURN
+        SELECT COUNT(*)
+        FROM staff
+        WHERE dept = deptin;
+END!
+COMMIT!
+....
+
+NOTE: This example uses an "!" as the stmt delimiter.
+
+....
+SELECT XXX.*
+     , dpt1(dept) as #names
+FROM
+    (SELECT dept
+     FROM staff
+     GROUP BY dept
+) AS XXX
+ORDER BY dept!
+....
+
+In the above example, the RETURN statement is directly finding the one matching row, and then returning it to the calling statement.
+
+===== Table Function
+
+Below is almost exactly the same logic, this time using a table function:
+
+Table Function with compound SQL
+[source,sql]
+....
+--#SET DELIMITER !
+CREATE FUNCTION dpt2 ()
+RETURNS TABLE ( dept    SMALLINT
+              , #names  SMALLINT)
+BEGIN ATOMIC
+    RETURN
+        SELECT dept
+             , count(*)
+        FROM staff
+        GROUP BY dept
+        ORDER BY dept;
+END!
+
+COMMIT!
+
+--#SET DELIMITER ;
+SELECT *
+FROM TABLE(dpt2()) T1
+ORDER BY dept;
+....
+
+NOTE: This example uses an "!" as the stmt delimiter.
+
+*ANSWER*
+|===
+|DEPT| #NAMES
+|10  | 4
+|15  | 4
+|20  | 4
+|38  | 5
+|42  | 4
+|51  | 5
+|66  | 5
+|84  | 4
+|===
+
+.Sample Compound SQL statement
+[source,sql]
+....
+BEGIN ATOMIC 
+  DECLARE cntr SMALLINT DEFAULT 1; 
+  FOR V1 AS 
+    SELECT id as idval 
+    FROM staff 
+    WHERE id < 80 
+    ORDER BY id 
+  DO 
+    UPDATE staff SET comm = cntr 
+    WHERE id = idval; 
+    SET cntr = cntr + 1; 
+  END FOR; 
+END
+....
+
+

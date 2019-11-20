@@ -1,0 +1,514 @@
+[[column.function.chapter]]
+== Column Functions
+
+By themselves, column functions work on the complete set of matching rows. One can use a GROUP BY expression to limit them to a subset of matching rows. One can also use them in an OLAP function to treat individual rows differently. 
+
+WARNING: Be very careful when using either a column function, or the DISTINCT clause, in a join. If the join
+is incorrectly coded, and does some form of Cartesian Product, the column function may get rid of the all the extra (wrong) rows so that it becomes very hard to confirm that the answer is incorrect. Likewise, be appropriately suspicious whenever you see that someone (else) has used a
+DISTINCT statement in a join. Sometimes, users add the DISTINCT clause to get rid of duplicate rows that they didn't anticipate and don't understand.
+
+=== Column Functions, Definitions
+
+==== ARRAY_AGG
+
+Aggregate the set of elements in an array. If an ORDER BY is provided, it determines the order in which the elements are entered into the array.
+
+==== AVG
+
+Get the average (mean) value of a set of non-null rows. The columns(s) must be numeric. ALL is the default. If DISTINCT is used duplicate values are ignored. If no rows match, the null value is returned.
+
+.AVG function examples
+[source,sql]
+....
+SELECT AVG(dept)          AS a1
+     , AVG(ALL dept)      AS a2
+     , AVG(DISTINCT dept) AS a3
+     , AVG(dept/10)       AS a4
+     , AVG(dept)/10       AS a5
+FROM staff
+HAVING AVG(dept) > 40;
+....
+
+_ANSWER_
+|===
+|A1| A2| A3| A4| A5
+|41| 41| 40| 3 | 4
+|===
+
+WARNING: Observe columns A4 and A5 above. Column A4 has the average of each value divided by 10. Column A5 has the average of all of the values divided by 10. In the former case, precision has been lost due to rounding of the original integer value and the result is arguably
+incorrect. This problem also occurs when using the SUM function.
+
+===== Averaging Null and Not-Null Values
+
+Some database designers have an intense and irrational dislike of using nullable fields. What they do instead is define all columns as not-null and then set the individual fields to zero (for numbers) or blank (for characters) when the value is unknown. This solution is reasonable in some situations, but it can cause the AVG function to give what is arguably the wrong answer. One solution to this problem is some form of counseling or group therapy to overcome the phobia. Alternatively, one can use the CASE expression to put null values back into the answer-set being processed by the AVG function. The following SQL statement uses a modified version of the IBM sample STAFF table (all null COMM values were changed to zero) to illustrate the technique:
+
+.Convert zero to null before doing AVG
+[source,sql]
+....
+UPDATE staff
+SET comm = 0
+WHERE comm IS NULL;
+
+SELECT AVG(salary) AS salary
+     , AVG(comm)   AS comm1
+     , AVG(CASE comm
+              WHEN 0 THEN NULL
+              ELSE comm
+           END) AS comm2
+FROM staff;
+....
+
+_ANSWER_
+
+|===
+|SALARY  | COMM1 | COMM2
+|67932.78| 351.98| 513.31
+|===
+
+[source,sql]
+....
+UPDATE staff
+SET comm = NULL
+WHERE comm = 0;
+....
+
+The COMM2 field above is the correct average. The COMM1 field is incorrect because it has factored in the zero rows with really represent null values. Note that, in this particular query, one cannot use a WHERE to exclude the "zero" COMM rows because it would affect the average
+salary value.
+
+===== Dealing with Null Output
+
+The AVG, MIN, MAX, and SUM functions almost always return a null value when there are no matching rows (see <<no.rows.match>> for exceptions). One can use the COALESCE function, or a CASE expression, to convert the null value into a suitable substitute. Both methodologies are illustrated below:
+
+.Convert null output (from AVG) to zero
+[source,sql]
+....
+SELECT COUNT(*)                AS c1
+     , AVG(salary)             AS a1
+     , COALESCE(AVG(salary),0) AS a2
+     , CASE
+         WHEN AVG(salary) IS NULL THEN 0
+         ELSE AVG(salary)
+      END                      AS a3
+FROM staff
+WHERE id < 10;
+....
+
+_ANSWER_
+|===
+|C1| A1| A2| A3
+|0 | - | 0 | 0
+|===
+
+===== AVG Date/Time Values
+
+The AVG function only accepts numeric input. However, one can, with a bit of trickery, also use the AVG function on a date field. First convert the date to the number of days since the start of the Current Era, then get the average, then convert the result back to a date.
+Please be aware that, in many cases, the average of a date does not really make good business sense. Having said that, the following SQL gets the average birth-date of all employees:
+
+.AVG of date column
+[source,sql]
+....
+SELECT AVG(DAYS(birthdate))
+     , DATE(AVG(DAYS(birthdate)))
+FROM employee;
+....
+
+_ANSWER_
+|===
+|1     | 2
+|721092| 1975-04-14
+|===
+
+Time data can be manipulated in a similar manner using the
+MIDNIGHT_SECONDS function. If one is really desperate (or silly), the average of a character field can also be obtained using the ASCII and CHR functions.
+
+===== Average of an Average
+
+In some cases, getting the average of an average gives an overflow error. Inasmuch as you shouldn't do this anyway, it is no big deal:
+
+.Select average of average
+[source,sql]
+....
+SELECT AVG(avg_sal) AS avg_avg
+FROM (SELECT dept
+           , AVG(salary) AS avg_sal
+     FROM staff
+     GROUP BY dept
+    ) AS xxx;
+....
+
+ANSWER: Overflow error
+
+==== CORRELATION
+
+I don't know a thing about statistics, so I haven't a clue what this function does. But I do know that the SQL Reference is wrong - because it says the value returned will be between 0 and 1. I found that it is between -1 and +1 (see below). The output type is float.
+
+.CORRELATION function examples
+[source,sql]
+....
+WITH temp1(col1, col2, col3, col4) AS
+(VALUES (0, 0, 0, RAND(1))
+ UNION ALL
+ SELECT col1 + 1
+      , col2 - 1
+      , RAND()
+      , RAND()
+ FROM temp1
+ WHERE col1 < = 1000
+ )
+SELECT DEC(CORRELATION(col1, col1), 5, 3) AS cor11
+     , DEC(CORRELATION(col1, col2), 5, 3) AS cor12
+     , DEC(CORRELATION(col2, col3), 5, 3) AS cor23
+     , DEC(CORRELATION(col3, col4), 5, 3) AS cor34 
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|COR11| COR12 | COR23| COR34
+|1.000| -1.000|-0.017| -0.005
+|===
+
+==== COUNT
+
+Get the number of values in a set of rows. The result is an integer. The value returned depends upon the options used:
+
+* COUNT(*) gets a count of matching rows.
+* COUNT(expression) gets a count of rows with a non-null expression value.
+* COUNT(ALL expression) is the same as the COUNT(expression) statement.
+* COUNT(DISTINCT expression) gets a count of distinct non-null expression values.
+
+.COUNT function examples
+[source,sql]
+....
+SELECT COUNT(*)                     AS c1 
+     , COUNT(INT(comm/10))          AS c2 
+     , COUNT(ALL INT(comm/10))      AS c3 
+     , COUNT(DISTINCT INT(comm/10)) AS c4
+     , COUNT(DISTINCT INT(comm))    AS c5
+     , COUNT(DISTINCT INT(comm))/10 AS c6
+FROM staff;
+....
+_ANSWER_
+|===
+|C1| C2| C3| C4| C5| C6
+|35| 24| 24| 19| 24| 2
+|===
+
+There are 35 rows in the STAFF table (see C1 above), but only 24 of them have non-null commission values (see C2 above). If no rows match, the COUNT returns zero - except when the SQL statement also contains a GROUP BY. In this latter case, the result is no row.
+
+.COUNT function with and without GROUP BY
+[source,sql]
+....
+SELECT 'NO GP-BY' AS c1
+     , COUNT(*)   AS c2
+FROM staff
+WHERE id = -1
+UNION
+SELECT 'GROUP-BY' AS c1
+     , COUNT(*)   AS c2
+FROM staff
+WHERE id = -1
+GROUP BY dept;
+....
+
+_ANSWER_
+|===
+|C1      | C2
+|NO GP-BY| 0
+|===
+
+==== COUNT_BIG
+
+Get the number of rows or distinct values in a set of rows. Use this function if the result is too large for the COUNT function. The result is of type decimal 31. If the DISTINCT option is used both duplicate and null values are eliminated. If no rows match, the result is zero.
+
+.COUNT_BIG function examples
+[source,sql]
+....
+SELECT COUNT_BIG(*)                AS c1
+     , COUNT_BIG(dept)             AS c2
+     , COUNT_BIG(DISTINCT dept)    AS c3
+     , COUNT_BIG(DISTINCT dept/10) AS c4
+     , COUNT_BIG(DISTINCT dept)/10 AS c5
+FROM STAFF;
+....
+
+_ANSWER_
+|===
+|C1 | C2 | C3| C4| C5
+|35.| 35.| 8.| 7.| 0.
+|===
+
+==== COVARIANCE
+
+Returns the covariance of a set of number pairs. The output type is float.
+
+.COVARIANCE function examples
+[source,sql]
+....
+WITH temp1(c1, c2, c3, c4) AS
+(VALUES (0 , 0 , 0 , RAND(1))
+ UNION ALL
+ SELECT c1 + 1
+      , c2 - 1
+      , RAND()
+      , RAND()
+FROM temp1
+WHERE c1 <= 1000
+)
+SELECT DEC(COVARIANCE(c1,c1),6,0) AS cov11
+     , DEC(COVARIANCE(c1,c2),6,0) AS cov12
+     , DEC(COVARIANCE(c2,c3),6,4) AS cov23
+     , DEC(COVARIANCE(c3,c4),6,4) AS cov34
+FROM temp1;
+....
+
+_ANSWER_
+
+|===
+|COV11 | COV12 | COV23  | COV34
+|83666.|-83666.| -1.4689| -0.0004
+|===
+
+[[grouping.function]]
+==== GROUPING
+
+The GROUPING function is used in CUBE, ROLLUP, and GROUPING SETS statements to identify what rows come from which particular GROUPING SET. A value of 1 indicates that the corresponding data field is null because the row is from of a GROUPING SET that does not involve this row. Otherwise, the value is zero.
+
+.GROUPING function example
+[source,sql]
+....
+SELECT dept
+     , AVG(salary)    AS salary
+     , GROUPING(dept) AS df
+FROM staff
+GROUP BY ROLLUP(dept)
+ORDER BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT| SALARY  | DF
+|10  | 83365.86| 0
+|15  | 60482.33| 0
+|20  | 63571.52| 0
+|38  | 60457.11| 0
+|42  | 49592.26| 0
+|51  | 83218.16| 0
+|66  | 73015.24| 0
+|84  | 66536.75| 0
+|-   | 67932.78| 1
+|===
+
+NOTE: See the section titled "Group By and Having" for more
+information on this function.
+
+==== MAX
+
+Get the maximum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.
+
+.MAX function examples
+[source,sql]
+....
+SELECT MAX(dept)
+     , MAX(ALL dept)
+     , MAX(DISTINCT dept)
+     , MAX(DISTINCT dept/10)
+FROM staff;
+....
+
+_ANSWER_
+|===
+|1 | 2 | 3 | 4
+|84| 84| 84| 8
+|===
+
+===== MAX and MIN usage with Scalar Functions
+
+Several Db2 scalar functions convert a value from one format to another, for example from numeric to character. The function output format will not always shave the same ordering sequence as the input. This difference can affect MIN, MAX, and ORDER BY processing.
+
+.MAX function with dates
+[source,sql]
+....
+SELECT MAX(hiredate)
+     , CHAR(MAX(hiredate),USA)
+     , MAX(CHAR(hiredate,USA))
+FROM employee;
+....
+
+_ANSWER_
+
+|===
+|1         | 2         | 3
+|2006-12-15| 12/15/2006| 12/15/2006
+|===
+
+In the above the SQL, the second field gets the MAX before doing the conversion to character whereas the third field works the other way round. In most cases, the later is wrong. In the next example, the MAX function is used on a small integer value that has been converted to character. If the CHAR function is used for the conversion, the output
+is left justified, which results in an incorrect answer. The DIGITS output is correct (in this example).
+
+.MAX function with numbers, 1 of 2
+[source,sql]
+....
+SELECT MAX(id)         AS id
+     , MAX(CHAR(id))   AS chr
+     , MAX(DIGITS(id)) AS dig
+FROM staff;
+....
+
+_ANSWER_
+|===
+|ID | CHR| DIG
+|350| 90 | 00350
+|===
+
+The DIGITS function can also give the wrong answer - if the input data is part positive and part negative. This is because this function does not put a sign indicator in the output.
+
+.MAX function with numbers, 2 of 2
+[source,sql]
+....
+SELECT MAX(id - 250)         AS id
+     , MAX(CHAR(id - 250))   AS chr
+     , MAX(DIGITS(id - 250)) AS dig
+FROM staff;
+....
+
+_ANSWER_
+|===
+|D  | CHR| DIG
+|100| 90 | 0000000240
+|===
+
+WARNING: Be careful when using a column function on a field that has been converted from number to character, or from date/time to character. The result may not be what you intended.
+
+==== MIN
+
+Get the minimum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.
+
+.MIN function examples
+[source,sql]
+....
+SELECT MIN(dept)
+     , MIN(ALL dept)
+     , MIN(DISTINCT dept)
+     , MIN(DISTINCT dept/10)
+FROM staff;
+....
+
+_ANSWER_
+|===
+|1 | 2 | 3 | 4
+|10| 10| 10| 1
+|===
+
+==== Regression Functions
+
+The various regression functions support the fitting of an
+ordinary-least-squares regression line of the form y = a * x + b to a set of number pairs.
+
+*REGR_AVGX* returns a quantity that than can be used to compute the validity of the regression model. The output is of type float.
+
+*REGR_AVGY* (see REGR_AVGX).
+
+*REGR_COUNT* returns the number of matching non-null pairs. The output is integer.
+
+*REGR_INTERCEPT* returns the y-intercept of the regression line.
+
+*REGR_R2* returns the coefficient of determination for the regression.
+
+*REGR_SLOPE* returns the slope of the line.
+
+*REGR_SXX* (see REGR_AVGX).
+
+*REGR_SXY* (see REGR_AVGX).
+
+*REGR_SYY* (see REGR_AVGX).
+
+*See the IBM SQL Reference for more details on the above functions.*
+
+.REGRESSION functions examples
+[source,sql]
+....
+SELECT DEC(REGR_SLOPE(bonus,salary),7,5)     AS r_slope
+     , DEC(REGR_INTERCEPT(bonus,salary),7,3) AS r_icpt
+     , INT(REGR_COUNT(bonus,salary))         AS r_count
+     , INT(REGR_AVGX(bonus,salary))          AS r_avgx
+     , INT(REGR_AVGY(bonus,salary))          AS r_avgy
+     , DEC(REGR_SXX(bonus,salary),10)        AS r_sxx
+     , INT(REGR_SXY(bonus,salary))           AS r_sxy
+     , INT(REGR_SYY(bonus,salary))           AS r_syy
+FROM employee
+WHERE workdept = 'A00';
+....
+
+_ANSWERS_
+|===
+|r_slope|r_icpt |r_count|r_avgx|r_avgy|r_sxx     |r_sxy   |r_syy
+|0.00247|644.862|5      |70850 |820   |8784575000|21715000|168000
+|===
+
+==== STDDEV
+
+Get the standard deviation of a set of numeric values. If DISTINCT is used, duplicate values are ignored. If no rows match, the result is null. The output format is double.
+
+.STDDEV function examples
+[source,sql]
+....
+SELECT AVG(dept)                AS a1
+,STDDEV(dept)                   AS s1
+,DEC(STDDEV(dept),3,1)          AS s2
+,DEC(STDDEV(ALL dept),3,1)      AS s3
+,DEC(STDDEV(DISTINCT dept),3,1) AS s4
+FROM staff;
+....
+
+_ANSWER_
+|===
+|A1| S1           |S2  | S3  | S4
+|41| +2.3522355E+1|23.5| 23.5| 24.1
+|===
+
+==== SUM
+
+Get the sum of a set of numeric values. If DISTINCT is used, duplicate values are ignored. Null values are always ignored. If no rows match, the result is null.
+
+.SUM function examples
+[source,sql]
+....
+SELECT SUM(dept)          AS s1
+     , SUM(ALL dept)      AS s2
+     , SUM(DISTINCT dept) AS s3
+     , SUM(dept/10)       AS s4
+     , SUM(dept)/10       AS s5
+....
+
+FROM staff;
+
+_ANSWER_
+|===
+|S1  | S2  | S3 | S4 | S5
+|1459| 1459| 326| 134| 145
+|===
+
+WARNING: The answers S4 and S5 above are different. This is because the division is done before the SUM in column S4, and after in column S5. In the former case, precision has been lost due to rounding of the original integer value and the result is arguably incorrect. When in doubt, use the S5 notation.
+
+==== VAR or VARIANCE
+
+Get the variance of a set of numeric values. If DISTINCT is used, duplicate values are ignored. If no rows match, the result is null. The output format is double.
+
+.VARIANCE function examples
+[source,sql]
+....
+SELECT AVG(dept)                        AS a1
+     , VARIANCE(dept)                   AS s1
+     , DEC(VARIANCE(dept),4,1)          AS s2
+     , DEC(VARIANCE(ALL dept),4,1)      AS s3
+     , DEC(VARIANCE(DISTINCT dept),4,1) AS s4
+FROM staff;
+....
+
+_ANSWER_
+|===
+|A1| V1             | V2 | V3 | V4
+|41| +5.533012244E+2| 553| 553| 582
+|===
+
+

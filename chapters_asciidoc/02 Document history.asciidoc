@@ -1,0 +1,13 @@
+== Document history
+
+(The history of the original book can bee seen at <<graeme.birchall.book.editions>>)
+
+[cols="1,2,7", options="header"]
+|===
+|Version | Date     | Content
+|1.0     | 9.10.2019| Started new project in GitHub. Text transformed to asciidoc. +
+Syntax diagrams were removed. +
+Cross references updated.
+|===
+
+

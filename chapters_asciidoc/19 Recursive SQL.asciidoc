@@ -1,0 +1,1675 @@
+[[recursive.sql.chapter]]
+== Recursive SQL
+
+Recursive SQL enables one to efficiently resolve all manner of complex logical structures that can be really tough to work with using other techniques. On the down side, it is a little tricky to understand at first and it is occasionally expensive. In this chapter we shall first show how recursive SQL works and then illustrate some of the really cute things that one use it for.
+
+Use Recursion To
+
+* Create sample data.
+* Select the first "n" rows.
+* Generate a simple parser.
+* Resolve a Bill of Materials hierarchy.
+* Normalize and/or denormalize data structures.
+
+When (Not) to Use Recursion
+
+A good SQL statement is one that gets the correct answer, is easy to understand, and is efficient. Let us assume that a particular statement is correct. If the statement uses recursive SQL, it is never going to be categorized as easy to understand (though the reading gets much easier with experience). However, given the question being posed, it is possible that a recursive SQL statement is the simplest way to get the required answer. Recursive SQL statements are neither inherently efficient nor inefficient. Because they often involve a join, it is very important that suitable indexes be provided. Given appropriate indexes, it is quite probable that a recursive SQL statement is the most efficient way to resolve a particular business problem. It all depends upon the nature of the question: If every row processed by the query is required in the answer set (e.g. Find all people who work for Bob), then a recursive statement is likely to very efficient. If only a few of the rows processed by the query are actually needed (e.g. Find all airline flights from Boston to Dallas, then show only the five fastest) then the cost of resolving a large data hierarchy (or network), most of which is immediately discarded, can be very prohibitive. If one wants to get only a small subset of rows in a large data structure, it is very important that of the unwanted data is excluded as soon as possible in the processing sequence. Some of the queries illustrated in this chapter have some rather complicated code in them to do just this. Also, always be on the lookout for infinitely looping data structures.
+
+Conclusion
+
+Recursive SQL statements can be very efficient, if coded correctly, and if there are suitable indexes. When either of the above is not true, they can be very slow.
+
+=== How Recursion Works
+
+Below is a description of a very simple application. The table on the left contains a normalized representation of the hierarchical structure on the right. Each row in the table defines a relationship displayed in the hierarchy. The PKEY field identifies a parent key, the CKEY field has related child keys, and the NUM field has the number of times the child occurs within the related parent.
+
+_HIERARCHY_
+|===
+|PKEY |CKEY |NUM
+|AAA  |BBB  | 1
+|AAA  |CCC  | 5
+|AAA  |DDD  | 20
+|CCC  |EEE  | 33
+|DDD  |EEE  | 44
+|DDD  |FFF  | 5
+|FFF  |GGG  | 5
+|===
+.Sample Table description - Recursion
+....
+                AAA
+                 |
+           +-----+-----+
+           |     |     |
+          BBB   CCC   DDD
+                 |     |
+                 +-+ +-+--+
+                 | |      |
+                 EEE     FFF
+                          |
+                          |
+                         GGG
+....
+
+==== List Dependents of AAA
+
+We want to use SQL to get a list of all the dependents of AAA. This list should include not only those items like CCC that are directly related, but also values such as GGG, which are indirectly related. The easiest way to answer this question (in SQL) is to use a recursive SQL statement that goes thus:
+
+.SQL that does Recursion
+[source,sql]
+....
+WITH parent (pkey, ckey) AS
+(SELECT pkey
+      , ckey
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.pkey
+      , C.ckey
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+SELECT pkey
+     , ckey
+FROM parent;
+....
+
+_ANSWER_
+|===
+|PKEY|CKEY|PROCESSING SEQUENCE
+|AAA |BBB |1st pass 
+|AAA |CCC |1st pass 
+|AAA |DDD |1st pass 
+|CCC |EEE |2nd pass 
+|DDD |EEE |3rd pass
+|DDD |FFF |3rd pass 
+|FFF |GGG |4th pass
+|===
+
+The above statement is best described by decomposing it into its individual components, and then following of sequence of events that occur:
+
+* The WITH statement at the top defines a temporary table called PARENT. The upper part of the UNION ALL is only invoked once. It does an initial population of the PARENT table with the three rows that have an immediate parent key of AAA.
+* The lower part of the UNION ALL is run recursively until there are no more matches to the join. In the join, the current child value in the temporary PARENT table is joined to related parent values in the DATA table. Matching rows are placed at the front of the temporary PARENT table. This recursive processing will stop when all of the rows in the PARENT table have been joined to the DATA table.
+* The SELECT phrase at the bottom of the statement sends the contents of the PARENT table back to the user's program. 
+* Another way to look at the above process is to think of the temporary PARENT table as a stack of data. This stack is initially populated by the query in the top part of the UNION ALL.
+* Next, a cursor starts from the bottom of the stack and goes up. Each row obtained by the cursor is joined to the DATA table. Any matching rows obtained from the join are added to the top of the stack (i.e. in front of the cursor). When the cursor reaches the top of the stack, the statement is done. The following diagram illustrates this process:
+
+.Recursive processing sequence
+....
+       +-----+-----+-----+     +-----+     +-----+-----+     +-----+
+PKEY > | AAA | AAA | AAA |     | CCC |     | DDD | DDD |     | FFF |
+       +-----+-----+-----+     +-----+     +-----+-----+     +-----+ 
+CKEY > | BBB | CCC | DDD |     | EEE |     | EEE | FFF |     | GGG | 
+       +-----+-----+-----+     +-----+     +-----+-----+     +-----+ 
+	            |     |           ^           ^    ^  |        ^ 
+				+-----------------+           |    |  +--------+ 
+				      |                       |    | 
+					  +-----------------------+----+
+....
+
+==== Notes & Restrictions
+
+* Recursive SQL requires that there be a UNION ALL phrase between the two main parts of the statement. The UNION ALL, unlike the UNION, allows for duplicate output rows, which is what often comes out of recursive processing.
+* If done right, recursive SQL is often fairly efficient. When it involves a join similar to the example shown above, it is important to make sure that this join is efficient. To this end, suitable indexes should be provided.
+* The output of a recursive SQL is a temporary table (usually).
+Therefore, all temporary table usage restrictions also apply to recursive SQL output. See the section titled "Common Table Expression" for details.
+* The output of one recursive expression can be used as input to another recursive expression in the same SQL statement. This can be very handy if one has multiple logical hierarchies to traverse (e.g. First find all of the states in the USA, then final all of the cities in each state). 
+* Any recursive coding, in any language, can get into an infinite loop - either because of bad coding, or because the data being processed has a recursive value structure. To prevent your SQL running forever, see the section titled "Halting Recursive Processing" on page 320.
+
+==== Sample Table DDL & DML
+
+.Sample Table DDL - Recursion
+[source,sql]
+....
+CREATE TABLE hierarchy
+( pkey CHAR(03) NOT NULL
+, ckey CHAR(03) NOT NULL
+, num SMALLINT NOT NULL
+, PRIMARY KEY(pkey, ckey)
+, CONSTRAINT dt1 CHECK (pkey <> ckey)
+, CONSTRAINT dt2 CHECK (num > 0));
+
+COMMIT;
+
+CREATE UNIQUE INDEX hier_x1 
+ON hierarchy (ckey, pkey);
+
+COMMIT;
+
+INSERT INTO hierarchy VALUES
+    ('AAA','BBB', 1)
+  , ('AAA','CCC', 5)
+  , ('AAA','DDD',20)
+  , ('CCC','EEE',33)
+  , ('DDD','EEE',44)
+  , ('DDD','FFF', 5)
+  , ('FFF','GGG', 5);
+
+COMMIT;
+....
+
+=== Introductory Recursion
+
+This section will use recursive SQL statements to answer a series of simple business questions using the sample HIERARCHY table described on page 311. Be warned that things are going to get decidedly more complex as we proceed.
+
+==== List all Children #1
+
+Find all the children of AAA. Don't worry about getting rid of duplicates, sorting the data, or any other of the finer details.
+
+.List of children of AAA
+[source,sql]
+....
+WITH parent (ckey) AS
+(SELECT ckey
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+SELECT ckey
+FROM parent;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|CKEY
+|BBB
+|CCC
+|DDD
+|EEE
+|EEE
+|FFF
+|GGG
+|===
+
+_HIERARCHY_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+WARNING: Much of the SQL shown in this section will loop forever if the target database has a recursive data structure. See <<halting.recursive.processing>> for details on how to prevent this.
+
+The above SQL statement uses standard recursive processing. The first part of the UNION ALL seeds the temporary table PARENT. The second part recursively joins the temporary table to the source data table until there are no more matches. The final part of the query displays the result set. Imagine that the HIERARCHY table used above is very large and that we also want the above query to be as efficient as possible. In this case, two indexes are required; The first, on PKEY, enables the initial select to run efficiently. The second, on CKEY, makes the join in the recursive part of the query efficient. The second index is arguably more important than the first because the first is only used once, whereas the second index is used for each child of the toplevel parent.
+
+==== List all Children #2
+
+Find all the children of AAA, include in this list the value AAA itself. To satisfy the latter requirement we will change the first SELECT statement (in the recursive code) to select the parent itself instead of the list of immediate children. A DISTINCT is provided in order to ensure that only one line containing the name of the parent (i.e. "AAA") is placed into the temporary PARENT table. *NOTE*: _Before the introduction of recursive SQL processing, it often made sense to define the top-most level in a hierarchical data structure as being a parent-child of itself. For example, the HIERARCHY table might contain a row indicating that "AAA" is a child of "AAA". If the target table has data like this, add another predicate:  `C.PKEY <> C.CKEY` to the recursive part of the SQL statement to stop the query from looping forever.
+
+.List all children of AAA
+[source,sql]
+....
+WITH parent (ckey) AS
+(SELECT DISTINCT pkey
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+SELECT ckey
+FROM parent;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|CKEY
+|AAA
+|BBB
+|CCC
+|DDD
+|EEE
+|EEE
+|FFF
+|GGG
+|===
+
+_HIERARCHY_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+In most, but by no means all, business situations, the above SQL statement is more likely to be what the user really wanted than the SQL before. Ask before you code.
+
+==== List Distinct Children
+
+Get a distinct list of all the children of AAA. This query differs from the prior only in the use of the DISTINCT phrase in the final select.
+
+.List distinct children of AAA
+[source,sql]
+....
+WITH parent (ckey) AS
+(SELECT DISTINCT pkey
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+SELECT DISTINCT ckey
+FROM parent;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|CKEY
+|AAA
+|BBB
+|CCC
+|DDD
+|EEE
+|FFF
+|GGG
+|===
+
+_HIERARCHY_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+The next thing that we want to do is build a distinct list of children of AAA that we can then use to join to other tables. To do this, we simply define two temporary tables. The first does the recursion and is called PARENT. The second, called DISTINCT_PARENT, takes the output from the first and removes duplicates.
+
+.List distinct children of AAA
+[source,sql]
+....
+WITH parent (ckey) AS
+(SELECT DISTINCT pkey
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+, distinct_parent (ckey) AS
+(SELECT DISTINCT ckey
+ FROM parent)
+SELECT ckey
+FROM distinct_parent;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|CKEY
+|AAA
+|BBB
+|CCC
+|DDD
+|EEE
+|FFF
+|GGG
+|===
+
+_HIERARCHY_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+==== Show Item Level
+
+Get a list of all the children of AAA. For each value returned, show its level in the logical hierarchy relative to AAA. 
+
+.Show item level in hierarchy
+[source,sql]
+....
+WITH parent (ckey, lvl) AS
+(SELECT DISTINCT pkey
+      , 0
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+      , P.lvl +1
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+SELECT ckey
+     , lvl
+FROM parent;
+....
+
+_ANSWER_
+|===
+|CKEY|LVL
+|AAA |0
+|BBB |1
+|CCC |1
+|DDD |1
+|EEE |2
+|EEE |2
+|FFF |2
+|GGG |3
+|===
+
+The above statement has a derived integer field called LVL. In the initial population of the temporary table this level value is set to zero. When subsequent levels are reached, this value in incremented by one.
+
+==== Select Certain Levels
+
+Get a list of all the children of AAA that are less than three levels below AAA.
+
+.Select rows where LEVEL < 3
+[source,sql]
+....
+WITH parent (ckey, lvl) AS
+(SELECT DISTINCT pkey
+      , 0
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+      , P.lvl +1
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey)
+SELECT ckey, lvl
+FROM parent
+WHERE lvl < 3;
+....
+
+_ANSWER_
+|===
+|CKEY|LVL
+|AAA |0
+|BBB |1
+|CCC |1
+|DDD |1
+|EEE |2
+|EEE |2
+|FFF |2
+|===
+_HIERARCHY_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+The above statement has two main deficiencies:
+
+* It will run forever if the database contains an infinite loop.
+* It may be inefficient because it resolves the whole hierarchy before discarding those levels that are not required.
+
+To get around both of these problems, we can move the level check up into the body of the recursive statement. This will stop the recursion from continuing as soon as we reach the target level. We will have to add "+ 1" to the check to make it logically equivalent:
+
+.Select rows where LEVEL < 3
+[source,sql]
+....
+WITH parent (ckey, lvl) AS
+(SELECT DISTINCT pkey
+      , 0
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+      , P.lvl +1
+ FROM hierarchy C
+    , parent P
+ WHERE P.ckey = C.pkey
+ AND P.lvl+1 < 3)
+SELECT ckey, lvl
+FROM parent;
+....
+
+_ANSWER_
+|===
+|CKEY|LVL
+|AAA |0
+|BBB |1
+|CCC |1
+|DDD |1
+|EEE |2
+|EEE |2
+|FFF |2
+|===
+
+The only difference between this statement and the one before is that the level check is now done in the recursive part of the statement. This new level-check predicate has a dual function: It gives us the answer that we want, and it stops the SQL from running forever if the database happens to contain an infinite loop (e.g. DDD was also a parent of AAA). One problem with this general statement design is that it can not be used to list only that data which pertains to a certain lower level (e.g. display only level 3 data). To answer this kind of question efficiently we can combine the above two queries, having appropriate predicates in both places (see next).
+
+==== Select Explicit Level
+
+Get a list of all the children of AAA that are exactly two levels below AAA.
+
+.Select rows where LEVEL = 2
+[source,sql]
+....
+WITH parent (ckey, lvl) AS
+(SELECT DISTINCT pkey
+      , 0
+ FROM hierarchy
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.ckey
+      , P.lvl +1
+FROM hierarchy C
+   , parent P
+ WHERE P.ckey  = C.pkey
+ AND   P.lvl+1 < 3)
+SELECT ckey
+     , lvl
+FROM parent
+WHERE lvl = 2;
+....
+
+_ANSWER_
+|===
+|CKEY|LVL
+|EEE |2 
+|EEE |2
+|FFF |2
+|===
+_HIERARCHY_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+In the recursive part of the above statement all of the levels up to and including that which is required are obtained. All undesired lower levels are then removed in the final select.
+
+==== Trace a Path - Use Multiple Recursions
+
+Multiple recursive joins can be included in a single query. The joins can run independently, or the output from one recursive join can be used as input to a subsequent. Such code enables one to do the following:
+
+* Expand multiple hierarchies in a single query. For example, one might first get a list of all departments (direct and indirect) in a particular organization, and then use the department list as a seed to find all employees (direct and indirect) in each department.
+* Go down, and then up, a given hierarchy in a single query. For example, one might want to find all of the children of AAA, and then all of the parents. The combined result is the list of objects that AAA is related to via a direct parent-child path. 
+* Go down the same hierarchy twice, and then combine the results to find the matches, or the non-matches. This type of query might be used to, for example, see if two companies own shares in the same subsidiary.
+* The next example recursively searches the HIERARCHY table for all values that are either a child or a parent (direct or indirect) of the object DDD. The first part of the query gets the list of children, the second part gets the list of parents (but never the value DDD itself), and then the results are combined.
+
+.Find all children and parents of DDD
+[source,sql]
+....
+WITH children (kkey, lvl) 
+AS (SELECT ckey
+         , 1 
+	FROM hierarchy 
+	WHERE pkey = 'DDD' 
+	  UNION ALL 
+	SELECT H.ckey
+	     , C.lvl + 1 
+    FROM hierarchy H
+	   , children  C
+	WHERE H.pkey = C.kkey)
+, parents (kkey, lvl) 
+AS (SELECT pkey , 
+           -1 
+    FROM hierarchy 
+	WHERE ckey = 'DDD' 
+	  UNION ALL 
+	SELECT H.pkey
+	     , P.lvl - 1 
+    FROM hierarchy H
+	   , parents P 
+	WHERE H.ckey = P.kkey) 
+SELECT kkey
+     , lvl
+FROM children 
+  UNION ALL 
+SELECT kkey
+     , lvl 
+FROM parents;
+....
+_ANSWER_
+|===
+|KKEY|LVL
+|AAA |-1
+|EEE |1
+|FFF |1
+|GGG |2
+|===
+
+==== Extraneous Warning Message
+
+Some recursive SQL statements generate the following warning when the Db2 parser has reason to suspect that the statement may run forever: 
+....
+SQL0347W The recursive common table expression "GRAEME.TEMP1" may contain an infinite loop. SQLSTATE=01605
+....
+
+The text that accompanies this message provides detailed instructions on how to code recursive SQL so as to avoid getting into an infinite loop.
+The trouble is that even if you do exactly as told you may still get the silly message. To illustrate, the following two SQL statements are almost identical. Yet the first gets a warning and the second does not:
+
+.Recursion - with warning message
+[source,sql]
+....
+WITH temp1 (n1) AS
+(SELECT id
+ FROM staff
+ WHERE id = 10
+   UNION ALL
+ SELECT n1 +10
+ FROM temp1
+ WHERE n1 < 50)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|N1
+|warn
+|10
+|20
+|30
+|40
+|50
+|===
+
+.Recursion - without warning message
+[source,sql]
+....
+WITH temp1 (n1) AS
+(SELECT INT(id)
+ FROM staff
+ WHERE id = 10
+   UNION ALL
+ SELECT n1 +10
+ FROM temp1
+ WHERE n1 < 50)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|N1
+|10
+|20
+|30
+|40
+|50
+|===
+
+If you know what you are doing, ignore the message.
+
+==== Logical Hierarchy Flavours
+
+Before getting into some of the really nasty stuff, we best give a brief overview of the various kinds of logical hierarchy that exist in the real world and how each is best represented in a relational database. Some typical data hierarchy flavours are shown below. Note that the three on the left form one, mutually exclusive, set and the two on the right another. Therefore, it is possible for a particular hierarchy to be both divergent and unbalanced (or balanced), but not both divergent and convergent.
+
+.Hierarchy Flavours
+....
+DIVERGENT CONVERGENT RECURSIVE BALANCED    UNBALANCED
+========= ========== ========= ========    ==========
+  AAA      AAA      AAA<--+      AAA         AAA
+   |        |        |    |       |           |
+ +-+-+    +-+-+    +-+-+  |     +-+-+       +-+-+
+ |   |    |   |    |   |  |     |   |       |   |
+BBB CCC  BBB CCC  BBB CCC>+    BBB CCC     BBB CCC
+     |    |   |        |        |   |           |
+   +-+-+  +-+-+-+    +-+-+      |   +---+     +-+-+
+   |   |    |   |    |   |      |   |   |     |   |
+  DDD EEE  DDD EEE  DDD EEE    DDD EEE FFF   DDD EEE
+....
+
+==== Divergent Hierarchy
+
+In this flavour of hierarchy, no object has more than one parent. Each object can have none, one, or more than one, dependent child objects. Physical objects (e.g. Geographic entities) tend to be represented in this type of hierarchy. This type of hierarchy will often incorporate the concept of different layers in the hierarchy referring to differing kinds of object - each with its own set of attributes. For example, a Geographic hierarchy might consist of countries, states, cities, and street addresses. A single table can be used to represent this kind of hierarchy in a fully normalized form. One field in the table will be the unique key, another will point to the related parent. Other fields in the table may pertain either to the object in question, or to the relationship between the object and its parent. For example, in the following table the PRICE field has the price of the object, and the NUM field has the number of times that the object occurs in the parent.
+
+_OBJECTS_RELATES_
+
+.Divergent Hierarchy - Table and Layout
+[cols=",,,",options="header",]
+|===
+|KEYO|PKEY |NUM |PRICE
+|AAA |     |    |$10
+|BBB |AAA  |1   |$21
+|CCC |AAA  |5   |$23
+|DDD |AAA  |20  |$25
+|EEE |DDD  |44  |$33
+|FFF |DDD  |5   |$34
+|GGG |FFF  |5   |$44
+|===
+
+Some database designers like to make the arbitrary judgment that every object has a parent, and in those cases where there is no "real" parent, the object considered to be a parent of itself. In the above table, this would mean that AAA would be defined as a parent of AAA. Please appreciate that this judgment call does not affect the objects that the database represents, but it can have a dramatic impact on SQL usage and performance. Prior to the introduction of recursive SQL, defining top level objects as being self-parenting was sometimes a good idea because it enabled one to resolve a hierarchy using a simple join without unions. This same process is now best done with recursive SQL. Furthermore, if objects in the database are defined as self-parenting, the recursive SQL will get into an infinite loop unless extra predicates are provided.
+
+==== Convergent Hierarchy
+
+*NUMBER OF TABLES*: A convergent hierarchy has many-to-many relationships that require two tables for normalized data storage. The other hierarchy types require but a single table.
+
+In this flavour of hierarchy, each object can have none, one, or more than one, parent and/or dependent child objects. 
+
+Convergent hierarchies are often much more difficult to work with than similar divergent hierarchies. Logical entities, or man-made objects, (e.g. Company Divisions) often have this type of hierarchy. Two tables are required in order to represent this kind of hierarchy in a fully normalized form. One table describes the object, and the other describes the relationships between the objects.
+
+.Convergent Hierarchy - Tables and Layout
+
+_OBJECTS_
+
+[cols=",",options="header",]
+|===
+|KEYO|PRICE
+|AAA |$10
+|BBB |$21
+|CCC |$23
+|DDD |$25
+|EEE |$33
+|FFF |$34
+|GGG |$44
+|===
+
+_RELATIONSHIPS_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |EEE |44
+|DDD |FFF |5
+|FFF |GGG |5
+|===
+
+One has to be very careful when resolving a convergent hierarchy to get the answer that the user actually wanted. To illustrate, if we wanted to know how many children AAA has in the above structure the "correct" answer could be six, seven, or eight. To be precise, we would need to know if EEE should be counted twice and if AAA is considered to be a child of itself.
+
+==== Recursive Hierarchy
+
+WARNING: Recursive data hierarchies will cause poorly written recursive SQL statements to run forever. See the section titled "Halting Recursive Processing" on page 320 for details on how to prevent this, and how to check that a hierarchy is not recursive.
+
+In this flavour of hierarchy, each object can have none, one, or more than one parent. Also, each object can be a parent and/or a child of itself via another object, or via itself directly. In the business world, this type of hierarchy is almost always wrong. When it does exist, it is often because a standard convergent hierarchy has gone a bit haywire. This database design is exactly the same as the one for a convergent hierarchy. Two tables are (usually) required in order to represent the hierarchy in a fully normalized form. One table describes the object, and the other describes the relationships between the objects.
+
+.Recursive Hierarchy - Tables and Layout
+
+_OBJECTS_
+
+[cols=",",options="header",]
+|===
+|KEYO|PRICE
+|AAA |$10
+|BBB |$21
+|CCC |$23
+|DDD |$25
+|EEE |$33
+|FFF |$34
+|GGG |$44
+|===
+
+_RELATIONSHIPS_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|NUM
+|AAA |BBB |1
+|AAA |CCC |5
+|AAA |DDD |20
+|CCC |EEE |33
+|DDD |AAA |99
+|DDD |FFF |5
+|DDD |EEE |44
+|FFF |GGG |5
+|===
+
+Prior to the introduction of recursive SQL, it took some non-trivial coding root out recursive data structures in convergent hierarchies. Now it is a no-brainer, see <<halting.recursive.processing>> for details.
+
+==== Balanced & Unbalanced Hierarchies
+
+In some logical hierarchies the distance, in terms of the number of intervening levels, from the top parent entity to its lowest-level child entities is the same for all legs of the hierarchy. Such a hierarchy is considered to be balanced. An unbalanced hierarchy is one where the distance from a top-level parent to a lowest-level child is potentially different for each leg of the hierarchy. 
+
+.Balanced and Unbalanced Hierarchies
+....
+      AAA                   << Balanced hierarchy           AAA
+       |                       Unbalanced hierarchy >>       |
+ +-----+-----+                                           +---+----+
+ |     |     |                                           |   |    |
+BBB   CCC   DDD                                          |  CCC  DDD
+ |     |     |                                           |   |    |
+ |     |   +-+-+                                         | +-+  +-+-+
+ |     |   |   |                                         | |    |   |
+EEE   FFF GGG HHH                                        FFF   GGG HHH
+                                                                    |
+                                                                    |
+                                                                   III
+....
+
+Balanced hierarchies often incorporate the concept of levels, where a level is a subset of the values in the hierarchy that are all of the same time and are also the same distance from the top level parent. For example, in the balanced hierarchy above each of the three levels shown might refer to a different category of object (e.g. country, state, city). By contrast, in the unbalanced hierarchy above is probable that the objects being represented are all of the same general category (e.g. companies that own other companies). Divergent hierarchies are the most likely to be balanced. Furthermore, balanced and/or divergent hierarchies are the kind that are most often used to do data summation at various intermediate levels. For example, a hierarchy of countries, states, and cities, is likely to be summarized at any level. 
+
+==== Data & Pointer Hierarchies
+
+The difference between a data and a pointer hierarchy is not one of design, but of usage. In a pointer schema, the main application tables do not store a description of the logical hierarchy. Instead, they only store the base data. Separate to the main tables are one, or more, related tables that define which hierarchies each base data row belongs to.
+
+Typically, in a pointer hierarchy, the main data tables are much larger and more active than the hierarchical tables. A banking application is a classic example of this usage pattern. There is often one table that contains core customer information and several related tables that enable one to do analysis by customer category. A data hierarchy is an altogether different beast. An example would be a set of tables that contain information on all that parts that make up an aircraft. In this kind of application the most important information in the database is often that which pertains to the relationships between objects. These tend to be very complicated often incorporating the attributes: quantity, direction, and version. Recursive processing of a data hierarchy will often require that one does a lot more than just find all dependent keys. For example, to find the gross weight of an aircraft from such a database one will have to work with both the quantity and weight of all dependent objects. Those objects that span sub-assembles (e.g. a bolt connecting to engine to the wing) must not be counted twice, missed out, nor assigned to the wrong sub-grouping. As always, such questions are essentially easy to answer, the trick is to get the right answer.
+
+[[halting.recursive.processing]]
+==== Halting Recursive Processing
+
+One occasionally encounters recursive hierarchical data structures (i.e. where the parent item points to the child, which then points back to the parent). This section describes how to write recursive SQL statements that can process such structures without running forever. There are three general techniques that one can use:
+* Stop processing after reaching a certain number of levels.
+* Keep a record of where you have been, and if you ever come back, either fail or in some other way stop recursive processing.
+* Keep a record of where you have been, and if you ever come back, simply ignore that row and keep on resolving the rest of hierarchy.
+
+===== Sample Table DDL & DML
+
+The following table is a normalized representation of the recursive hierarchy on the right. Note that AAA and DDD are both a parent and a child of each other.
+
+.Recursive Hierarchy - Sample Table and Layout
+
+_TROUBLE_
+
+[cols=",",options="header",]
+|===
+|PKEY|CKEY
+|AAA |BBB
+|AAA |CCC
+|AAA |DDD
+|CCC |EEE
+|DDD |AAA
+|DDD |FFF
+|DDD |EEE
+|FFF |GGG
+|===
+
+....
+      AAA <------+
+       |         |
+ +-----+-----+   |
+ |     |     |   |
+BBB   CCC   DDD>-+
+       |     |
+       +-+ +-+--+
+         | |    |
+         EEE   FFF
+                |
+                |
+               GGG
+....
+
+Below is the DDL and DML that was used to create the above table.
+
+.Sample Table DDL - Recursive Hierarchy
+[source,sql]
+....
+CREATE TABLE trouble
+( pkey CHAR(03) NOT NULL
+, ckey CHAR(03) NOT NULL);
+
+CREATE UNIQUE INDEX tble_x1 ON trouble (pkey, ckey);
+CREATE UNIQUE INDEX tble_x2 ON trouble (ckey, pkey);
+
+INSERT INTO trouble VALUES 
+    ('AAA','BBB')
+  , ('AAA','CCC')
+  , ('AAA','DDD')
+  , ('CCC','EEE')
+  , ('DDD','AAA')
+  , ('DDD','EEE')
+  , ('DDD','FFF')
+  , ('FFF','GGG');
+....
+
+==== Other Loop Types
+
+In the above table, the beginning object (i.e. AAA) is part of the data loop. This type of loop can be detected using simpler SQL than what is given here. But a loop that does not include the beginning object (e.g. AAA points to BBB, which points to CCC, which points back to BBB) requires the somewhat complicated SQL that is used in this section. 
+
+===== Stop After "n" Levels
+
+Find all the children of AAA. In order to avoid running forever, stop after four levels.
+
+.Stop Recursive SQL after "n" levels
+[source,sql]
+....
+WITH parent (pkey, ckey, lvl) AS
+(SELECT DISTINCT pkey
+      , pkey
+      , 0
+ FROM trouble
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.pkey
+      , C.ckey
+      , P.lvl + 1
+ FROM trouble C
+    , parent P
+WHERE P.ckey = C.pkey
+AND P.lvl + 1 < 4)
+SELECT *
+FROM parent;
+....
+
+_ANSWER_
+|===
+|PKEY|CKEY|LVL
+|AAA |AAA |0
+|AAA |BBB |1
+|AAA |CCC |1
+|AAA |DDD |1
+|CCC |EEE |2
+|DDD |AAA |2
+|DDD |EEE |2
+|DDD |FFF |2
+|AAA |BBB |3
+|AAA |CCC |3
+|AAA |DDD |3
+|FFF |GGG |3
+|===
+_TROUBLE_
+
+[cols=",",options="header",]
+|===
+|PKEY|CKEY
+|AAA |BBB
+|AAA |CCC
+|AAA |DDD
+|CCC |EEE
+|DDD |AAA
+|DDD |FFF
+|DDD |EEE
+|FFF |GGG
+|===
+
+In order for the above statement to get the right answer, we need to know before beginning the maximum number of valid dependent levels (i.e. non-looping) there are in the hierarchy. This information is then incorporated into the recursive predicate (see: P.LVI + 1 < 4). If the number of levels is not known, and we guess wrong, we may not find all the children of AAA. For example, if we had stopped at "2" in the above query, we would not have found the child GGG. A more specific disadvantage of the above statement is that the list of children contains duplicates. These duplicates include those specific values that compose the infinite loop (i.e. AAA and DDD), and also any children of either of the above.
+
+===== Stop When Loop Found
+
+A far better way to stop recursive processing is to halt when, and only when, we determine that we have been to the target row previously. To do this, we need to maintain a record of where we have been, and then check this record against the current key value in each row joined to. Db2 does not come with an in-built function that can do this checking, so we shall define our own.
+
+===== #Define Function
+
+Below is the definition code for a user-defined Db2 function that is very similar to the standard LOCATE function. It searches for one string in another, block by block. For example, if one was looking for the string "ABC", this function would search the first three bytes, then the next three bytes, and so on. If a match is found, the function returns the relevant block number, else zero.
+
+.LOCATE_BLOCK user defined function
+[source,sql]
+....
+CREATE FUNCTION LOCATE_BLOCK(searchstr VARCHAR(30000)
+                           , lookinstr VARCHAR(30000))
+RETURNS INTEGER
+BEGIN ATOMIC
+  DECLARE lookinlen, searchlen INT;
+  DECLARE locatevar, returnvar INT DEFAULT 0;
+  DECLARE beginlook
+  INT DEFAULT 1;
+  SET lookinlen = LENGTH(lookinstr);
+  SET searchlen = LENGTH(searchstr);
+  WHILE locatevar = 0 AND beginlook <= lookinlen 
+  DO
+    SET locatevar = LOCATE(searchstr,SUBSTR(lookinstr
+                                          , beginlook
+                                          , searchlen));
+    SET beginlook = beginlook + searchlen;
+    SET returnvar = returnvar + 1;
+  END WHILE;
+  IF locatevar = 0 THEN
+    SET returnvar = 0;
+  END IF;
+  RETURN returnvar;
+END
+....
+
+Below is an example of the function in use. Observe that the function did not find the string "th" in the name "Smith" because the two characters did not start in an position that was some multiple of the length of the test string: 
+
+.LOCATE_BLOCK function example
+[source,sql]
+....
+SELECT id
+     , name
+     , LOCATE('th', name)       AS l1
+     , LOCATE_BLOCK('th', name) AS l2
+FROM staff
+WHERE LOCATE('th', name) > 1;
+....
+
+_ANSWER_
+|===
+|ID |NAME   |L1|L2
+|70 |Rothman|3 |2
+|220|Smith  |4 |0
+|===
+
+NOTE: The LOCATE_BLOCK function shown above is the minimalist version, without any error checking. If it were used in a Production environment, it would have checks for nulls, and for various invalid input values.
+
+===== #Use Function
+
+Now all we need to do is build a string, as we do the recursion, that holds every key value that has previously been accessed. This can be done using simple concatenation: 
+
+.Show path, and rows in loop
+[source,sql]
+....
+WITH parent (pkey, ckey, lvl, path, loop) AS
+(SELECT DISTINCT pkey
+      , pkey
+      , 0
+      , VARCHAR(pkey, 20)
+      , 0
+ FROM trouble
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.pkey
+      , C.ckey
+      , P.lvl + 1
+      , P.path || C.ckey
+      , LOCATE_BLOCK(C.ckey,P.path)
+ FROM trouble C
+    , parent P
+ WHERE P.ckey = C.pkey
+ AND P.lvl + 1 < 4)
+SELECT *
+FROM parent;
+....
+
+_ANSWER_
+|===
+|PKEY|CKEY|LVL|PATH        |LOOP
+|AAA |AAA |0  |AAA         |0
+|AAA |BBB |1  |AAABBB      |0
+|AAA |CCC |1  |AAACCC      |0
+|AAA |DDD |1  |AAADDD      |0
+|CCC |EEE |2  |AAACCCEEE   |0
+|DDD |AAA |2  |AAADDDAAA   |1
+|DDD |EEE |2  |AAADDDEEE   |0
+|DDD |FFF |2  |AAADDDFFF   |0
+|AAA |BBB |3  |AAADDDAAABBB|0
+|AAA |CCC |3  |AAADDDAAACCC|0
+|AAA |DDD |3  |AAADDDAAADDD|2
+|FFF |GGG |3  |AAADDDFFFGGG|0
+|===
+
+Now we can get rid of the level check, and instead use the LOCATE_BLOCK function to avoid loops in the data:
+
+.Use LOCATE_BLOCK function to stop recursion
+[source,sql]
+....
+WITH parent (pkey, ckey, lvl, path) AS
+(SELECT DISTINCT pkey
+      , pkey
+      , 0
+      , VARCHAR(pkey,20)
+ FROM trouble
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.pkey
+      , C.ckey
+      , P.lvl + 1
+      , P.path || C.ckey
+ FROM trouble C
+    , parent P
+ WHERE P.ckey = C.pkey
+ AND LOCATE_BLOCK(C.ckey,P.path) = 0)
+SELECT *
+FROM parent;
+....
+
+_ANSWER_
+|===
+|PKEY|CKEY|LVL|PATH
+|AAA |AAA |0  |AAA
+|AAA |BBB |1  |AAABBB
+|AAA |CCC |1  |AAACCC
+|AAA |DDD |1  |AAADDD
+|CCC |EEE |2  |AAACCCEEE
+|DDD |EEE |2  |AAADDDEEE
+|DDD |FFF |2  |AAADDDFFF
+|FFF |GGG |3  |AAADDDFFFGGG
+|===
+
+The next query is the same as the previous, except that instead of excluding all loops from the answer-set, it marks them as such, and gets the first item, but goes no further.
+
+.Use LOCATE_BLOCK function to stop recursion
+[source,sql]
+....
+WITH parent (pkey, ckey, lvl, path, loop) AS
+(SELECT DISTINCT pkey
+      , pkey
+      , 0
+      , VARCHAR(pkey,20)
+      , 0
+  FROM trouble 
+  WHERE pkey = 'AAA'
+    UNION ALL
+  SELECT C.pkey
+       , C.ckey
+       , P.lvl + 1
+       , P.path || C.ckey
+       , LOCATE_BLOCK(C.ckey,P.path) DDD AAA
+  FROM trouble C
+     , parent P
+  WHERE P.ckey = C.pkey
+  AND P.loop = 0)
+SELECT *
+FROM parent;
+....
+
+_ANSWER_
+|===
+|PKEY|CKEY|LVL|PATH        |LOOP
+|AAA |AAA |0  |AAA         |0
+|AAA |BBB |1  |AAABBB      |0
+|AAA |CCC |1  |AAACCC      |0
+|AAA |DDD |1  |AAADDD      |0
+|CCC |EEE |2  |AAACCCEEE   |0
+|DDD |AAA |2  |AAADDDAAA   |1
+|DDD |EEE |2  |AAADDDEEE   |0
+|DDD |FFF |2  |AAADDDFFF   |0
+|FFF |GGG |3  |AAADDDFFFGGG|0
+|===
+
+The next query tosses in another predicate (in the final select) to only list those rows that point back to a previously processed parent:
+
+.List rows that point back to a parent
+[source,sql]
+....
+WITH parent (pkey, ckey, lvl, path, loop) AS
+(SELECT DISTINCT pkey
+      , pkey
+      , 0
+      , VARCHAR(pkey,20)
+      , 0
+ FROM trouble
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.pkey
+      , C.ckey
+      , P.lvl + 1
+      , P.path || C.ckey
+      , LOCATE_BLOCK(C.ckey,P.path)
+ FROM trouble C
+    , parent P
+ WHERE P.ckey = C.pkey
+ AND P.loop = 0)
+SELECT pkey
+    , ckey
+FROM parent
+WHERE loop > 0;
+....
+
+_ANSWER_
+|===
+|PKEY|CKEY
+|DDD |AAA
+|===
+
+To delete the offending rows from the table, all one has to do is insert the above values into a temporary table, then delete those rows in the TROUBLE table that match. However, before one does this, one has decide which rows are the ones that should not be there. In the above query, we started processing at AAA, and then said that any row that points back to AAA, or to some child or AAA, is causing a loop. We thus identified the row from DDD to AAA as being a problem. But if we had started at the value DDD, we would have said instead that the row from AAA to DDD was the problem. The point to remember her is that the row you decide to delete is a consequence of the row that you decided to define as your starting point.
+
+.Delete rows that loop back to a parent
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE SESSION.del_list
+( pkey CHAR(03) NOT NULL
+, ckey CHAR(03) NOT NULL)
+ON COMMIT PRESERVE ROWS;
+
+INSERT INTO SESSION.del_list
+WITH parent (pkey, ckey, lvl, path, loop) AS
+(SELECT DISTINCT pkey
+      , pkey
+      , 0
+      , VARCHAR(pkey,20)
+      , 0
+ FROM trouble
+ WHERE pkey = 'AAA'
+   UNION ALL
+ SELECT C.pkey
+      , C.ckey
+      , P.lvl + 1
+      , P.path || C.ckey
+      , LOCATE_BLOCK(C.ckey,P.path)
+ FROM trouble C
+    , parent P
+ WHERE P.ckey = C.pkey
+ AND P.loop = 0)
+SELECT pkey
+     , ckey
+FROM parent
+WHERE loop > 0;
+
+DELETE FROM trouble
+WHERE (pkey,ckey) IN
+  (SELECT pkey
+       , ckey
+   FROM SESSION.del_list);
+....
+
+===== Working with Other Key Types
+
+The LOCATE_BLOCK solution shown above works fine, as long as the key in question is a fixed length character field. If it isn't, it can be converted to one, depending on what it is:
+
+* Cast VARCHAR columns as type CHAR.
+* Convert other field types to character using the HEX function.
+
+===== Keeping the Hierarchy Clean
+
+Rather that go searching for loops, one can toss in a couple of triggers that will prevent the table from every getting data loops in the first place. There will be one trigger for inserts, and another for updates. Both will have the same general logic:
+
+* For each row inserted/updated, retain the new PKEY value.
+* Recursively scan the existing rows, starting with the new CKEY value.
+* Compare each existing CKEY value retrieved to the new PKEY value. If it matches, the changed row will cause a loop, so flag an error.
+* If no match is found, allow the change.
+
+Here is the insert trigger:
+
+.INSERT trigger
+[source,sql]
+....
+CREATE TRIGGER TBL_INS
+NO CASCADE BEFORE INSERT ON trouble
+REFERENCING NEW AS NNN
+FOR EACH ROW MODE Db2SQL
+WITH temp (pkey, ckey) AS
+  (VALUES (NNN.pkey
+         , NNN.ckey)
+     UNION ALL
+   SELECT TTT.pkey
+        , CASE
+            WHEN TTT.ckey = TBL.pkey THEN RAISE_ERROR('70001','LOOP FOUND')
+            ELSE TBL.ckey
+          END
+   FROM trouble TBL
+      , temp TTT
+   WHERE TTT.ckey = TBL.pkey)
+SELECT *
+FROM temp;
+....
+
+_TROUBLE_
+
+[cols=",",options="header",]
+|===
+|PKEY|CKEY
+|AAA |BBB
+|AAA |CCC
+|AAA |DDD
+|CCC |EEE
+|DDD |AAA
+|DDD |FFF
+|DDD |EEE
+|FFF |GGG
+|===
+
+Here is the update trigger:
+
+.UPDATE trigger
+[source,sql]
+....
+CREATE TRIGGER TBL_UPD
+NO CASCADE BEFORE UPDATE OF pkey, ckey ON trouble
+REFERENCING NEW AS NNN
+FOR EACH ROW MODE Db2SQL
+WITH temp (pkey, ckey) AS
+(VALUES (NNN.pkey
+       , NNN.ckey)
+   UNION ALL
+ SELECT TTT.pkey
+      , CASE
+          WHEN TTT.ckey = TBL.pkey THEN RAISE_ERROR('70001','LOOP FOUND')
+          ELSE TBL.ckey
+        END
+ FROM trouble TBL
+    , temp TTT
+ WHERE TTT.ckey = TBL.pkey)
+SELECT *
+FROM temp;
+....
+
+Given the above preexisting TROUBLE data (absent the DDD to AAA row), the following statements would be rejected by the above triggers:
+
+.Invalid DML statements
+[source,sql]
+....
+INSERT INTO trouble VALUES('GGG','AAA');
+UPDATE trouble SET ckey = 'AAA' WHERE pkey = 'FFF';
+UPDATE trouble SET pkey = 'GGG' WHERE ckey = 'DDD';
+....
+
+Observe that neither of the above triggers use the LOCATE_BLOCK function to find a loop. This is because these triggers are written assuming that the table is currently loop free. If this is not the case, they may run forever. The LOCATE_BLOCK function enables one to check every row processed, to see if one has been to that row before. In the above triggers, only the start position is checked for loops. So if there was a loop that did not encompass the start position, the LOCATE_BLOCK check would find it, but the code used in the triggers would not. 
+
+=== Clean Hierarchies and Efficient Joins
+
+==== Introduction
+
+One of the more difficult problems in any relational database system involves joining across multiple hierarchical data structures. The task is doubly difficult when one or more of the hierarchies involved is a data structure that has to be resolved using recursive processing. In this section, we will describe how one can use a mixture of tables and triggers to answer this kind of query very efficiently. A typical question might go as follows: Find all matching rows where the customer is in some geographic region, and the item sold is in some product category, and person who made the sale is in some company sub-structure. If each of these qualifications involves expanding a hierarchy of object relationships of indeterminate and/or nontrivial depth, then a simple join or standard data denormalization will not work. In Db2, one can answer this kind of question by using recursion to expand each of the data hierarchies. Then the query would join (sans indexes) the various temporary tables created by the recursive code to whatever other data tables needed to be accessed. Unfortunately, the performance will probably be lousy. Alternatively, one can often efficiently answer this general question using a set of suitably indexed summary tables that are an expanded representation of each data hierarchy. With these tables, the Db2 optimizer can much more efficiently join to other data tables, and so deliver suitable performance. In this section, we will show how to make these summary tables and, because it is a prerequisite, also show how to ensure that the related base tables do not have recursive data structures. Two solutions will be described: One that is simple and efficient, but which stops updates to key values. And another that imposes fewer constraints, but which is a bit more complicated.
+
+==== Limited Update Solution
+
+Below on the left is a hierarchy of data items. This is a typical unbalanced, non-recursive data hierarchy. In the center is a normalized representation of this hierarchy. The only thing that is perhaps a little unusual here is that an item at the top of a hierarchy (e.g. AAA) is deemed to be a parent of itself. On the right is an exploded representation of the same hierarchy.
+
+.Data Hierarchy, with normalized and exploded representations
+....
+     AAA
+      |
+     BBB
+      |
+   +-----+
+   |     |
+  CCC   EEE
+   |
+  DDD
+....
+
+_HIERARCHY#1_
+
+[cols=",,",options="header",]
+|===
+|KEYY|PKEY|DATA
+|AAA |AAA |SOME DATA
+|BBB |AAA |MORE DATA
+|CCC |BBB |MORE JUNK
+|DDD |CCC |MORE JUNK
+|EEE |BBB |JUNK DATA
+|===
+
+_EXPLODED#1_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|LVL
+|AAA |AAA |0
+|AAA |BBB |1
+|AAA |CCC |2
+|AAA |DDD |3
+|AAA |EEE |2
+|BBB |BBB |0
+|BBB |CCC |1
+|BBB |DDD |2
+|BBB |EEE |1
+|CCC |CCC |0
+|CCC |DDD |1
+|DDD |DDD |0
+|EEE |EEE |0
+|===
+
+Below is the CREATE code for the above normalized table and a dependent trigger:
+
+.Hierarchy table that does not allow updates to PKEY
+[source,sql]
+....
+CREATE TABLE hierarchy#1
+( keyy CHAR(3) NOT NULL
+, pkey CHAR(3) NOT NULL
+, data VARCHAR(10)
+, CONSTRAINT hierarchy11 PRIMARY KEY(keyy)
+, CONSTRAINT hierarchy12 FOREIGN KEY(pkey)
+REFERENCES hierarchy#1 (keyy) ON DELETE CASCADE);
+
+CREATE TRIGGER HIR#1_UPD
+NO CASCADE BEFORE UPDATE OF pkey ON hierarchy#1
+REFERENCING NEW AS NNN
+            OLD AS OOO
+FOR EACH ROW MODE Db2SQL
+WHEN (NNN.pkey <> OOO.pkey)
+    SIGNAL SQLSTATE '70001' ('CAN NOT UPDATE pkey');
+....
+
+Note the following:
+
+* The KEYY column is the primary key, which ensures that each value must be unique, and that this field can not be updated.
+* The PKEY column is a foreign key of the KEYY column. This means that this field must always refer to a valid KEYY value. This value can either be in another row (if the new row is being inserted at the bottom of an existing hierarchy), or in the new row itself (if a new independent data hierarchy is being established).
+* The ON DELETE CASCADE referential integrity rule ensures that when a row is deleted, all dependent rows are also deleted.
+* The TRIGGER prevents any updates to the PKEY column. This is a BEFORE trigger, which means that it stops the update before it is applied to the database.
+
+All of the above rules and restrictions act to prevent either an insert or an update for ever acting on any row that is not at the bottom of a hierarchy. Consequently, it is not possible for a hierarchy to ever exist that contains a loop of multiple data items.
+
+==== Creating an Exploded Equivalent
+
+Once we have ensured that the above table can never have recursive data structures, we can define a dependent table that holds an exploded version of the same hierarchy. Triggers will be used to keep the two tables in sync. Here is the CREATE code for the table:
+
+.Exploded table CREATE statement
+[source,sql]
+....
+CREATE TABLE exploded#1
+( pkey CHAR(4) NOT NULL
+, ckey CHAR(4) NOT NULL
+, lvl SMALLINT NOT NULL
+, PRIMARY KEY(pkey,ckey));
+....
+
+The following trigger deletes all dependent rows from the exploded table whenever a row is deleted from the hierarchy table:
+
+.Trigger to maintain exploded table after delete in hierarchy table
+[source,sql]
+....
+CREATE TRIGGER EXP#1_DEL
+AFTER DELETE ON hierarchy#1
+REFERENCING OLD AS OOO
+FOR EACH ROW MODE Db2SQL
+DELETE FROM exploded#1
+WHERE ckey = OOO.keyy;
+....
+
+The next trigger is run every time a row is inserted into the hierarchy table. It uses recursive code to scan the hierarchy table upwards, looking for all parents of the new row. The result set is then inserted into the exploded table:
+
+.Trigger to maintain exploded table after insert in hierarchy table
+[source,sql]
+....
+CREATE TRIGGER EXP#1_INS
+AFTER INSERT ON hierarchy#1
+REFERENCING NEW AS NNN
+FOR EACH ROW MODE Db2SQL
+INSERT INTO exploded#1
+  WITH temp(pkey, ckey, lvl) AS
+  (VALUES (NNN.keyy
+         , NNN.keyy
+         , 0)
+     UNION ALL
+   SELECT N.pkey
+        , NNN.keyy
+        , T.lvl +1
+   FROM temp T
+      , hierarchy#1 N
+   WHERE N.keyy = T.pkey
+   AND N.keyy <> N.pkey)
+SELECT *
+FROM temp;
+....
+
+_HIERARCHY#1_
+
+[cols=",,",options="header",]
+|===
+|KEYY|PKEY|DATA
+|AAA |AAA |S...
+|BBB |AAA |M...
+|CCC |BBB |M...
+|DDD |CCC |M...
+|EEE |BBB |J...
+|===
+
+_EXPLODED#1_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|LVL
+|AAA |AAA |0
+|AAA |BBB |1
+|AAA |CCC |2
+|AAA |DDD |3
+|AAA |EEE |2
+|BBB |BBB |0
+|BBB |CCC |1
+|BBB |DDD |2
+|BBB |EEE |1
+|CCC |CCC |0
+|CCC |DDD |1
+|DDD |DDD |0
+|EEE |EEE |0
+|===
+
+There is no update trigger because updates are not allowed to the hierarchy table.
+
+==== Querying the Exploded Table
+
+Once supplied with suitable indexes, the exploded table can be queried like any other table. It will always return the current state of the data in the related hierarchy table.
+
+.Querying the exploded table
+[source,sql]
+....
+SELECT *
+FROM exploded#1
+WHERE pkey = :host-var
+ORDER BY pkey
+       , ckey
+       , lvl;
+....
+
+==== Full Update Solution
+
+Not all applications want to limit updates to the data hierarchy as was done above. In particular, they may want the user to be able to move an object, and all its dependents, from one valid point (in a data hierarchy) to another. This means that we cannot prevent valid updates to the PKEY value. Below is the CREATE statement for a second hierarchy table. The only difference between this table and the previous one is that there is now an ON UPDATE RESTRICT clause. This prevents updates to PKEY that do not point to a valid KEYY value – either in another row, or in the row being updated:
+
+.Hierarchy table that allows updates to PKEY
+[source,sql]
+....
+CREATE TABLE hierarchy#2
+( keyy CHAR(3) NOT NULL
+, pkey CHAR(3) NOT NULL
+, data VARCHAR(10)
+, CONSTRAINT NO_loopS21 PRIMARY KEY(keyy)
+, CONSTRAINT NO_loopS22 FOREIGN KEY(pkey)
+REFERENCES hierarchy#2 (keyy) ON DELETE CASCADE
+                              ON UPDATE RESTRICT);
+....
+
+The previous hierarchy table came with a trigger that prevented all updates to the PKEY field. This table comes instead with a trigger than checks to see that such updates do not result in a recursive data structure. It starts out at the changed row, then works upwards through the chain of PKEY values. If it ever comes back to the original row, it flags an error:
+
+.Trigger to check for recursive data structures before update of PKEY
+[source,sql]
+....
+CREATE TRIGGER HIR#2_UPD 
+NO CASCADE BEFORE UPDATE OF pkey ON hierarchy#2
+REFERENCING NEW AS NNN
+            OLD AS OOO
+FOR EACH ROW MODE Db2SQL
+WHEN (NNN.pkey <> OOO.pkey
+AND NNN.pkey <> NNN.keyy)
+    WITH temp (keyy, pkey) AS
+    (VALUES (NNN.keyy
+           , NNN.pkey)
+       UNION ALL
+     SELECT LP2.keyy
+          , CASE
+              WHEN LP2.keyy = NNN.keyy THEN RAISE_ERROR('70001','LOOP FOUND')
+              ELSE LP2.pkey
+            END
+     FROM hierarchy#2 LP2
+        , temp TMP
+     WHERE TMP.pkey = LP2.keyy
+     AND TMP.keyy <> TMP.pkey)
+SELECT *
+FROM temp;
+....
+
+_HIERARCHY#2_
+
+[cols=",,",options="header",]
+|===
+|KEYY|PKEY|DATA
+|AAA |AAA |S...
+|BBB |AAA |M...
+|CCC |BBB |M...
+|DDD |CCC |M...
+|EEE |BBB |J...
+|===
+
+NOTE: The above is a BEFORE trigger, which means that it gets run before the change is applied to the database. By contrast, the triggers that maintain the exploded table are all AFTER triggers. In general, one uses before triggers check for data validity, while after triggers are used to propagate changes.
+
+==== Creating an Exploded Equivalent
+
+The following exploded table is exactly the same as the previous. It will be maintained in sync with changes to the related hierarchy table:
+
+.Exploded table CREATE statement
+[source,sql]
+....
+CREATE TABLE exploded#2
+( pkey CHAR(4) NOT NULL
+, ckey CHAR(4) NOT NULL
+, lvl SMALLINT NOT NULL
+, PRIMARY KEY(pkey,ckey));
+....
+
+Three triggers are required to maintain the exploded table in sync with the related hierarchy table. The first two, which handle deletes and inserts, are the same as what were used previously. The last, which handles updates, is new (and quite tricky). The following trigger deletes all dependent rows from the exploded table whenever a row is deleted from the hierarchy table:
+
+.Trigger to maintain exploded table after delete in hierarchy table
+[source,sql]
+....
+CREATE TRIGGER EXP#2_DEL
+AFTER DELETE ON hierarchy#2
+REFERENCING OLD AS OOO
+FOR EACH ROW MODE Db2SQL
+DELETE FROM exploded#2
+  WHERE ckey = OOO.keyy;
+....
+
+The next trigger is run every time a row is inserted into the hierarchy table. It uses recursive code to scan the hierarchy table upwards, looking for all parents of the new row. The resultset is then inserted into the exploded table:
+
+.Trigger to maintain exploded table after insert in hierarchy table
+[source,sql]
+....
+CREATE TRIGGER EXP#2_INS
+AFTER INSERT ON hierarchy#2
+REFERENCING NEW AS NNN
+FOR EACH ROW MODE Db2SQL
+INSERT INTO exploded#2
+  WITH temp(pkey, ckey, lvl) AS
+(SELECT NNN.keyy
+      , NNN.keyy
+      , 0
+ FROM hierarchy#2
+ WHERE keyy = NNN.keyy
+   UNION ALL
+ SELECT N.pkey
+      , NNN.keyy
+      , T.lvl +1
+ FROM temp T
+    , hierarchy#2 N
+ WHERE N.keyy = T.pkey
+ AND N.keyy <> N.pkey)
+SELECT *
+FROM temp;
+....
+
+_HIERARCHY#2_
+
+[cols=",,",options="header",]
+|===
+|KEYY|PKEY|DATA
+|AAA |AAA |S...
+|BBB |AAA |M...
+|CCC |BBB |M...
+|DDD |CCC |M...
+|EEE |BBB |J...
+|===
+
+_EXPLODED#2_
+
+[cols=",,",options="header",]
+|===
+|PKEY|CKEY|LVL
+|AAA |AAA |0
+|AAA |BBB |1
+|AAA |CCC |2
+|AAA |DDD |3
+|AAA |EEE |2
+|BBB |BBB |0
+|BBB |CCC |1
+|BBB |DDD |2
+|BBB |EEE |1
+|CCC |CCC |0
+|CCC |DDD |1
+|DDD |DDD |0
+|EEE |EEE |0
+|===
+
+The next trigger is run every time a PKEY value is updated in the hierarchy table. It deletes and then reinserts all rows pertaining to the updated object, and all it’s dependents. The code goes as follows:
+Delete all rows that point to children of the row being updated. The row being updated is also considered to be a child. In the following insert, first use recursion to get a list of all of the children of the row that has been updated. Then work out the relationships between all of these children and all of their parents. Insert this second result-set back into the exploded table.
+
+.Trigger to run after update of PKEY in hierarchy table
+[source,sql]
+....
+CREATE TRIGGER EXP#2_UPD
+AFTER UPDATE OF pkey ON hierarchy#2
+REFERENCING OLD AS OOO
+            NEW AS NNN
+FOR EACH ROW MODE Db2SQL
+BEGIN ATOMIC
+  DELETE FROM exploded#2
+  WHERE ckey IN
+      (SELECT ckey
+       FROM exploded#2
+       WHERE pkey = OOO.keyy);
+  INSERT INTO exploded#2
+  WITH temp1(ckey) AS
+  (VALUES (NNN.keyy)
+     UNION ALL
+   SELECT N.keyy
+   FROM temp1 T
+      , hierarchy#2 N
+   WHERE N.pkey = T.ckey
+   AND N.pkey <> N.keyy)
+  , temp2(pkey, ckey, lvl) AS
+  (SELECT ckey
+        , ckey
+        , 0
+   FROM temp1
+     UNION ALL
+   SELECT N.pkey
+        , T.ckey
+        , T.lvl +1
+   FROM temp2 T
+      , hierarchy#2 N
+   WHERE N.keyy = T.pkey
+   AND N.keyy <> N.pkey)
+  SELECT *
+  FROM temp2;
+END
+....
+
+NOTE: The above trigger lacks a statement terminator because it contains atomic SQL, which means that the semi-colon can not be used. Choose anything you like.
+
+==== Querying the Exploded Table
+
+Once supplied with suitable indexes, the exploded table can be queried like any other table. It will always return the current state of the data in the related hierarchy table.
+
+.Querying the exploded table
+[source,sql]
+....
+SELECT *
+FROM exploded#2
+WHERE pkey = :host-var
+ORDER BY pkey
+       , ckey
+       , lvl;
+....
+
+Below are some suggested indexes:
+
+* PKEY, CKEY (already defined as part of the primary key).
+* CKEY, PKEY (useful when joining to this table).
+
+

@@ -1,0 +1,193 @@
+== Using SQL to Make SQL
+
+This chapter describes how to use SQL to make SQL. For example, one might want to make DDL statements to create views on a set of tables.
+
+=== Export Command
+
+The following query will generate a set of queries that will count the rows in each of the selected Db2 catalogue views:
+
+.Generate SQL to count rows
+[source,sql]
+....
+SELECT        'SELECT COUNT(*) FROM ' 
+       CONCAT RTRIM(tabschema) 
+       CONCAT '.'
+       CONCAT tabname
+       CONCAT ';'
+FROM syscat.tables
+WHERE tabschema = 'SYSCAT'
+AND tabname LIKE 'N%'
+ORDER BY tabschema
+       , tabname;
+....
+
+_ANSWER_
+
+....
+SELECT COUNT(*) FROM SYSCAT.NAMEMAPPINGS;
+SELECT COUNT(*) FROM SYSCAT.NODEGROUPDEF;
+SELECT COUNT(*) FROM SYSCAT.NODEGROUPS;
+....
+
+If we wrap the above inside an EXPORT statement, and define no character delimiter, we will be able to create a file with the above answer - and nothing else. This could in turn be run as if were some SQL statement that we had written:
+
+.Export generated SQL statements
+[source,sql]
+....
+EXPORT TO C:\FRED.TXT OF DEL
+MODIFIED BY NOCHARDEL
+SELECT      'SELECT COUNT(*) FROM ' 
+     CONCAT RTRIM(tabschema) 
+     CONCAT '.'
+     CONCAT tabname
+     CONCAT ';'
+FROM syscat.tables
+WHERE tabschema = 'SYSCAT'
+AND tabname LIKE 'N%'
+ORDER BY tabschema
+       , tabname;
+....
+
+=== Export Command Notes
+
+The key EXPORT options used above are:
+
+* The file name is "C\FRED.TXT".
+* The data is sent to a delimited (i.e. DEL) file.
+* The delimited output file uses no character delimiter (i.e. NOCHARDEL).
+
+The remainder of this chapter will assume that we are using the EXPORT command, and will describe various ways to generate more elaborate SQL statements.
+
+=== SQL to Make SQL
+
+The next query is the same as the prior two, except that we have added the table name to each row of output:
+
+.Generate SQL to count rows
+[source,sql]
+....
+SELECT    'SELECT '''
+   CONCAT tabname
+   CONCAT ''', COUNT(*) FROM '
+   CONCAT RTRIM(tabschema)
+   CONCAT '.'
+   CONCAT tabname
+   CONCAT ';'
+FROM syscat.tables
+WHERE tabschema = 'SYSCAT'
+AND tabname LIKE 'N%'
+ORDER BY tabschema
+       , tabname;
+....
+
+_ANSWER_
+
+....
+SELECT 'NAMEMAPPINGS', COUNT(*) FROM SYSCAT.NAMEMAPPINGS;
+SELECT 'NODEGROUPDEF', COUNT(*) FROM SYSCAT.NODEGROUPDEF;
+SELECT 'NODEGROUPS', COUNT(*) FROM SYSCAT.NODEGROUPS;
+....
+
+We can make more readable output by joining the result set to four numbered rows, and then breaking the generated query down into four lines:
+
+.Generate SQL to count rows
+[source,sql]
+....
+WITH temp1 (num) AS
+(VALUES (1), (2), (3), (4))
+SELECT CASE num
+         WHEN 1 THEN 'SELECT ''' || tabname || ''' AS tname'
+         WHEN 2 THEN '     , COUNT(*)' || ' AS #rows'
+         WHEN 3 THEN 'FROM ' || RTRIM(tabschema) || '.' || tabname || ';'
+         WHEN 4 THEN ''
+       END
+FROM syscat.tables
+   , temp1
+WHERE tabschema = 'SYSCAT',
+AND tabname LIKE 'N%'
+ORDER BY tabschema
+       , tabname
+       , num;
+....
+
+ANSWER
+
+[source,sql]
+....
+SELECT 'NAMEMAPPINGS' AS tname
+     , COUNT(*) AS #rows
+FROM SYSCAT.NAMEMAPPINGS;
+SELECT 'NODEGROUPDEF' AS tname
+     , COUNT(*) AS #rows 
+FROM SYSCAT.NODEGROUPDEF;
+SELECT 'NODEGROUPS' AS tname
+     , COUNT(*) AS #rows
+FROM SYSCAT.NODEGROUPS;
+....
+
+So far we have generated separate SQL statements for each table that matches. But imagine that instead we wanted to create a single statement that processed all tables. For example, we might want to know the sum of the rows in all of the matching tables. There are two ways to do this, but neither of them are very good:
+
+* We can generate a single large query that touches all of the matching tables. A query can be up to 2MB long, so we could reliably use this technique as long as we had less than about 5,000 tables to process.
+* We can declare a global temporary table, then generate insert statements (one per matching table) that insert a count of the rows in the table. After running the inserts, we can sum the counts in the temporary table.
+
+The next example generates a single query that counts all of the rows in the matching tables:
+
+.Generate SQL to count rows (all tables)_
+[source,sql]
+....
+WITH temp1 (num) AS
+(VALUES (1), (2), (3), (4))
+ SELECT CASE num
+          WHEN 1 THEN 'SELECT SUM(C1)'
+          when 2 then 'FROM ('
+          WHEN 3 THEN 'SELECT COUNT(*) AS C1 FROM ' 
+               CONCAT RTRIM(tabschema)
+               CONCAT '.'
+               CONCAT tabname
+               CONCAT CASE dd
+                        WHEN 1 THEN ''
+                        ELSE ' UNION ALL'
+                      END
+          WHEN 4 THEN ') AS xxx;'
+        END
+ FROM (SELECT tab.*
+            , ROW_NUMBER() OVER(ORDER BY tabschema ASC
+                                       , tabname ASC) AS aa
+            , ROW_NUMBER() OVER(ORDER BY tabschema DESC
+                                       , tabname DESC) AS dd
+       FROM syscat.tables tab
+       WHERE tabschema = 'SYSCAT'
+       AND tabname LIKE 'N%') AS xxx
+    , emp1
+WHERE (num <= 2 AND aa = 1)
+OR    (num = 3)
+OR    (num = 4 AND dd = 1)
+ORDER BY tabschema ASC
+       , tabname ASC
+       , num ASC;
+....
+
+ANSWER
+
+[source,sql]
+....
+SELECT SUM(C1)
+FROM (SELECT COUNT(*) AS C1 FROM SYSCAT.NAMEMAPPINGS UNION ALL
+      SELECT COUNT(*) AS C1 FROM SYSCAT.NODEGROUPDEF UNION ALL
+      SELECT COUNT(*) AS C1 FROM SYSCAT.NODEGROUPS
+) AS xxx;
+....
+
+The above query works as follows:
+
+* A temporary table (i.e. temp1) is generated with one column and four rows.
+* A nested table expression (i.e. xxx) is created with the set of matching rows (tables).
+* Within the nested table expression the ROW_NUMBER function is used to define two new columns. The first will have the value 1 for the first matching row, and the second will have the value 1 for the last matching row.
+* The xxx and temp1 tables are joined. Two new rows (i.e. num <= 2) are added to the front, and one new row (i.e. num = 4) is added to the back.
+* The first two new rows (i.e. num = 1 and 2) are used to make the first part of the generated query.
+* The last new row (i.e. num = 4) is used to make the tail end of the generated query.
+* All other rows (i.e. num = 3) are used to create the core of the generated query.
+
+In the above query no SQL is generated if no rows (tables) match.
+Alternatively, we might want to generate a query that returns zero if no rows match.
+
+

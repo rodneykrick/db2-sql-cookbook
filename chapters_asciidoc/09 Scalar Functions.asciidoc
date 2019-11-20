@@ -1,0 +1,4785 @@
+== Scalar Functions
+
+=== Introduction
+
+Scalar functions act on a single row at a time. In this section we shall list all of the ones that come with Db2 and look in detail at some of the more interesting ones. Refer to the SQL Reference for information on those functions not fully described here.
+
+=== Sample Data
+
+The following self-defined view will be used throughout this section to illustrate how some of the following functions work. Observe that the view has a VALUES expression that defines the contents- three rows and nine columns.
+
+.Sample View DDL - Scalar functions
+[source,sql]
+....
+CREATE VIEW scalar 
+(d1, f1, s1, c1, v1, ts1, dt1, tm1, tc1) AS
+WITH temp1 (n1, c1, t1) AS
+( VALUES ( -2.4
+         , 'ABCDEF'
+         , '1996-04-22-23.58.58.123456')
+      , ( +0.0
+        , 'ABCD '
+        , '1996-08-15-15.15.15.151515')
+     , ( +1.8
+       , 'AB'
+       , '0001-01-01-00.00.00.000000')
+)
+SELECT DECIMAL(n1,3,1)
+     , DOUBLE(n1)
+     , SMALLINT(n1)
+     , CHAR(c1,6)
+     , VARCHAR(RTRIM(c1),6)
+     , TIMESTAMP(t1)
+     , DATE(t1)
+     , TIME(t1)
+     , CHAR(t1)
+FROM    temp1;
+....
+
+Below are the view contents:
+
+.SCALAR view, contents (3 rows)
+|===
+|D1  |F1       |S1|C1    |V1    |TS1                       |DT1       |TM1     |TC1
+|-2.4|-2.4e+000|-2|ABCDEF|ABCDEF|1996-04-22-23.58.58.123456|1996-04-22|23:58:58|1996-04-22-23.58.58.123456
+|0.0 |0.0e+000 |0 |ABCD  |ABCD  |1996-08-15-15.15.15.151515|1996-08-15|15:15:15|1996-08-15-15.15.15.151515
+|1.8 |1.8e+000 |1 |AB    |AB    |0001-01-01-00.00.00.000000|0001-01-01|00:00:00|0001-01-01-00.00.00.000000
+|===
+
+=== Scalar Functions, Definitions
+
+==== ABS or ABSVAL
+
+Returns the absolute value of a number (e.g. -0.4 returns + 0.4). The output field type will equal the input field type (i.e. double input returns double output).
+
+.ABS function examples
+[source,sql]
+....
+SELECT d1      AS d1
+     , ABS(D1) AS d2
+     , f1      AS f1
+     , ABS(f1) AS F2
+FROM scalar;
+....
+
+_ANSWER (float output shortened)_
+
+|===
+|D1  |D2 |F1       |F2
+|-2.4|2.4|-2.400e+0|2.400e+00
+|0.0 |0.0|0.000e+0 |0.000e+00
+|1.8 |1.8|1.800e+0 |1.800e+00
+|===
+
+==== ACOS
+
+Returns the arccosine of the argument as an angle expressed in radians. The output format is double.
+
+==== ASCII
+
+Returns the ASCII code value of the leftmost input character. Valid input types are any valid character type up to 1 MEG. The output type is integer.
+
+.ASCII function examples
+[source,sql]
+....
+SELECT c1
+     , ASCII(c1)           AS ac1
+     , ASCII(SUBSTR(c1,2)) AS ac2
+FROM scalar
+WHERE c1 = 'ABCDEF';
+....
+
+_ANSWER_
+
+|===
+|C1|AC1| AC2
+|ABCDEF|65|66
+|===
+
+*The CHR function is the inverse of the ASCII function.*
+
+==== ASIN
+
+Returns the arcsine of the argument as an angle expressed in radians. The output format is double.
+
+==== ATAN
+
+Returns the arctangent of the argument as an angle expressed in radians. The output format is double.
+
+==== ATAN2
+
+Returns the arctangent of x and y coordinates, specified by the first and second arguments, as an angle, expressed in radians. The output format is double.
+
+==== ATANH
+
+Returns the hyperbolic acrctangent of the argument, where the argument is and an angle expressed in radians. The output format is double.
+
+==== BIGINT
+
+Converts the input value to bigint (big integer) format. The input can be either numeric or character. If character, it must be a valid representation of a number.
+
+.BIGINT function example
+[source,sql]
+....
+WITH temp (big) AS
+(VALUES BIGINT(1)
+  UNION ALL
+SELECT big * 256 
+FROM temp
+WHERE big < 1E16)
+SELECT big
+FROM temp;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|BIG
+|1
+|256
+|65536
+|16777216
+|4294967296
+|1099511627776
+|281474976710656
+|72057594037927936
+|===
+
+Converting certain float values to both BIGINT and decimal will result in different values being returned (see below). Both results are arguably correct, it is simply that the two functions use different rounding methods:
+
+.Convert FLOAT to DECIMAL and BIGINT, SQL
+[source,sql]
+....
+WITH temp (f1) AS
+(VALUES FLOAT(1.23456789)
+  UNION ALL
+SELECT f1 * 100
+FROM temp
+WHERE f1 < 1E18
+)
+SELECT f1         AS float1
+     , DEC(f1,19) AS decimal1
+     , BIGINT(f1) AS bigint1
+FROM temp;
+....
+
+|===
+|FLOAT1                |DECIMAL1            |BIGINT1
+|+1.23456789000000E+000|1.                  |1
+|+1.23456789000000E+002|123.                |123
+|+1.23456789000000E+004|12345.              |12345 
+|+1.23456789000000E+006|1234567.            |1234567 
+|+1.23456789000000E+008|123456789.          |123456788
+|+1.23456789000000E+010|12345678900.        |12345678899
+|+1.23456789000000E+012|1234567890000.      |1234567889999
+|+1.23456789000000E+014|123456789000000.    |123456788999999
+|+1.23456789000000E+016|12345678900000000.  |12345678899999996
+|+1.23456789000000E+018|1234567890000000000.|1234567889999999488
+|===
+
+See <<floating.point.numbers>> for a discussion on floating-point number manipulation.
+
+==== BIT Functions
+
+There are five BIT functions:
+
+* *BITAND* 1 if both arguments are 1.
+* *BITANDNOT* Zero if bit in second argument is 1, otherwise bit in first argument.
+* *BITOR* 1 if either argument is 1.
+* *BITXOR* 1 if both arguments differ.
+* *BITNOT* Returns opposite of the single argument.
+
+The arguments can be SMALLINT (16 bits), INTEGER (32 bits), BIGINT (64 bits), or DECFLOAT (113 bits). The result is the same as the argument with the largest data type.
+
+Negative numbers can be used in bit manipulation. For example the SMALLINT value -1 will have all 16 bits set to "1" (see example on page: 131). As their name implies, the BIT functions can be used to do bit-by-bit comparisons between two numbers:
+
+.BIT functions examples
+[source,sql]
+....
+WITH temp1 (b1, b2) AS 
+(VALUES ( 1, 0) ,( 0, 1) 
+      , ( 0, 0) ,( 1, 1) 
+      , ( 2, 1) ,(15,-7)
+      , (15, 7) ,(-1, 1)
+      , (15,63) ,(63,31)
+      , (99,64) ,( 0,-2)
+)
+, temp2 (b1, b2) AS 
+ (SELECT SMALLINT(b1)
+       , SMALLINT(b2)
+  FROM temp1) 
+SELECT b1
+     , b2
+     , HEX(b1)          AS "hex1"
+     , HEX(b2)          AS "hex2"
+     , BITAND(b1,b2)    AS "and"
+     , BITANDNOT(b1,b2) AS "ano"
+     , BITOR(b1,b2)     AS "or"
+     , BITXOR(b1,b2)    AS "xor"
+FROM temp2;
+....
+
+_ANSWER_
+|===
+|B1|B2|hex1|hex2|and|ano|or|xor
+|1 |0 |0100|0000|0  |1  |1 |1
+|0 |1 |0000|0100|0  |0  |1 |1
+|0 |0 |0000|0000|0  |0  |0 |0
+|1 |1 |0100|0100|1  |0  |1 |0
+|2 |1 |0200|0100|0  |2  |3 |3
+|15|-7|0F00|F9FF|9  |6  |-1|-10
+|15|7 |0F00|0700|7  |8  |15|8
+|-1|1 |FFFF|0100|1  |-2 |-1|-2
+|15|63|0F00|3F00|15 |0  |63|48
+|63|31|3F00|1F00|31 |32 |63|32
+|99|64|6300|4000|64 |35 |99|35
+|0 |-2|0000|FEFF|0  |0  |-2|-2
+|===
+
+===== Displaying BIT Values
+
+It can sometimes be hard to comprehend what a given BASE 10 value is in BIT format. To help, the following user-defined-function converts SMALLINT numbers to BIT values:
+
+.Function to display SMALLINT bits
+[source,sql]
+....
+CREATE FUNCTION bitdisplay(inparm SMALLINT)
+RETURNS CHAR(16)
+BEGIN ATOMIC
+    DECLARE outstr VARCHAR(16);
+    DECLARE inval INT;
+    IF inparm >= 0 THEN
+        SET inval = inparm;
+    ELSE
+        SET inval = INT(65536) + inparm;
+    END IF;
+    SET outstr = '';
+    WHILE inval > 0 DO
+        SET outstr = STRIP(CHAR(MOD(inval,2))) || outstr;
+        SET inval = inval / 2;
+    END WHILE;
+    RETURN RIGHT(REPEAT('0',16) || outstr,16);
+END!
+....
+
+Below is an example of the above function in use:
+
+.BIT_DISPLAY function example
+[source,sql]
+....
+WITH temp1 (b1) AS
+(VALUES (32767)
+     , (16383)
+     , ( 4096)
+     , ( 118)
+     , ( 63)
+     , ( 16)
+     , ( 2)
+     , ( 1)
+     , ( 0)
+     , ( -1)
+     , ( -2)
+     , ( -3)
+     , ( -64)
+     , (-32768)
+)
+, temp2 (b1) AS
+(SELECT SMALLINT(b1)
+FROM temp1
+)
+SELECT b1
+     , HEX(b1)        AS "hex1"
+     , BITDISPLAY(b1) AS "bit_display"
+FROM temp2; 
+....
+
+_ANSWER_
+
+|===
+|B1    |hex1|bit_display
+|32767 |FF7F|0111111111111111
+|16383 |FF3F|0011111111111111
+|4096  |0010|0001000000000000
+|118   |7600|0000000001110110
+|63    |3F00|0000000000111111
+|16    |1000|0000000000010000
+|2     |0200|0000000000000010
+|1     |0100|0000000000000001
+|0     |0000|0000000000000000
+|-1    |FFFF|1111111111111111
+|-2    |FEFF|1111111111111110
+|-3    |FDFF|1111111111111101
+|-64   |C0FF|1111111111000000
+|-32768|0080|1000000000000000
+|===
+
+===== Updating BIT Values
+
+Use the BITXOR function to toggle targeted bits in a value. Use the BITANDNOT function to clear the same targeted bits. To illustrate, the next query uses these two functions to toggle and clear the last four bits, because the second parameter is 15, which is b"1111":
+
+.Update bits #1
+[source,sql]
+....
+WITH temp1 (b1) AS
+( VALUES (32767)
+       , (21845)
+       , (4096)
+       , (0)
+       , (-1)
+       , (-64)
+)
+, temp2 (b1, s15) AS
+(SELECT SMALLINT(b1)
+      , SMALLINT(15)
+ FROM temp1
+)
+SELECT b1
+     , BITDISPLAY(b1)                AS "b1_display"
+     , BITXOR(b1,s15)                AS "xor"
+     , BITDISPLAY(BITXOR(b1,s15))    AS "xor_display"
+     , BITANDNOT(b1,s15)             AS "andnot"
+     , BITDISPLAY(BITANDNOT(b1,s15)) AS "andnot_display"
+FROM temp2;
+....
+
+Below is the answer:
+
+|===
+|B1   |b1_display      |xor  |xor_display     |andnot|andnot_display
+|32767|0111111111111111|32752|0111111111110000|32752 |0111111111110000
+|21845|0101010101010101|21850|0101010101011010|21840 |0101010101010000
+|4096 |0001000000000000|4111 |0001000000001111|4096  |0001000000000000
+|0    |0000000000000000|15   |0000000000001111|0     |0000000000000000
+|-1   |1111111111111111|-16  |1111111111110000|-16   |1111111111110000
+|-64  |1111111111000000|-49  |1111111111001111|-64   |1111111111000000
+|===
+
+The next query illustrate the use of the BITAND function to return those bits that match both parameters, and the BITNOT function to toggle all bits:
+
+.Update bits #2, query
+[source,sql]
+....
+WITH temp1 (b1) AS
+(VALUES (32767)
+      , (21845)
+      , (4096)
+      , (0)
+      , (-1)
+      , (-64)
+)
+, temp2 (b1, s15) AS
+(SELECT SMALLINT(b1)
+      , SMALLINT(15)
+FROM temp1
+)
+SELECT b1
+     , BITDISPLAY(b1)             AS "b1_display"
+     , BITAND(b1,s15)             AS "and"
+     , BITDISPLAY(BITAND(b1,s15)) AS "and_display"
+     , BITNOT(b1)                 AS "not"
+     , BITDISPLAY(BITNOT(b1))     AS "not_display"
+FROM temp2;
+....
+
+Below is the answer:
+|===
+|B1   |b1_display      |and|and_display     |not   |not_display
+|32767|0111111111111111|15 |0000000000001111|-32768|1000000000000000
+|21845|0101010101010101|5  |0000000000000101|-21846|1010101010101010
+|4096 |0001000000000000|0  |0000000000000000|-4097 |1110111111111111
+|0    |0000000000000000|0  |0000000000000000|-1    |1111111111111111
+|-1   |1111111111111111|15 |0000000000001111|0     |0000000000000000
+|-64  |1111111111000000|0  |0000000000000000|63    |0000000000111111
+|===
+
+==== BLOB
+
+Converts the input (1st argument) to a blob. The output length (2nd argument) is optional.
+
+==== CARDINALITY
+
+Returns a value of type BIGINT that is the number of elements in an array.
+
+==== CEIL or CEILING
+
+Returns the next smallest integer value that is greater than or equal to the input (e.g. 5.045 returns 6.000). The output field type will equal the input field type.
+
+.CEIL function examples
+[source,sql]
+....
+SELECT d1
+     , CEIL(d1) AS d2
+     , f1
+     , CEIL(f1) AS f2
+FROM scalar;
+....
+
+_ANSWER (float output shortened)_
+
+|===
+|D1  |D2 |F1       |F2
+|-2.4|-2.|-2.400E+0|-2.000E+0
+|0.0 |0. |+0.000E+0|+0.000E+0 
+|1.8 |2. |+1.800E+0|+2.000E+0
+|===
+
+NOTE: Usually, when Db2 converts a number from one format to another, any extra digits on the right are truncated, not rounded. For example, the output of INTEGER(123.9) is 123. Use the CEIL or ROUND functions to avoid truncation.
+
+==== CHAR
+
+The CHAR function has a multiplicity of uses. The result is always a fixed-length character value, but what happens to the input along the way depends upon the input type:
+
+* For character input, the CHAR function acts a bit like the SUBSTR function, except that it can only truncate starting from the left-most character. The optional length parameter, if provided, must be a constant or keyword.
+* Date-time input is converted into an equivalent character string. Optionally, the external format can be explicitly specified (i.e. ISO, USA, EUR, JIS, or LOCAL).
+* Integer and double input is converted into a left-justified character string.
+* Decimal input is converted into a right-justified character string with leading zeros. The format of the decimal point can optionally be provided. The default decimal point is a dot. The '+' and '-' symbols are not allowed as they are used as sign indicators.
+
+Below are some examples of the CHAR function in action:
+
+.CHAR function examples - characters and numbers
+[source,sql]
+....
+SELECT name
+     , CHAR(name, 3)
+     , comm
+     , CHAR(comm)
+     , CHAR(comm,'@') 
+FROM staff
+WHERE id BETWEEN 80 AND 100 
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|NAME   |2  |COMM   |4       |5
+|James  |Jam|128.20 |00128.20|00128@20
+|Koonitz|Koo|1386.70|01386.70|01386@70
+|Plotz  |Plo|-      |-       |-
+|===
+
+The CHAR function treats decimal numbers quite differently from integer and real numbers. In particular, it right-justifies the former (with leading zeros), while it left-justifies the latter (with trailing blanks). The next example illustrates this point:
+
+.CHAR function examples - positive numbers_
+[source,sql]
+....
+WITH temp1 (n) AS
+(VALUES (3)
+  UNION ALL
+ SELECT n * n
+ FROM temp1
+ WHERE n < 9000
+)
+SELECT n AS int
+     , CHAR(INT(n)) AS char_int
+     , CHAR(FLOAT(n)) AS char_flt
+     , CHAR(DEC(n)) AS char_dec
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|INT     |CHAR_INT|CHAR_FLT   |CHAR_DEC
+|3       |3       |3.0E0      |00000000003.
+|9       |9       |9.0E0      |00000000009.
+|81      |81      |8.1E1      |00000000081.
+|6561    |6561    |6.561E3    |00000006561.
+|43046721|43046721|4.3046721E7|00043046721.
+|===
+
+Negative numeric input is given a leading minus sign. This messes up the alignment of digits in the column (relative to any positive values). In the following query, a leading blank is put in front of all positive numbers in order to realign everything:
+
+.Align CHAR function output - numbers_
+[source,sql]
+....
+WITH temp1 (n1, n2) AS
+(VALUES (SMALLINT(+3)
+       , SMALLINT(-7))
+  UNION ALL
+SELECT n1 * n2
+     , n2
+FROM temp1
+WHERE n1 < 300
+)
+SELECT n1
+     , CHAR(n1) AS i1
+     , CASE
+         WHEN n1 < 0 THEN CHAR(n1)
+         ELSE '+' CONCAT CHAR(n1)
+       END AS i2
+     , CHAR(DEC(n1)) AS d1
+     , CASE
+         WHEN n1 < 0 THEN CHAR(DEC(n1))
+         ELSE '+' CONCAT CHAR(DEC(n1))
+       END AS d2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1   |I1   |I2   |D1     |D2
+|3    |3    |+3   |00003. |+00003.
+|-21  |-21  |-21  |-00021.|-00021.
+|147  |147  |+147 |00147. |+00147.
+|-1029|-1029|-1029|-01029.|-01029.
+|7203 |7203 |+7203|07203. |+07203.
+|===
+
+Both the I2 and D2 fields above will have a trailing blank on all negative values - that was added during the concatenation operation. The RTRIM function can be used to remove it.
+
+===== DATE-TIME Conversion
+
+The CHAR function can be used to convert a date-time value to character. If the input is not a timestamp, the output layout can be controlled using the format option:
+
+* *ISO*: International Standards Organization.
+* *USA*: American.
+* *EUR*: European, which is usually the same as ISO.
+* *JIS*: Japanese Industrial Standard, which is usually the same as ISO.
+* *LOCAL*: Whatever your computer is set to.
+
+Below are some DATE examples:
+
+.CHAR function examples - date value
+[source,sql]
+....
+SELECT CHAR(CURRENT DATE,ISO) AS iso
+     , CHAR(CURRENT DATE,EUR) AS eur
+     , CHAR(CURRENT DATE,JIS) AS jis
+     , CHAR(CURRENT DATE,USA) AS usa
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+|===
+|ISO       |EUR       | JIS      |USA 
+|2005-11-30|30.11.2005|2005-11-30|11/30/2005
+|===
+
+Below are some TIME examples: 
+.CHAR function examples - time value
+[source,sql]
+....
+SELECT CHAR(CURRENT TIME,ISO) AS iso
+     , CHAR(CURRENT TIME,EUR) AS eur
+     , CHAR(CURRENT TIME,JIS) AS jis
+     , CHAR(CURRENT TIME,USA) AS usa 
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+|===
+|ISO     |EUR     | JIS    |USA
+|19.42.21|19.42.21|19:42:21|07:42 PM
+|===
+
+A timestamp cannot be formatted to anything other than ISO output:
+
+.CHAR function example - timestamp value
+[source,sql]
+....
+SELECT CHAR(CURRENT TIMESTAMP) AS TS
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|TS
+|2005-11-30-19.42.21.873002
+|===
+
+WARNING: Converting a date or time value to character, and then ordering the set of matching rows can result in unexpected orders. See <<case.checks.in.wrong.sequence>> for details.
+
+[[char-vs-digits---a-comparison]]
+===== CHAR vs. DIGITS - A Comparison
+
+Numeric input can be converted to character using either the DIGITS or the CHAR function, though the former does not support float. Both functions work differently, and neither gives perfect output. The CHAR function doesn't properly align up positive and negative numbers, while the DIGITS function looses both the decimal point and sign indicator:
+
+.DIGITS vs. CHAR
+[source,sql]
+....
+SELECT d2
+    , CHAR(d2)   AS cd2
+    , DIGITS(d2) AS dd2
+FROM
+    (SELECT DEC(d1, 4, 1) AS d2
+     FROM scalar
+    ) AS xxx
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|D2  |CD2   |DD2
+|-2.4|-002.4|0024
+|0.0 |000.0 |0000
+|1.8 |001.8 |0018
+|===
+
+NOTE: Neither the DIGITS nor the CHAR function do a great job of converting numbers to characters. See <<convert.number.to.character>> for some user-defined functions that can be used instead.
+
+==== CHARACTER_LENGTH
+
+This function is similar to the LENGTH function, except that it works with different encoding schemas. The result is an integer value that is the length of the input string.
+
+.CHARACTER_LENGTH function example
+[source,sql]
+....
+WITH temp1 (c1) AS 
+(VALUES (CAST('ÁÉÌ' AS VARCHAR(10)))
+)
+SELECT c1                          AS C1
+     , LENGTH(c1)                  AS LEN
+     , OCTET_LENGTH(c1)            AS OCT
+     , CHAR_LENGTH(c1,OCTETS)      AS L08
+     , CHAR_LENGTH(c1,CODEUNITS16) AS L16
+     , CHAR_LENGTH(c1,CODEUNITS32) AS L32
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |LEN|OCT|L08|L16|L32
+|ÁÉÌ|6  |6  |6  |3  |3
+|===
+
+==== CHR
+
+Converts integer input in the range 0 through 255 to the equivalent ASCII character value. An input value above 255 returns 255. The ASCII function (see above) is the inverse of the CHR function.
+
+.CHR function examples
+[source,sql]
+....
+SELECT 'A' AS "c"
+     , ASCII('A') AS "c>n"
+     , CHR(ASCII('A')) AS "c>n>c"
+     , CHR(333) AS "nl"
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+|===
+|C|C>N|C>N>C|NL
+|A|65 |A    |ÿ|
+|===
+
+NOTE: At present, the CHR function has a bug that results in it not returning a null value when the input value is greater than 255.
+
+==== CLOB
+
+Converts the input (1st argument) to a CLOB. The output length (2nd argument) is optional. If the input is truncated during conversion, a warning message is issued. For example, in the following example the second CLOB statement will induce a warning for the first two lines of input because they have non-blank data after the third byte:
+
+.CLOB function examples
+[source,sql]
+....
+SELECT c1
+     , CLOB(c1)   AS cc1
+     , CLOB(c1,3) AS cc2
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|C1    |CC1   |CC2
+|ABCDEF|ABCDEF|ABC
+|ABCD  |ABCD  |ABC
+|AB    |AB    |AB
+|===
+
+NOTE: The Db2BATCH command processor dies a nasty death whenever it encounters a CLOB field in the output. If possible, convert to VARCHAR first to avoid this problem.
+
+[[coalesce.function]]
+==== COALESCE
+
+Returns the first non-null value in a list of input expressions (reading from left to right). Each expression is separated from the prior by a comma. All input expressions must be compatible. VALUE is a synonym for
+COALESCE.
+
+.COALESCE function example
+[source,sql]
+....
+SELECT id
+     , comm
+     , COALESCE(comm, 0) 
+FROM staff
+WHERE id < 30
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|COMM  |3
+|10|-     |0.00
+|20|612.45|612.45
+|===
+
+A CASE expression can be written to do exactly the same thing as the COALESCE function. The following SQL statement shows two logically equivalent ways to replace nulls:
+
+.COALESCE and equivalent CASE expression
+[source,sql]
+....
+WITH temp1(c1,c2,c3) AS
+(VALUES (CAST(NULL AS SMALLINT)
+       , CAST(NULL AS SMALLINT)
+       , CAST(10   AS SMALLINT))
+)
+SELECT COALESCE(c1, c2, c3)           AS cc1
+     , CASE
+         WHEN c1 IS NOT NULL THEN c1
+         WHEN c2 IS NOT NULL THEN c2
+         WHEN c3 IS NOT NULL THEN c3
+       END                            AS cc2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|CC1|CC2
+|10 |10
+|===
+
+Be aware that a field can return a null value, even when it is defined as not null. This occurs if a column function is applied against the field, and no row is returned:
+
+.NOT NULL field returning null value
+[source,sql]
+....
+SELECT COUNT(*)             AS #rows
+     , MIN(id)              AS min_id
+     , COALESCE(MIN(id), -1) AS ccc_id
+FROM staff
+WHERE id < 5;
+....
+
+_ANSWER_
+|===
+|#ROWS|MIN_ID|CCC_ID
+|0    |-     |-1
+|===
+
+==== COLLATION_KEY_BIT
+
+Returns a VARCHAR FOR BIT DATA string that is the collation sequence of the first argument in the function. There three parameters:
+
+* String to be evaluated.
+* Collation sequence to use (must be valid).
+* Length of output (optional).
+
+The following query displays three collation sequences:
+
+* All flavors of a given character as the same (i.e. "a" = "A" = "Ä").
+* Upper and lower case characters are equal, but sort lower than accented characters.
+* All variations of a character have a different collation value.
+
+Now for the query:
+
+.COLLATION_KEY_BIT function example
+[source,sql]
+....
+WITH temp1 (c1) As
+(VALUES ('a'), ('A'), ('Á'), ('Ä'), ('b'))
+SELECT c1
+     , COLLATION_KEY_BIT(c1, 'UCA400R1_S1', 9) AS "a=A=Á=Ä"
+     , COLLATION_KEY_BIT(c1, 'UCA400R1_S2' ,9) AS "a=A<Á<Ä"
+     , COLLATION_KEY_BIT(c1, 'UCA400R1_S3' ,9) AS "a<A<Á<Ä"
+FROM temp1
+ORDER BY COLLATION_KEY_BIT(c1, 'UCA400R1_S3');
+....
+
+Below is the answer:
+|===
+|C1|a=A=Á=Ä|a=A<Á<Ä      |a<A<Á<Ä
+|a |x'2600'|x'26010500'  |x'260105010500'
+|A |x'2600'|x'26010500'  |x'260105018F00'
+|Á |x'2600'|x'2601868D00'|x'2601868D018F0500'
+|Ä |x'2600'|x'2601869D00'|x'2601869D018F0500'
+|b |x'2800'|x'28010500'  |x'280105010500'
+|===
+
+==== COMPARE_DECFLOAT
+
+Compares two DECFLOAT expressions and returns a SMALLINT number:
+
+* *0* if both values exactly equal (i.e. no trailing-zero differences)
+* *1* if the first value is less than the second value.
+* *2* if the first value is greater than the second value.
+* *3* if the result is unordered (i.e. either argument is NaN or sNaN).
+
+Query
+
+-COMPARE_DECFLOAT function example
+[source,sql]
+....
+WITH temp1 (d1, d2) AS
+(VALUES (DECFLOAT(+1.0), DECFLOAT(+1.0))
+      , (DECFLOAT(+1.0), DECFLOAT(+1.00))
+      , (DECFLOAT(-1.0), DECFLOAT(-1.00))
+      , (DECFLOAT(+0.0), DECFLOAT(+0.00))
+      , (DECFLOAT(-0.0), DECFLOAT(-0.00))
+      , (DECFLOAT(1234), +infinity)
+      , (+infinity, +infinity)
+      , (+infinity, -infinity)
+      , (DECFLOAT(1234), -NaN)
+)
+SELECT COMPARE_DECFLOAT(d1, d2) AS Result
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|Result
+|0
+|2
+|1
+|2
+|2
+|1
+|0
+|2
+|3
+|===
+
+NOTE: Several values that compare as "less than" or "greater than" above are equal in the usual sense. See the section on DECFLOAT arithmetic for details (see <<decfloat.arithmetic>>).
+
+==== CONCAT
+
+Joins two strings together. The CONCAT function has both "infix" and "prefix" notations. In the former case, the verb is placed between the two strings to be acted upon. In the latter case, the two strings come after the verb. Both syntax flavours are illustrated below:
+
+.CONCAT function examples
+[source,sql]
+....
+SELECT 'A' || 'B'
+     , 'A' CONCAT 'B'
+     , CONCAT('A','B')
+     , 'A' || 'B' || 'C'
+     , CONCAT(CONCAT('A','B'),'C')
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+|===
+|1 |2 |3 |4  |5
+|AB|AB|AB|ABC|ABC
+|===
+
+Note that the "||" keyword can not be used with the prefix notation. This means that "||('a','b')" is not valid while "CONCAT('a','b')" is.
+
+===== Using CONCAT with ORDER BY
+
+When ordinary character fields are concatenated, any blanks at the end of the first field are left in place. By contrast, concatenating varchar fields removes any (implied) trailing blanks. If the result of the second type of concatenation is then used in an ORDER BY, the resulting row sequence will probably be not what the user intended. To illustrate:
+
+.CONCAT used with ORDER BY - wrong output sequence
+[source,sql]
+....
+WITH temp1 (col1, col2) AS
+(VALUES
+  ('A' , 'YYY')
+, ('AE', 'OOO')
+, ('AE', 'YYY')
+)
+SELECT col1
+     , col2
+     , col1 CONCAT col2 AS col3
+FROM temp1
+ORDER BY col3;
+....
+
+_ANSWER_
+|===
+|COL1|COL2|COL3
+|AE  |OOO |AEOOO
+|AE  |YYY |AEYYY 
+|A   |YYY |AYYY
+|===
+
+Converting the fields being concatenated to character gets around this problem:
+
+.CONCAT used with ORDER BY - correct output sequence
+[source,sql]
+....
+WITH temp1 (col1, col2) AS
+(VALUES
+  ('A' , 'YYY')
+, ('AE', 'OOO')
+, ('AE', 'YYY')
+)
+SELECT col1
+     , col2
+     , CHAR(col1, 2) CONCAT CHAR(col2, 3) AS col3
+FROM temp1
+ORDER BY col3;
+....
+
+_ANSWER_
+|===
+|COL1|COL2|COL3
+|A   |YYY |A YYY
+|AE  |OOO |AEOOO
+|AE  |YYY |AEYYY
+|===
+
+WARNING: Never do an ORDER BY on a concatenated set of variable length fields. The resulting row sequence is probably not what the user intended (see above).
+
+==== COS
+
+Returns the cosine of the argument where the argument is an angle expressed in radians. The output format is double.
+
+.RADIAN, COS, and SIN functions example
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (0)
+   UNION ALL
+ SELECT n1 + 10
+ FROM temp1
+ WHERE n1 < 90
+)
+SELECT n1
+     , DEC(RADIANS(n1),4,3)      AS ran
+     , DEC(COS(RADIANS(n1)),4,3) AS cos
+     , DEC(SIN(RADIANS(n1)),4,3) AS sin
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1|RAN  |COS  |SIN
+|0 |0.000|1.000|0.000
+|10|0.174|0.984|0.173
+|20|0.349|0.939|0.342
+|30|0.523|0.866|0.500
+|40|0.698|0.766|0.642
+|50|0.872|0.642|0.766
+|60|1.047|0.500|0.866
+|70|1.221|0.342|0.939
+|80|1.396|0.173|0.984
+|90|1.570|0.000|1.000
+|===
+
+==== COSH
+
+Returns the hyperbolic cosine for the argument, where the argument is an angle expressed in radians. The output format is double.
+
+==== COT
+
+Returns the cotangent of the argument where the argument is an angle expressed in radians. The output format is double.
+
+==== DATAPARTITIONNUM
+
+Returns the sequence number of the partition in which the row resides.
+
+==== DATE
+
+Converts the input into a date value. The nature of the conversion process depends upon the input type and length:
+
+* Timestamp and date input have the date part extracted.
+* Char or varchar input that is a valid string representation of a date or a timestamp (e.g. "1997-12-23") is converted as is.
+* Char or varchar input that is seven bytes long is assumed to be a Julian date value in the format yyyynnn where yyyy is the year and nnn is the number of days since the start of the year (in the range 001 to 366).
+* Numeric input is assumed to have a value which represents the number of days since the date "0001-01-01" inclusive. All numeric types are supported, but the fractional part of a value is ignored (e.g. 12.55 becomes 12 which converts to "0001-01-12").
+
+If the input can be null, the output will also support null. Null values convert to null output.
+
+.DATE function example - timestamp input
+[source,sql]
+....
+SELECT ts1
+     , DATE(ts1) AS dt1
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|TS1                       |DT1
+|1996-04-22-23.58.58.123456|1996-04-22 
+|1996-08-15-15.15.15.151515|1996-08-15
+|0001-01-01-00.00.00.000000|0001-01-01
+|===
+
+.DATE function example - numeric input
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES
+  (000001)
+, (728000)
+, (730120)
+)
+SELECT n1
+     , DATE(n1) AS d1
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1    |D1
+|1     |0001-01-01
+|728000|1994-03-13
+|730120|2000-01-01
+|===
+
+==== DAY
+
+Returns the day (as in day of the month) part of a date (or equivalent) value. The output format is integer.
+
+.DAY function examples
+[source,sql]
+....
+SELECT dt1
+     , DAY(dt1) AS day1
+FROM scalar
+WHERE DAY(dt1) > 10;
+....
+
+_ANSWER_
+|===
+|DT1       |DAY1
+|1996-04-22|22
+|1996-08-15|15
+|===
+
+If the input is a date or timestamp, the day value must be between 1 and 31. If the input is a date or timestamp duration, the day value can ran from -99 to +99, though only -31 to +31 actually make any sense:
+
+.DAY function, using date-duration input
+[source,sql]
+....
+SELECT dt1
+     , DAY(dt1)               AS day1
+     , dt1 -'1996-04-30'      AS dur2
+     , DAY(dt1 -'1996-04-30') AS day2
+FROM scalar
+WHERE DAY(dt1) > 10
+ORDER BY dt1;
+....
+
+__ANSWER__
+|===
+|DT1       |DAY1|DUR2|DAY2
+|1996-04-22|22  |-8. |-8
+|1996-08-15|15  |315.|15
+|===
+
+NOTE: A date-duration is what one gets when one subtracts one date from another. The field is of type decimal(8), but the value is not really a number. It has digits in the format: YYYYMMDD, so in the above query the value "315" represents 3 months, 15 days.
+
+==== DAYNAME
+
+Returns the name of the day (e.g. Friday) as contained in a date (or equivalent) value. The output format is varchar(100).
+
+.DAYNAME function example
+[source,sql]
+....
+SELECT dt1
+     , DAYNAME(dt1)         AS dy1
+     , LENGTH(DAYNAME(dt1)) AS dy2
+FROM scalar
+WHERE DAYNAME(dt1) LIKE '%a%y'
+ORDER BY dt1;
+....
+
+_ANSWER_
+|===
+|DT1       |DY1     |DY2
+|0001-01-01|Monday  |6
+|1996-04-22|Monday  |6
+|1996-08-15|Thursday|8
+|===
+
+==== DAYOFWEEK
+
+Returns a number that represents the day of the week (where Sunday is 1 and Saturday is 7) from a date (or equivalent) value. The output format is integer.
+
+.DAYOFWEEK function example
+[source,sql]
+....
+SELECT dt1
+     , DAYOFWEEK(dt1) AS dwk
+     , DAYNAME(dt1)   AS dnm
+FROM scalar
+ORDER BY dwk
+       , dnm;
+....
+
+_ANSWER_
+|===
+|DT1       |DWK|DNM
+|1996-04-22|2  |Monday
+|0001-01-01|2  |Saturday
+|1996-08-15|5  |Thursday
+|===
+
+==== DAYOFWEEK_ISO
+
+Returns an integer value that represents the day of the "ISO" week. An ISO week differs from an ordinary week in that it begins on a Monday (i.e. day-number = 1) and it neither ends nor begins at the exact end of the year. Instead, the final ISO week of the prior year will continue into the new year. This often means that the first days of the year have an ISO week number of 52, and that one gets more than seven days in a week for ISO week 52.
+
+.DAYOFWEEK_ISO function example
+[source,sql]
+....
+WITH temp1 (n) AS
+(VALUES (0)
+   UNION ALL
+ SELECT n+1
+ FROM temp1
+ WHERE n < 9
+),
+temp2 (dt1) AS
+(VALUES(DATE('1999-12-25'))
+     , (DATE('2000-12-24'))
+),
+temp3 (dt2) AS
+(SELECT dt1 + n DAYS
+ FROM temp1
+    , temp2)
+SELECT CHAR(dt2,ISO)            AS date
+     , SUBSTR(DAYNAME(dt2),1,3) AS day
+     , WEEK(dt2)                AS w
+     , DAYOFWEEK(dt2)           AS d
+     , WEEK_ISO(dt2)            AS wi
+     , DAYOFWEEK_ISO(dt2)       AS di
+FROM
+temp3
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|DATE      |DAY|W |D|WI|DI
+|1999-12-25|Sat|52|7|51|6
+|1999-12-26|Sun|53|1|51|7
+|1999-12-27|Mon|53|2|52|1
+|1999-12-28|Tue|53|3|52|2
+|1999-12-29|Wed|53|4|52|3
+|1999-12-30|Thu|53|5|52|4
+|1999-12-31|Fri|53|6|52|5
+|2000-01-01|Sat|1 |7|52|6
+|2000-01-02|Sun|2 |1|52|7
+|2000-01-03|Mon|2 |2|1 |1
+|2000-12-24|Sun|53|1|51|7
+|2000-12-25|Mon|53|2|52|1
+|2000-12-26|Tue|53|3|52|2
+|2000-12-27|Wed|53|4|52|3
+|2000-12-28|Thu|53|5|52|4
+|2000-12-29|Fri|53|6|52|5
+|2000-12-30|Sat|53|7|52|6
+|2000-12-31|Sun|54|1|52|7
+|2001-01-01|Mon|1 |2|1 |1
+|2001-01-02|Tue|1 |3|1 |2
+|===
+
+==== DAYOFYEAR
+
+Returns a number that is the day of the year (from 1 to 366) from a date (or equivalent) value. The output format is integer.
+
+.DAYOFYEAR function example
+[source,sql]
+....
+SELECT dt1
+     , DAYOFYEAR(dt1) AS dyr
+FROM scalar
+ORDER BY dyr;
+....
+
+_ANSWER_
+|===
+|DT1       |DYR
+|0001-01-01|1
+|1996-04-22|113
+|1996-08-15|228
+|===
+
+==== DAYS
+
+Converts a date (or equivalent) value into a number that represents the number of days since the date "0001-01-01" inclusive. The output format is INTEGER.
+
+.DAYS function example
+[source,sql]
+....
+SELECT dt1
+     , DAYS(dt1) AS dy1
+FROM scalar
+ORDER BY dy1
+       , dt1;
+....
+
+_ANSWER_
+|===
+|DT1       |DY1
+|0001-01-01|1
+|1996-04-22|728771
+|1996-08-15|728886
+|===
+
+The DATE function can act as the inverse of the DAYS function. It can convert the DAYS output back into a valid date.
+
+==== DBCLOB
+
+Converts the input (1st argument) to a dbclob. The output length (2nd argument) is optional.
+
+==== DBPARTITIONNUM
+
+Returns the partition number of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
+
+.DBPARTITIONNUM function example
+[source,sql]
+....
+SELECT DBPARTITIONNUM(id) AS dbnum
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|DBNUM
+|0
+|===
+
+The DBPARTITIONNUM function will generate a SQL error if the column/row used can not be related directly back to specific row in a real table. Therefore, one can not use this function on fields in GROUP BY statements, nor in some views. It can also cause an error when used in an outer join, and the target row failed to match in the join.
+
+==== DECFLOAT
+
+Converts a character or numeric expression to DECFLOAT.
+
+The first parameter is the input expression. The second is the number of digits of precision (default = 34). And the third is the decimal character value (default = '.').
+
+.DECFLOAT function example
+[source,sql]
+....
+SELECT DECFLOAT(+123.4)
+     , DECFLOAT(1.0, 16)
+     , DECFLOAT(1.0000, 16)
+     , DECFLOAT(1.2e-3, 34)
+     , DECFLOAT('1.2e-3', 34)
+     , DECFLOAT(-1E3, 34)
+     , DECFLOAT('-1E3', 34)
+     , DECFLOAT('12.5', 16)
+     , DECFLOAT('12#5', 16, '#')
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+|===
+|1    |2  |3     |4                    |5     |6    |7    |8   |9
+|123.4|1.0|1.0000|0.0011999999999999999|0.0012|-1000|-1E+3|12.5|12.5
+|===
+
+WARNING: The function does not always precisely convert floating-point numeric values to their DECFLOAT equivalent (see example above). Use character conversion instead.
+
+==== DEC or DECIMAL
+
+Converts either character or numeric input to decimal. When the input is of type character, the decimal point format can be specified.
+
+.DECIMAL function examples
+[source,sql]
+....
+WITH temp1(n1, n2, c1, c2) AS
+(VALUES
+ (123, 1E2, '123.4', '567$8')
+)
+SELECT DEC(n1, 3)         AS dec1
+     , DEC(n2, 4, 1)      AS dec2
+     , DEC(c1, 4, 1)      AS dec3
+     , DEC(c2, 4, 1, '$') AS dec4
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|DEC1|DEC2 |DEC3 |DEC4
+|123.|100.0|123.4|567.8
+|===
+
+WARNING: Converting a floating-point number to decimal may get different results from converting the same number to integer. See <<floating.point.numbers>> for a discussion of this issue.
+
+==== DECODE
+
+The DECODE function is a simplified form of the CASE expression. The first parameter is the expression to be evaluated. This is followed by pairs of "before" and "after" expressions. At the end is the "else" result:
+
+.DECODE function example
+[source,sql]
+....
+SELECT firstnme
+     , sex
+     , CASE sex
+         WHEN 'F' THEN 'FEMALE'
+         WHEN 'M' THEN 'MALE'
+         ELSE '?'
+       END AS sex2
+     , DECODE(sex, 'F', 'FEMALE', 'M', 'MALE', '?') AS sex3
+FROM employee
+WHERE firstnme < 'D'
+ORDER BY firstnme;
+....
+
+_ANSWER_
+|===
+|FIRSTNME |SEX|SEX2  |SEX3
+|BRUCE    |M  |MALE  |MALE
+|CHRISTINE|F  |FEMALE|FEMALE
+|===
+
+==== DECRYPT_BIN and DECRYPT_CHAR
+
+Decrypts data that has been encrypted using the ENCRYPT function. Use the BIN function to decrypt binary data (e.g. BLOBS, CLOBS) and the CHAR function to do character data. Numeric data cannot be encrypted.
+
+If the password is null or not supplied, the value of the encryption password special register will be used. If it is incorrect, a SQL error will be generated.
+
+.DECRYPT_CHAR function example
+[source,sql]
+....
+SELECT id
+     , name
+     , DECRYPT_CHAR(name2,'CLUELESS') AS name3
+     , GETHINT(name2) AS hint
+     , name2
+FROM
+(SELECT id
+      , name
+      , ENCRYPT(name, 'CLUELESS', 'MY BOSS') AS name2
+FROM staff
+WHERE id < 30
+) AS xxx
+ORDER BY id;
+....
+
+==== DEGREES
+
+Returns the number of degrees converted from the argument as expressed in radians. The output format is double.
+
+==== DEREF
+
+Returns an instance of the target type of the argument.
+
+==== DIFFERENCE
+
+Returns the difference between the sounds of two strings as determined using the SOUNDEX function. The output (of type integer) ranges from 4 (good match) to zero (poor match).
+
+.DIFFERENCE function example
+[source,sql]
+....
+SELECT a.name AS n1
+     , SOUNDEX(a.name) AS s1
+     , b.name AS n2
+     , SOUNDEX(b.name) AS s2
+     , DIFFERENCE (a.name,b.name) AS df
+FROM staff a
+   , staff b
+WHERE a.id = 10
+AND b.id > 150
+AND b.id < 250
+ORDER BY df DESC
+       , n2 ASC;
+....
+
+_ANSWER_
+|===
+|N1     |S1  |N2       |S2  |DF
+|Sanders|S536|Sneider  |S536|4
+|Sanders|S536|Smith    |S530|3
+|Sanders|S536|Lundquist|L532|2
+|Sanders|S536|Daniels  |D542|1
+|Sanders|S536|Molinare |M456|1
+|Sanders|S536|Scoutten |S350|1
+|Sanders|S536|Abrahams |A165|0
+|Sanders|S536|Kermisch |K652|0
+|Sanders|S536|Lu       |L000|0
+|===
+
+NOTE: The difference function returns one of five possible values. In many situations, it would be imprudent to use a value with such low granularity to rank values.
+
+==== DIGITS
+
+Converts an integer or decimal value into a character string with leading zeros. Both the sign indicator and the decimal point are lost in the translation.
+
+.DIGITS function examples
+[source,sql]
+....
+SELECT s1
+     , DIGITS(s1) AS ds1
+     , d1
+     , DIGITS(d1) AS dd1
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|S1|DS1  |D1  |DD1
+|2 |00002|-2.4|024
+|0 |00000|0.0 |000
+|1 |00001|1.8 |018
+|===
+
+The CHAR function can sometimes be used as alternative to the DIGITS function. Their output differs slightly - see <<convert.number.to.character>> for a comparison.
+
+NOTE: Neither the DIGITS nor the CHAR function do a great job of converting numbers to characters. See <<convert.number.to.character>> for some user-defined functions that can be used instead.
+
+==== DOUBLE or DOUBLE_PRECISION
+
+Converts numeric or valid character input to type double. This function is actually two with the same name. The one that converts numeric input is a SYSIBM function, while the other that handles character input is a SYSFUN function. The keyword DOUBLE_PRECISION has not been defined for the latter.
+
+.DOUBLE function examples
+[source,sql]
+....
+WITH temp1(c1,d1) AS
+(VALUES ('12345',12.4)
+      , ('-23.5',1234)
+      , ('1E+45',-234)
+      , ('-2e05',+2.4)
+)
+SELECT DOUBLE(c1) AS c1d
+     , DOUBLE(d1) AS d1d
+FROM temp1;
+....
+
+_ANSWER (output shortened)_ 
+|===
+|C1D             |D1D
+|+1.23450000E+004|+1.24000000E+001
+|-2.35000000E+001|+1.23400000E+003
+|+1.00000000E+045|-2.34000000E+002
+|-2.00000000E+005|+2.40000000E+000
+|===
+
+See <<floating.point.numbers>> for a discussion on floating-point number manipulation.
+
+===== ENCRYPT
+
+Returns a encrypted rendition of the input string. The input must be char or varchar. The output is varchar for bit data.
+
+The input values are defined as follows:
+
+* *ENCRYPTED DATA*: A char or varchar string 32633 bytes that is to be encrypted. Numeric data must be converted to character before encryption.
+* *PASSWORD*: A char or varchar string of at least six bytes and no more than 127 bytes. If the value is null or not provided, the current value of the encryption password special register will be used. Be aware that a password that is padded with blanks is not the same as one that lacks the blanks.
+* *HINT*: A char or varchar string of up to 32 bytes that can be referred to if one forgets what the password is. It is included with the encrypted string and can be retrieved using the GETHINT function.
+
+The length of the output string can be calculated thus:
+
+* When the hint is provided, the length of the input data, plus eight bytes, plus the distance to the next eight-byte boundary, plus thirty-two bytes for the hint.
+* When the hint is not provided, the length of the input data, plus eight bytes, plus the distance to the next eight-byte boundary.
+
+.ENCRYPT function example
+[source,sql]
+....
+SELECT id
+     , name
+     , ENCRYPT(name,'THAT IDIOT','MY BROTHER') AS name2
+FROM staff 
+WHERE ID < 30 
+ORDER BY id;
+....
+
+==== EVENT_MON_STATE
+
+Returns an operational state of a particular event monitor.
+
+==== EXP
+
+Returns the exponential function of the argument. The output format is double.
+
+.EXP function examples
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (0)
+   UNION ALL
+ SELECT n1 + 1
+ FROM temp1
+ WHERE n1 < 10
+)
+SELECT n1
+     , EXP(n1)           AS e1
+     , SMALLINT(EXP(n1)) AS e2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1|E1                  |E2
+|0 |+1.00000000000000E+0|1
+|1 |+2.71828182845904E+0|2
+|2 |+7.38905609893065E+0|7
+|3 |+2.00855369231876E+1|20
+|4 |+5.45981500331442E+1|54
+|5 |+1.48413159102576E+2|148
+|6 |+4.03428793492735E+2|403
+|7 |+1.09663315842845E+3|1096
+|8 |+2.98095798704172E+3|2980
+|9 |+8.10308392757538E+3|8103
+|10|+2.20264657948067E+4|22026
+|===
+
+==== FLOAT
+
+Same as DOUBLE.
+
+==== FLOOR
+
+Returns the next largest integer value that is smaller than or equal to the input (e.g. 5.945 returns 5.000). The output field type will equal the input field type.
+
+.FLOOR function examples
+[source,sql]
+....
+SELECT d1
+     , FLOOR(d1) AS d2
+     , f1
+     , FLOOR(f1) AS f2
+FROM scalar;
+....
+
+_ANSWER (float output shortened)_
+|===
+|D1 |D2 |F1       |F2
+|2.4|-3.|-2.400E+0|-3.000E+0
+|0.0|+0.|+0.000E+0|+0.000E+0
+|1.8|+1.|+1.800E+0|+1.000E+0
+|===
+
+[[generate.unique.function]]
+==== GENERATE_UNIQUE
+
+Uses the system clock and node number to generate a value that is guaranteed unique (as long as one does not reset the clock). The output is of type CHAR(13) FOR BIT DATA. There are no arguments. The result is essentially a timestamp (set to universal time, not local time), with the node number appended to the back.
+
+.GENERATE_UNIQUE function examples. Note that the second field is unprintable
+[source,sql]
+....
+SELECT id
+     , GENERATE_UNIQUE() AS unique_val#1
+     , DEC(HEX(GENERATE_UNIQUE()),26) AS unique_val#2
+FROM staff
+WHERE id < 50
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|UNIQUE_VAL#1|UNIQUE_VAL#2
+|10|            |20011017191648990521000000. 
+|20|            |20011017191648990615000000.
+|30|            |20011017191648990642000000. 
+|40|            |20011017191648990669000000.
+|===
+
+Observe that in the above example, each row gets a higher value. This is to be expected, and is in contrast to a CURRENT TIMESTAMP call, where every row returned by the cursor will have the same timestamp value.
+Also notice that the second invocation of the function on the same row got a lower value (than the first). In the prior query, the HEX and DEC functions were used to convert the output value into a number.
+Alternatively, the TIMESTAMP function can be used to convert the date component of the data into a valid timestamp. In a system with multiple nodes, there is no guarantee that this timestamp (alone) is unique.
+
+==== Generate Unique Timestamps
+
+The GENERATE_UNIQUE output can be processed using the TIMESTAMP function to obtain a unique timestamp value. Adding the CURRENT TIMEZONE special register to the TIMESTAMP output will convert it to local time:
+
+.Covert GENERATE_UNIQUE output to timestamp
+[source,sql]
+....
+SELECT CURRENT TIMESTAMP                          AS ts1
+, TIMESTAMP(GENERATE_UNIQUE())                    AS ts2
+, TIMESTAMP(GENERATE_UNIQUE()) + CURRENT TIMEZONE AS ts3
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+|===
+|TS1                       |TS2                       |TS3
+|2007-01-19-18.12.33.587000|2007-01-19-22.12.28.434960|2007-01-19-18.12.28.434953
+|===
+
+This code can be useful if one is doing a multi-row insert, and one wants each row inserted to have a distinct timestamp value. However, there are a few qualifications:
+
+* The timestamp values generated will be unique in themselves. But concurrent users may also generate the same values. There is no guarantee of absolute uniqueness.
+* Converting the universal-time value to local-time does not always return a value is equal to the CURRENT TIMESTAMP special register. As is illustrated above, the result can differ by a few seconds. This may cause business problems if one is relying on the value to be the "true time" when something happened.
+
+===== Making Random
+
+One thing that Db2 lacks is a random number generator that makes unique values. However, if we flip the characters returned in the GENERATE_UNIQUE output, we have something fairly close to what is needed. Unfortunately, Db2 also lacks a REVERSE function, so the data flipping has to be done the hard way.
+
+.GENERATE_UNIQUE output, characters reversed to make
+[source,sql]
+....
+SELECT u1
+, SUBSTR(u1,20,1) CONCAT SUBSTR(u1,19,1) CONCAT
+  SUBSTR(u1,18,1) CONCAT SUBSTR(u1,17,1) CONCAT
+  SUBSTR(u1,16,1) CONCAT SUBSTR(u1,15,1) CONCAT
+  SUBSTR(u1,14,1) CONCAT SUBSTR(u1,13,1) CONCAT
+  SUBSTR(u1,12,1) CONCAT SUBSTR(u1,11,1) CONCAT
+  SUBSTR(u1,10,1) CONCAT SUBSTR(u1,09,1) CONCAT
+  SUBSTR(u1,08,1) CONCAT SUBSTR(u1,07,1) CONCAT
+  SUBSTR(u1,06,1) CONCAT SUBSTR(u1,05,1) CONCAT
+  SUBSTR(u1,04,1) CONCAT SUBSTR(u1,03,1) CONCAT
+  SUBSTR(u1,02,1) CONCAT SUBSTR(u1,01,1) AS U2
+FROM (SELECT HEX(GENERATE_UNIQUE()) AS u1
+      FROM staff
+      WHERE id < 50) AS xxx
+ORDER BY u2;
+....
+
+_ANSWER_
+|===
+|U1                        |U2
+|20000901131649119940000000|04991194613110900002 
+|20000901131649119793000000|39791194613110900002 
+|20000901131649119907000000|70991194613110900002
+|20000901131649119969000000|96991194613110900002
+|===
+
+===== pseudo-random
+
+Observe above that we used a nested table expression to temporarily store the results of the GENERATE_UNIQUE calls. Alternatively, we could have put a GENERATE_UNIQUE call inside each SUBSTR, but these would have amounted to separate function calls, and there is a very small chance that the net result would not always be unique.
+
+===== Using REVERSE Function
+
+One can refer to a user-defined reverse function (see <<reversing.field.contents>> for the definition code) to flip the U1 value, and thus greatly simplify the query:
+
+.GENERATE_UNIQUE output, characters reversed using function
+[source,sql]
+....
+SELECT u1
+     , SUBSTR(reverse(CHAR(u1)),7,20) AS u2
+FROM
+  (SELECT HEX(GENERATE_UNIQUE()) AS u1
+   FROM staff
+   WHERE ID < 50) AS xxx
+ORDER BY U2;
+....
+
+==== GETHINT
+
+Returns the password hint, if one is found in the encrypted data.
+
+-GETHINT function example
+[source,sql]
+....
+SELECT id
+     , name
+     , GETHINT(name2) AS hint
+FROM
+  (SELECT id
+        , name
+        , ENCRYPT(name,'THAT IDIOT','MY BROTHER') AS name2
+   FROM staff
+   WHERE id < 30
+  ) AS xxx
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |HINT
+|10|Sanders|MY BROTHER
+|20|Pernal |MY BROTHER
+|===
+
+==== GRAPHIC
+
+Converts the input (1st argument) to a graphic data type. The output length (2nd argument) is optional.
+
+==== GREATEST
+
+See MAX scalar function on page 156.
+
+==== HASHEDVALUE
+
+Returns the partition number of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
+
+.HASHEDVALUE function example
+[source,sql]
+....
+SELECT HASHEDVALUE(id) AS hvalue
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|HVALUE
+|0
+|===
+
+The DBPARTITIONNUM function will generate a SQL error if the column/row used can not be related directly back to specific row in a real table. Therefore, one can not use this function on fields in GROUP BY statements, nor in some views. It can also cause an error when used in an outer join, and the target row failed to match in the join.
+
+==== HEX
+
+Returns the hexadecimal representation of a value. All input types are supported.
+
+.HEX function examples, numeric data
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (-3)
+   UNION ALL
+ SELECT n1 + 1
+ FROM temp1
+ WHERE n1 < 3)
+SELECT SMALLINT(n1)      AS s
+     , HEX(SMALLINT(n1)) AS shx
+     , HEX(DEC(n1,4,0))  AS dhx
+     , HEX(DOUBLE(n1))   AS fhx
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|S |SHX |DHX   |FHX
+|3 |FDFF|00003D|00000000000008C0
+|-2|FEFF|00002D|00000000000000C0
+|-1|FFFF|00001D|000000000000F0BF
+|0 |0000|00000C|0000000000000000
+|1 |0100|00001C|000000000000F03F
+|2 |0200|00002C|0000000000000040
+|3 |0300|00003C|0000000000000840
+|===
+
+.HEX function examples, character & varchar
+[source,sql]
+....
+SELECT c1
+     , HEX(c1) AS chx
+     , v1
+     , HEX(v1) AS vhx
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|C1    |CHX         |V1    |VHX
+|ABCDEF|414243444546|ABCDEF|414243444546
+|ABCD  |414243442020|ABCD  |41424344
+|AB    |414220202020|AB    |4142
+|===
+
+.HEX function examples, date & time
+[source,sql]
+....
+SELECT dt1
+     , HEX(dt1) AS dthx
+     , tm1
+     , HEX(tm1) AS tmhx
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|DT1       |DTHX    |TM1     |TMHX
+|1996-04-22|19960422|23:58:58|235858
+|1996-08-15|19960815|15:15:15|151515
+|0001-01-01|00010101|00:00:00|000000
+|===
+
+==== HOUR
+
+Returns the hour (as in hour of day) part of a time value. The output format is integer.
+
+.HOUR function example
+[source,sql]
+....
+SELECT tm1
+     , HOUR(tm1) AS hr
+FROM scalar
+ORDER BY tm1;
+....
+
+_ANSWER_
+|===
+|TM1     |HR
+|00:00:00|0
+|15:15:15|15
+|23:58:58|23
+|===
+
+[[identity_val_local.function]]
+==== IDENTITY_VAL_LOCAL
+
+Returns the most recently assigned value (by the current user) to an identity column. The result type is decimal (31,0), regardless of the field type of the identity column. See <<find.gaps.in.values>> for detailed notes on using this function.
+
+.IDENTITY_VAL_LOCAL function usage
+[source,sql]
+....
+CREATE TABLE seq#
+( ident_val INTEGER   NOT NULL GENERATED ALWAYS AS IDENTITY
+, cur_ts    TIMESTAMP NOT NULL
+, PRIMARY KEY (ident_val));
+COMMIT;
+INSERT INTO seq# VALUES(DEFAULT,CURRENT TIMESTAMP);
+
+WITH temp (idval) AS
+(VALUES (IDENTITY_VAL_LOCAL())
+)
+SELECT *
+FROM temp;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|IDVAL
+|1.
+|===
+
+==== INSERT
+
+Insert one string in the middle of another, replacing a portion of what was already there. If the value to be inserted is either longer or shorter than the piece being replaced, the remainder of the data (on the right) is shifted either left or right accordingly in order to make a good fit.
+
+*Usage Notes*
+
+*Acceptable input types are varchar, clob(1M), and blob(1M). The first and last parameters must always have matching field types. To insert a new value in the middle of another without removing any of what is already there, set the third parameter to zero. The varchar output is always of length 4K.
+
+.INSERT function examples
+[source,sql]
+....
+SELECT name
+    , INSERT(name,3,2,'A')
+    , INSERT(name,3,2,'AB')
+    , INSERT(name,3,2,'ABC')
+FROM staff
+WHERE id < 40;
+....
+
+_ANSWER (4K output fields shortened)_
+|===
+|NAME    |2      |3        |4
+|Sanders |SaAers | SaABers |SaABCers
+|Pernal  |PeAal  |PeABal   |PeABCal
+|Marenghi|MaAnghi| MaABnghi|MaABCnghi
+|===
+
+==== INT or INTEGER
+
+The INTEGER or INT function converts either a number or a valid character value into an integer. The character input can have leading and/or trailing blanks, and a sign indictor, but it can not contain a decimal point. Numeric decimal input works just fine.
+
+.INTEGER function examples
+[source,sql]
+....
+SELECT d1
+     , INTEGER(d1)
+     , INT('+123')
+     , INT('-123')
+     , INT(' 123 ')
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|D1 |2 |3  |4   |5
+|2.4|-2|123|-123|123
+|0.0|0 |123|-123|123
+|1.8|1 |123|-123|123
+|===
+
+==== JULIAN_DAY
+
+Converts a date value into a number that represents the number of days since January the 1st, 4,713 BC. The output format is integer.
+
+.JULIAN_DAY function example
+[source,sql]
+....
+WITH temp1(dt1) AS
+(VALUES ('0001-01-01-00.00.00')
+      , ('1752-09-10-00.00.00')
+      , ('2007-06-03-00.00.00')
+      , ('2007-06-03-23.59.59')
+)
+SELECT DATE(dt1)       AS dt
+     , DAYS(dt1)       AS dy
+     , JULIAN_DAY(dt1) AS dj
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|DT        |DY    |DJ
+|0001-01-01|1     |1721426
+|1752-09-10|639793|2361218
+|2007-06-03|732830|2454255
+|2007-06-03|732830|2454255
+|===
+
+Julian Days, A History
+
+I happen to be a bit of an Astronomy nut, so what follows is a rather extended description of Julian Days - their purpose, and history (taken from the web). The Julian Day calendar is used in Astronomy to relate ancient and modern astronomical observations. The Babylonians, Egyptians, Greeks (in Alexandria), and others, kept very detailed
+records of astronomical events, but they all used different calendars. +
+By converting all such observations to Julian Days, we can compare and correlate them. For example, a solar eclipse is said to have been seen at Ninevah on Julian day 1,442,454 and a lunar eclipse is said to have been observed at Babylon on Julian day number 1,566,839. These numbers correspond to the Julian Calendar dates -763-03-23 and -423-10-09 respectively). Thus the lunar eclipse occurred 124,384 days after the solar eclipse. The Julian Day number system was invented by Joseph Justus Scaliger (born 1540-08-05 J in Agen, France, died 1609-01-21 J in Leiden, Holland) in 1583. Although the term Julian Calendar derives from the name of Julius Caesar, the term Julian day number probably does not. +
+Evidently, this system was named, not after Julius Caesar, but after its inventor's father, Julius Caesar Scaliger (1484-1558). The younger Scaliger combined three traditionally recognized temporal cycles of 28, 19 and 15 years to obtain a great cycle, the Scaliger cycle, or Julian period, of 7980 years (7980 is the least common multiple of 28, 19 and 15). The length of 7,980 years was chosen as the product of 28 times 19 times 15; these, respectively, are:
+
+* The number of years when dates recur on the same days of the week.
+* The lunar or Metonic cycle, after which the phases of the Moon recur on a particular day in the solar year, or year of the seasons.
+* The cycle of indiction, originally a schedule of periodic taxes or government requisitions in ancient Rome.
+
+The first Scaliger cycle began with Year 1 on -4712-01-01 (Julian) and will end after 7980 years on 3267-12-31 (Julian), which is 3268-01-22 (Gregorian). 3268-01-01 (Julian) is the first day of Year 1 of the next Scaliger cycle. Astronomers adopted this system and adapted it to their own purposes, and they took noon GMT -4712-01-01 as their zero point.
+For astronomers a day begins at noon and runs until the next noon (so that the nighttime falls conveniently within one "day"). Thus they defined the Julian day number of a day as the number of days (or part of a day) elapsed since noon GMT on January 1st, 4713 B.C.E. This was not to the liking of all scholars using the Julian day number system, in particular, historians. For chronologists who start "days" at midnight, the zero point for the Julian day number system is 00:00 at the start of -4712-01-01 J, and this is day 0. This means that 200001-01 G is 2,451,545 JD. Since most days within about 150 years of the present have Julian day numbers beginning with "24", Julian day numbers within this 300-odd-year period can be abbreviated. In 1975 the convention of the modified Julian day number was adopted: Given a Julian day number JD, the modified Julian day number MJD is defined as MJD = JD - 2,400,000.5.
+This has two purposes:
+
+* Days begin at midnight rather than noon.
+* For dates in the period from 1859 to about 2130 only five digits need to be used to specify the date rather than seven.
+
+MJD 0 thus corresponds to JD 2,400,000.5, which is twelve hours after noon on JD 2,400,000 = 1858-11-16. Thus MJD 0 designates the midnight of November 16th/17th, 1858, so day 0 in the system of modified Julian day numbers is the day 1858-11-17. The following SQL statement uses the JULIAN_DAY function to get the Julian Date for certain days. The same calculation is also done using hand-coded SQL.
+
+.JULIAN_DAY function examples
+[source,sql]
+....
+SELECT bd
+     , JULIAN_DAY(bd)
+     , (1461 * (YEAR(bd) + 4800 + 
+       (MONTH(bd)-14)/12))/4    + 
+       ( 367 * (MONTH(bd)- 2    - 
+       12*((MONTH(bd)-14)/12)))/12  -
+       (3 * ((YEAR(bd) + 4900 +
+       (MONTH(bd)-14)/12)/100))/4 + 
+       DAY(bd) - 32075
+FROM
+(SELECT birthdate AS bd
+ FROM employee
+WHERE midinit = 'R'
+) AS xxx
+ORDER BY bd;
+....
+
+_ANSWER_
+|===
+|BD        |2      |3
+|1926-05-17|2424653|2424653
+|1936-03-28|2428256|2428256
+|1946-07-09|2432011|2432011
+|1955-04-12|2435210|2435210
+|===
+
+===== Julian Dates
+
+Many computer users think of the "Julian Date" as a date format that has a layout of "yynnn" or "yyyynnn" where "yy" is the year and "nnn" is the number of days since the start of the same. A more correct use of the term "Julian Date" refers to the current date according to the calendar as originally defined by Julius Caesar - which has a leap year on every fourth year. In the US/UK, this calendar was in effect until "1752-09-14". The days between the 3rd and 13th of September in 1752 were not used in order to put everything back in sync. In the 20th and 21st centuries, to derive the Julian date one must subtract 13 days from the relevant Gregorian date (e.g.1994-01-22 becomes 1994-01-07). The following SQL illustrates how to convert a standard Db2 Gregorian Date to an equivalent Julian Date (calendar) and a Julian Date (output format):
+
+.Julian Date outputs
+[source,sql]
+....
+WITH temp1(dt1) AS
+(VALUES ('2007-01-01')
+      , ('2007-01-02')
+      , ('2007-12-31')
+)
+SELECT DATE(dt1)                         AS dt
+     , DATE(dt1) - 13 DAYS               AS dj1
+     , YEAR(dt1) * 1000 + DAYOFYEAR(dt1) AS dj2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|DT        |DJ1       |DJ2
+|2007-01-01|2006-12-19|2007001
+|2007-01-02|2006-12-20|2007002
+|2007-12-31|2007-12-18|2007365
+|===
+
+WARNING: Db2 does not make allowances for the days that were not used when Englishspeaking countries converted from the Julian to the Gregorian calendar in 1752.
+
+==== LCASE or LOWER
+
+Converts a mixed or upper-case string to lower case. The output is the same data type and length as the input.
+
+.LCASE function example
+[source,sql]
+....
+SELECT name
+     , LCASE(name) AS lname
+     , UCASE(name) AS uname
+FROM staff
+WHERE id < 30;
+....
+
+_ANSWER_
+|===
+|NAME   |LNAME  |UNAME
+|Sanders|sanders|SANDERS
+|Pernal |pernal |PERNAL
+|===
+
+==== LEAST
+
+See MIN scalar function on page 158.
+
+==== LEFT
+
+The LEFT function has two arguments: The first is an input string of type char, varchar, clob, or blob. The second is a positive integer value. The output is the left most characters in the string. Trailing blanks are not removed.
+
+.LEFT function examples
+[source,sql]
+....
+WITH temp1(c1) AS
+(VALUES (' ABC')
+      , (' ABC ')
+      , ('ABC ')
+)
+SELECT c1
+     , LEFT(c1,4)         AS c2
+     , LENGTH(LEFT(c1,4)) AS l2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |C2 |L2
+|ABC|AB |4
+|ABC|ABC|4
+|ABC|ABC|4
+|===
+
+If the input is either char or varchar, the output is varchar(4000). A column this long is a nuisance to work with. Where possible, use the SUBSTR function to get around this problem.
+
+==== LENGTH
+
+Returns an integer value with the internal length of the expression (except for double-byte string types, which return the length in characters). The value will be the same for all fields in a column, except for columns containing varying-length strings.
+
+.LENGTH function examples
+[source,sql]
+....
+SELECT LENGTH(d1)
+     , LENGTH(f1)
+     , LENGTH(s1)
+     , LENGTH(c1)
+     , LENGTH(RTRIM(c1))
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|1|2|3|4|5
+|2|8|2|6|6
+|2|8|2|6|4
+|2|8|2|6|2
+|===
+
+==== LN or LOG
+
+Returns the natural logarithm of the argument (same as LOG). The output format is double.
+
+.LOG function example
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (1)
+      , (123)
+      , (1234)
+      , (12345)
+      , (123456)
+)
+SELECT n1
+     , LOG(n1) AS l1
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1    |L1
+|1     |+0.00000000000000E+000
+|123   |+4.81218435537241E+000
+|1234  |+7.11801620446533E+000
+|12345 |+9.42100640177928E+000
+|123456|+1.17236400962654E+001
+|===
+
+[[locate.function]]
+==== LOCATE
+
+Returns an integer value with the absolute starting position of the first occurrence of the first string within the second string. If there is no match, the result is zero. The optional third parameter indicates where to start the search.
+
+The result, if there is a match, is always the absolute position (i.e. from the start of the string), not the relative position (i.e. from the starting position).
+
+.LOCATE function examples
+[source,sql]
+....
+WITH temp1 (c1) As
+(VALUES ('abcdÄ')
+      , ('Äbcd')
+      , ('AÄ')
+      , ('ÁÄ')
+)
+SELECT c1
+     , LOCATE('Ä',c1)               AS "l1"
+     , LOCATE('Ä',c1,2)             AS "l2"
+     , LOCATE('Ä',c1,OCTETS)        AS "l3"
+     , LOCATE('Ä',c1,CODEUNITS16)   AS "l4"
+     , LOCATE('Ä',c1,2,CODEUNITS16) AS "l5"
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1   |l1|l2|l3|l4|l5
+|abcdÄ|5 |5 |5 |5 |5
+|Äbcd |1 |0 |1 |1 |0
+|AÄ   |2 |2 |2 |2 |2
+|ÁÄ   |3 |3 |3 |2 |2
+|===
+
+When a special character like "Á" is encountered before the find-string (see last line) the plain LOCATE returns the number of bytes searched, not the number of characters.
+
+==== LOG or LN
+
+See the description of the LN function.
+
+==== LOG10
+
+Returns the base ten logarithm of the argument. The output format is double.
+
+.LOG10 function example
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (1)
+      , (123)
+      , (1234)
+      , (12345)
+      , (123456)
+)
+SELECT n1
+     , LOG10(n1) AS l1
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1    |L1
+|1     |+0.00000000000000E+000
+|123   |+2.08990511143939E+000
+|1234  |+3.09131515969722E+000
+|12345 |+4.09149109426795E+000
+|123456|+5.09151220162777E+000
+|===
+
+==== LONG_VARCHAR
+
+Converts the input (1st argument) to a long_varchar data type. The output length (2nd argument) is optional.
+
+==== LONG_VARGRAPHIC
+
+Converts the input (1st argument) to a long_vargraphic data type. The output length (2nd argument) is optional.
+
+==== LOWER
+
+See the description for the LCASE function.
+
+==== LTRIM
+
+Remove leading blanks, but not trailing blanks, from the argument.
+
+.LTRIM function example
+[source,sql]
+....
+WITH temp1(c1) AS
+(VALUES (' ABC')
+      , (' ABC ')
+      , ('ABC ')
+)
+SELECT c1
+     , LTRIM(c1)         AS c2
+     , LENGTH(LTRIM(c1)) AS l2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |C2 |L2
+|ABC|ABC|3
+|ABC|ABC|4
+|ABC|ABC|5
+|===
+
+==== MAX
+
+Returns the largest item from a list that must be at least two items long:
+
+.MAX scalar function
+[source,sql]
+....
+VALUES MAX(5, 8, 4)
+....
+
+_ANSWER_ => 8
+
+One can combine the MAX scalar and column functions to get the combined MAX value of a set of rows and columns:
+
+.Sample Views used in Join Examples
+[source,sql]
+....
+SELECT MAX(MAX(salary, years, comm))
+FROM staff;
+....
+
+_ANSWER_ => 87654.50
+
+Db2 knows which function is which because the MAX scalar value must have at least two input values, while the column function can only have one.
+
+===== Null Processing
+
+The MAX and MIN scalar functions return null if any one of the input list items is null. The MAX and MIN column functions ignore null values. They do however return null when no rows match.
+
+==== MAX_CARDINALITY
+
+Returns a BIGINT value that is the maximum number of values that an array can contain.
+
+==== MICROSECOND
+
+Returns the microsecond part of a timestamp (or equivalent) value. The output is integer.
+
+.MICROSECOND function example
+[source,sql]
+....
+SELECT ts1
+     , MICROSECOND(ts1)
+FROM scalar
+ORDER BY ts1;
+....
+
+_ANSWER_
+|===
+|TS1                       |2
+|0001-01-01-00.00.00.000000|0
+|1996-04-22-23.58.58.123456|123456 
+|1996-08-15-15.15.15.151515|151515
+|===
+
+==== MIDNIGHT_SECONDS
+
+Returns the number of seconds since midnight from a timestamp, time or equivalent value. The output format is integer.
+
+.MIDNIGHT_SECONDS function example
+[source,sql]
+....
+SELECT ts1
+     , MIDNIGHT_SECONDS(ts1)
+     , HOUR(ts1)*3600 + MINUTE(ts1)*60 + SECOND(ts1)
+FROM scalar
+ORDER BY ts1;
+....
+
+_ANSWER_
+|===
+|TS1                       |2    |3
+|0001-01-01-00.00.00.000000|0    |0
+|1996-04-22-23.58.58.123456|86338|86338 
+|1996-08-15-15.15.15.151515|54915|54915
+|===
+
+There is no single function that will convert the MIDNIGHT_SECONDS output back into a valid time value. However, it can be done using the following SQL:
+
+.Convert MIDNIGHT_SECONDS output back to a time value
+[source,sql]
+....
+WITH temp1 (ms) AS
+(SELECT MIDNIGHT_SECONDS(ts1)
+ FROM scalar
+)
+SELECT ms
+     , SUBSTR(DIGITS(ms/3600), 9)
+     || ':' ||
+     SUBSTR(DIGITS((ms-((MS/3600) * 3600))/60 ), 9)
+     || ':' ||
+     SUBSTR(DIGITS(ms-((MS/60)*60)), 9) AS tm
+FROM temp1
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|MS   |TM
+|0    |00:00:00
+|54915|15:15:15
+|86338|23:58:58
+|===
+
+NOTE: The following two identical timestamp values: "2005-07-15.24.00.00" and "2005-07-16.00.00.00" will return different MIDNIGHT_SECONDS results. See the chapter titled "Quirks in SQL" on page 427 for a detailed discussion of this issue.
+
+==== MIN
+
+Returns the smallest item from a list that must be at least two items long:
+
+.MIN scalar function
+[source,sql]
+....
+VALUES MIN(5, 8, 4)
+....
+
+_ANSWER_ => 4
+
+Null is returned if any one of the list items is null.
+
+==== MINUTE
+
+Returns the minute part of a time or timestamp (or equivalent) value. The output is integer.
+
+.MINUTE function example
+[source,sql]
+....
+SELECT ts1
+     , MINUTE(ts1)
+FROM scalar
+ORDER BY ts1;
+....
+
+_ANSWER_
+|===
+|TS1                       |2
+|0001-01-01-00.00.00.000000|0
+|1996-04-22-23.58.58.123456|58 
+|1996-08-15-15.15.15.151515|15
+|===
+
+==== MOD
+
+Returns the remainder (modulus) for the first argument divided by the second. In the following example the last column uses the MOD function to get the modulus, while the second to last column obtains the same result using simple arithmetic.
+
+.MOD function example
+[source,sql]
+....
+WITH temp1(n1,n2) AS
+(VALUES (-31,+11)
+  UNION ALL
+SELECT n1 + 13
+     , n2 - 4
+FROM temp1
+WHERE n1 < 60
+)
+SELECT n1
+     , n2
+     , n1/n2           AS div
+     , n1-((n1/n2)*n2) AS md1
+     , MOD(n1,n2)      AS md2
+FROM temp1
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|N1 |N2 |DIV|MD1|MD2
+|31 |11 |-2 |-9 |-9
+|-18|7  |-2 |-4 |-4
+|-5 |3  |-1 |-2 |-2
+|8  |-1 |-8 |0  |0
+|21 |-5 |-4 |1  |1
+|34 |-9 |-3 |7  |7
+|47 |-13|-3 |8  |8
+|60 |-17|-3 |9  |9
+|===
+
+==== MONTH
+
+Returns an integer value in the range 1 to 12 that represents the month part of a date or timestamp (or equivalent) value.
+
+===== MONTHNAME
+
+Returns the name of the month (e.g. October) as contained in a date (or equivalent) value. The output format is varchar(100).
+
+.MONTH and MONTHNAME functions example
+[source,sql]
+....
+SELECT dt1
+     , MONTH(dt1)
+     , MONTHNAME(dt1)
+FROM scalar
+ORDER BY dt1;
+....
+
+_ANSWER_
+|===
+|DT1       |2|3
+|0001-01-01|1|January
+|1996-04-22|4|April
+|1996-08-15|8|August
+|===
+
+==== MULTIPLY_ALT
+
+Returns the product of two arguments as a decimal value. Use this function instead of the multiplication operator when you need to avoid an overflow error because Db2 is putting aside too much space for the scale (i.e. fractional part of number) Valid input is any exact numeric type: decimal, integer, bigint, or smallint (but not float).
+
+.Multiplying numbers - examples
+[source,sql]
+....
+WITH temp1 (n1,n2) AS
+(VALUES (DECIMAL(1234,10)
+       , DECIMAL(1234,10))
+)
+SELECT n1
+     , n2
+     , n1 * n2             AS p1
+     , "*"(n1,n2)          AS p2
+     , MULTIPLY_ALT(n1,n2) AS p3
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1   |N2   |P1      |P2      |P3
+|1234.|1234.|1522756.|1522756.|1522756.
+|===
+
+When doing ordinary multiplication of decimal values, the output precision and the scale is the sum of the two input precisions and scales - with both having an upper limit of 31. Thus, multiplying a DEC(10,5) number and a DEC(4,2) number returns a DEC(14,7) number. Db2 always tries to avoid losing (truncating) fractional digits, so multiplying a DEC(20,15) number with a DEC(20,13) number returns a DEC(31,28) number, which is probably going to be too small. The MULTIPLY_ALT function addresses the multiplication overflow problem by, if need be, truncating the output scale. If it is used to multiply a DEC(20,15) number and a DEC(20,13) number, the result is a DEC(31,19) number. The scale has been reduced to accommodate the required precision. Be aware that when there is a need for a scale in the output, and it is more than three digits, the function will leave at least three digits. Below are some examples of the output precisions and scales generated by this function:
+
+.Decimal multiplication - same output lengths
+|===
+|INPUT#1   |INPUT#2   |RESULT "*" OPERATOR|RESULT MULTIPLY_ALT|M_A->SCALE TRUNCATD| M_A->PRECISION TRUNCATD
+|DEC(05,00)|DEC(05,00)|DEC(10,00)         |DEC(10,00)         |NO                 |NO
+|DEC(10,05)|DEC(11,03)|DEC(21,08)         |DEC(21,08)         |NO                 |NO
+|DEC(20,15)|DEC(21,13)|DEC(31,28)         |DEC(31,18)         |YES                |NO
+|DEC(26,23)|DEC(10,01)|DEC(31,24)         |DEC(31,19)         |YES                |NO
+|DEC(31,03)|DEC(15,08)|DEC(31,11)         |DEC(31,03)         |YES                |YES
+|===
+
+==== NORMALIZE_DECFLOAT
+
+Removes any trailing zeros from a DECFLOAT value.
+
+.NORMALIZE_DECFLOAT function examples
+[source,sql]
+....
+WITH temp1 (d1) AS
+(VALUES (DECFLOAT(1))
+      , (DECFLOAT(1.0))
+      , (DECFLOAT(1.00))
+      , (DECFLOAT(1.000))
+      , (DECFLOAT('12.3'))
+      , (DECFLOAT('12.30'))
+      , (DECFLOAT(1.2e4))
+      , (DECFLOAT('1.2e4'))
+      , (DECFLOAT(1.2e-3))
+      , (DECFLOAT('1.2e-3'))
+)
+SELECT d1
+     , NORMALIZE_DECFLOAT(d1) AS d2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|D1                  |D2
+|1                   |1
+|1.0                 |1
+|1.00                |1
+|1.000               |1
+|12.3                |12.3
+|12.30               |12.3
+|12000               |1.2E+4
+|1.2E+4              |1.2E+4
+|0.001200000000000000|0.0012
+|0.0012              |0.0012
+|===
+
+==== NULLIF
+
+Returns null if the two values being compared are equal, otherwise
+returns the first value.
+
+.NULLIF function examples
+[source,sql]
+....
+SELECT s1
+     , NULLIF(s1, 0)
+     , c1
+     , NULLIF(c1, 'AB')
+FROM scalar
+WHERE NULLIF(0, 0) IS NULL;
+....
+
+_ANSWER_
+|===
+|S1|2 |C1    |4
+|2 |-2|ABCDEF|ABCDEF
+|0 |- |ABCD  |ABCD
+|1 |1 |AB    |-
+|===
+
+==== NVL
+
+Same as COALESCE.
+
+==== OCTET_LENGTH
+
+Returns the length of the input expression in octets (bytes).
+
+.OCTET_LENGTH example
+[source,sql]
+....
+WITH temp1 (c1) AS 
+(VALUES (CAST('ÁÉÌ' AS VARCHAR(10)))
+)
+SELECT c1                          AS C1
+     , LENGTH(c1)                  AS LEN
+     , OCTET_LENGTH(c1)            AS OCT
+     , CHAR_LENGTH(c1,OCTETS)      AS L08
+     , CHAR_LENGTH(c1,CODEUNITS16) AS L16
+     , CHAR_LENGTH(c1,CODEUNITS32) AS L32
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |LEN|OCT|L08|L16|L32
+|ÁÉÌ|6  |6  |6  |3  |3
+|===
+
+==== OVERLAY
+
+Overlay (i.e. replace) some part of a string with another string. There
+are five parameters:
+
+* The source string to be edited.
+* The new string to be inserted. This value can be zero length, but must be provided.
+* Start position for new string, and also to where start deleting. This value must be between one and the string length.
+* Number of bytes in the source to be overlaid. This value is optional.
+* The code unit to use.
+
+There are two function notations. One uses keywords to separate each parameter. The other uses commas.
+
+.OVERLAY function example
+[source,sql]
+....
+WITH temp1 (txt) AS
+(VALUES('abcded')
+     , ('addd')
+     , ('adq')
+)
+SELECT txt
+     , OVERLAY(txt,'XX',3,1,OCTETS) AS "s3f1"
+     , OVERLAY(txt,'XX',2, OCTETS)  AS "s2f0"
+     , OVERLAY(txt,'XX',1,1,OCTETS) AS "s1f1"
+     , OVERLAY(txt,'XX',2,2,OCTETS) AS "s2f2"
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|TXT   |s3f1   |s2f0   |s1f1   |s2f2
+|abcded|abXXded|aXXcded|XXbcded|aXXded
+|addd  |adXXd  |aXXdd  |XXddd  |aXXd
+|adq   |adXX   |aXXq   |XXdq   |aXX
+|===
+
+==== PARTITION
+
+Returns the partition map index of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
+
+.PARTITION function example
+[source,sql]
+....
+SELECT PARTITION(id) AS pp
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|PP
+|-0
+|===
+
+==== POSITION
+
+Returns an integer value with the absolute starting position of the first occurrence of the first string within the second string. If there is no match, the result is zero. The third parameter indicates what code-unit to use.
+
+When a special character like "Á" is encountered before the find-string (see last two lines in next example) the plain OCTETS search returns the number of bytes searched, not the number of characters:
+
+.POSITION function syntax
+[source,sql]
+....
+WITH temp1 (c1) As
+(VALUES ('Ä')
+      , ('aÄ')
+      , ('ÁÄ')
+      , ('ÁÁÄ')
+)
+SELECT c1
+     , POSITION('Ä',c1,OCTETS)          AS "p1"
+     , POSITION('Ä',c1,CODEUNITS16)     AS "p2"
+     , POSITION('Ä',c1,CODEUNITS32)     AS "p3"
+     , POSITION('Ä' IN c1 USING OCTETS) AS "p4"
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |p1|p2|p3|p4
+|Ä  |1 |1 |1 |1
+|aÄ |2 |2 |2 |2
+|ÁÄ |3 |2 |2 |3
+|ÁÁÄ|5 |3 |3 |5
+|===
+
+The LOCATE function (see <<locate.function>>) is very similar to the POSITION function. It has the additional capability of being able to start the search at any position in the search string.
+
+==== POSSTR
+
+Returns the position at which the second string is contained in the first string. If there is no match the value is zero. The test is case sensitive. The output format is integer.
+
+POSSTR function example
+[source,sql]
+....
+SELECT c1
+     , POSSTR(c1,' ')  AS p1
+     , POSSTR(c1,'CD') AS p2
+     , POSSTR(c1,'cd') AS p3
+FROM scalar
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|C1    |P1|P2|P3
+|AB    |3 |0 |0
+|ABCD  |5 |3 |0
+|ABCDEF|0 |3 |0
+|===
+
+[[posstr-vs-locate]]
+===== POSSTR vs. LOCATE
+
+The LOCATE and POSSTR functions are very similar. Both look for matching strings searching from the left. The only functional differences are that the input parameters are reversed and the LOCATE function enables one to begin the search at somewhere other than the start. When either is suitable for the task at hand, it is probably better to use the POSSTR function because it is a SYSIBM function and so should be faster.
+
+.POSSTR vs. LOCATE functions
+[source,sql]
+....
+SELECT c1
+     , POSSTR(c1, ' ')    AS p1
+     , LOCATE(' ', c1)    AS l1
+     , POSSTR(c1, 'CD')   AS p2
+     , LOCATE('CD', c1)   AS l2
+     , POSSTR(c1, 'cd')   AS p3
+     , LOCATE('cd', c1)   AS l3
+     , LOCATE('D', c1, 2) AS l4
+FROM scalar
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|C1    |P1|L1|P2|L2|P3|L3|L4
+|AB    |3 |3 |0 |0 |0 |0 |0
+|ABCD  |5 |5 |3 |3 |0 |0 |4
+|ABCDEF|0 |0 |3 |3 |0 |0 |4
+|===
+
+==== POWER
+
+Returns the value of the first argument to the power of the second argument
+
+.POWER function examples
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (1)
+      , (10)
+      , (100)
+)
+SELECT n1
+     , POWER(n1, 1) AS p1
+     , POWER(n1, 2) AS p2
+     , POWER(n1, 3) AS p3
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1 |P1 |P2   |P3
+|1  |1  |1    |1
+|10 |10 |100  |1000
+|100|100|10000|1000000
+|===
+
+==== QUANTIZE
+
+Convert the first input parameter to DECFLOAT, using the second parameter as a mask. The specific value of the second parameter is irrelevant. But the precision (i.e. number of digits after the decimal point) defines the precision of the DECFLOAT result:
+
+.QUANTIZE function examples
+[source,sql]
+....
+WITH temp1 (d1, d2) AS
+(VALUES (+1.23,   DECFLOAT(1.0))
+      , (+1.23,   DECFLOAT(1.00))
+      , (-1.23,   DECFLOAT(1.000))
+      , (+123,    DECFLOAT(9.8765))
+      , (+123,    DECFLOAT(1E-3))
+      , (+123,    DECFLOAT(1E+3))
+      , (SQRT(2), DECFLOAT(0.0))
+      , (SQRT(2), DECFLOAT('1E-5'))
+      , (SQRT(2), DECFLOAT( 1E-5 ))
+)
+SELECT QUANTIZE(d1,d2) AS q
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|Q
+|1.2
+|1.23
+|-1.230
+|123.0000
+|123.000
+|123
+|1.4
+|1.41421
+|1.414213562373095100000
+|===
+
+Observe that the function returns a very different result when the second parameter is '1E-5' vs. 1E-5 (i.e. with no quotes). This is because the number 1E-5 is not precisely converted to the DECFLOAT value 0.00001, as the following query illustrates:
+
+-DECFLOAT conversion example
+[source,sql]
+....
+WITH temp1 (d1) AS
+(VALUES (DECFLOAT('1E-5'))
+      , (DECFLOAT( 1E-5 ))
+)
+SELECT d1
+FROM temp1;
+....
+
+_ANSWER_ 
+|===
+|D1
+|0.00001
+|0.000010000000000000001
+|===
+
+==== QUARTER
+
+Returns an integer value in the range 1 to 4 that represents the quarter of the year from a date or timestamp (or equivalent) value.
+
+==== RADIANS
+
+Returns the number of radians converted from the input, which is expressed in degrees. The output format is double.
+
+==== RAISE_ERROR
+
+Causes the SQL statement to stop and return a user-defined error message when invoked. There are a lot of usage restrictions involving this function, see the SQL Reference for details.
+
+.RAISE_ERROR function example
+[source,sql]
+....
+SELECT s1
+     , CASE
+         WHEN s1 < 1 THEN s1
+         ELSE RAISE_ERROR('80001', c1)
+       END AS s2
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|S1              |S2
+|-2              |-2
+|0               |0
+|*SQLSTATE=80001*|
+|===
+
+The SIGNAL statement (see <<signal.statement>>) is the statement equivalent of this function.
+
+==== RAND
+
+WARNING: Using the RAND function in a predicate can result in unpredictable results. See <<rand.in.predicate>> for a detailed description of this issue. To randomly sample the rows in a table reliably and efficiently, use the TABLESAMPLE feature. See <<randomly.sample.data>> for details.
+
+Returns a pseudo-random floating-point value in the range of zero to one inclusive. An optional seed value can be provided to get reproducible random results. This function is especially useful when one is trying to create somewhat realistic sample data.
+
+*Usage Notes*
+
+* The RAND function returns any one of 32K distinct floating-point values in the range of zero to one inclusive. Note that many equivalent functions in other languages (e.g. SAS) return many more distinct values over the same range. 
+* The values generated by the RAND function are evenly distributed over the range of zero to one inclusive.
+* A seed can be provided to get reproducible results. The seed can be any valid number of type integer. Note that the use of a seed alone does not give consistent results. Two different SQL statements using the same seed may return different (but internally consistent) sets of pseudo-random numbers.
+* If the seed value is zero, the initial result will also be zero. All other seed values return initial values that are not the same as the seed. Subsequent calls of the RAND function in the same statement are not affected.
+* If there are multiple references to the RAND function in the same SQL statement, the seed of the first RAND invocation is the one used for all.
+* If the seed value is not provided, the pseudo-random numbers generated will usually be unpredictable. However, if some prior SQL statement in the same thread has already invoked the RAND function, the newly generated pseudo-random numbers "may" continue where the prior ones left off.
+
+===== Typical Output Values
+
+The following recursive SQL generates 100,000 random numbers using two as the seed value. The generated data is then summarized using various Db2 column functions:
+
+.Sample output from RAND function
+[source,sql]
+....
+WITH temp (num, ran) AS
+(VALUES (INT(1)
+       , RAND(2))
+  UNION ALL
+SELECT num + 1
+     , RAND()
+FROM temp
+WHERE num < 100000
+)
+SELECT COUNT(*)                                  AS #rows
+     , COUNT(DISTINCT ran)                       AS #values
+     , DEC(AVG(ran), 7, 6)                       AS avg_ran
+     , DEC(STDDEV(ran), 7, 6)                    AS std_devm
+     , DEC(MIN(ran), 7, 6)                       AS min_ran
+     , DEC(MAX(ran), 7, 6)                       AS max_ran
+     , DEC(MAX(ran), 7, 6) - DEC(MIN(ran), 7, 6) AS range
+     , DEC(VAR(ran), 7, 6)                       AS variance
+FROM temp;
+....
+
+_ANSWER_
+|===
+|#ROWS |#VALUES|AVG_RAN |STD_DEVM|MIN_RAN |MAX_RAN |RANGE   |VARIANCE
+|100000|31242  |0.499838|0.288706|0.000000|1.000000|1.000000|0.083351
+|===
+
+Observe that less than 32K distinct numbers were generated. Presumably, this is because the RAND function uses a 2-byte carry. Also observe that the values range from a minimum of zero to a maximum of one. 
+
+WARNING: Unlike most, if not all, other numeric functions in Db2, the RAND function returns different results in different flavors of Db2.
+
+===== Reproducible Random Numbers
+
+The RAND function creates pseudo-random numbers. This means that the output looks random, but it is actually made using a very specific formula. If the first invocation of the function uses a seed value, all subsequent invocations will return a result that is explicitly derived from the initial seed. To illustrate this concept, the following statement selects six random numbers. Because of the use of the seed, the same six values will always be returned when this SQL statement is invoked (when invoked on my machine): 
+
+.Make reproducible random numbers (use seed)
+[source,sql]
+....
+SELECT deptno  AS dno
+     , RAND(0) AS ran
+FROM department
+WHERE deptno < 'E'
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|DNO|RAN
+|A00|+1.15970336008789E-003
+|B01|+2.35572374645222E-001
+|C01|+6.48152104251228E-001
+|D01|+7.43736075930052E-002
+|D11|+2.70241401409955E-001
+|D21|+3.60026856288339E-001
+|===
+
+To get random numbers that are not reproducible, simply leave the seed out of the first invocation of the RAND function. To illustrate, the following statement will give differing results with each invocation:
+
+.Make non-reproducible random numbers (no seed)
+[source,sql]
+....
+SELECT deptno AS dno
+     , RAND() AS ran
+FROM department
+WHERE deptno < 'D'
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|DNO|RAN
+|A00|+2.55287331766717E-001
+|B01|+9.85290078432569E-001
+|C01|+3.18918424024171E-001
+|===
+
+NOTE: Use of the seed value in the RAND function has an impact across multiple SQL statements. For example, if the above two statements were always run as a pair (with nothing else run in between), the result from the second would always be the same.
+
+===== Generating Random Values
+
+Imagine that we need to generate a set of reproducible random numbers that are within a certain range (e.g. 5 to 15). Recursive SQL can be used to make the rows, and various scalar functions can be used to get the right range of data. In the following example we shall make a list of three columns and ten rows. The first field is a simple ascending sequence. The second is a set of random numbers of type smallint in the range zero to 350 (by increments of ten). The last is a set of random decimal numbers in the range of zero to 10,000.
+
+.Use RAND to make sample data
+[source,sql]
+....
+WITH Temp1 (col1, col2, col3) AS
+(VALUES (0
+       , SMALLINT(RAND(2)*35)*10
+       , DECIMAL(RAND()*10000, 7, 2)
+       )
+  UNION ALL
+SELECT col1 + 1
+     , SMALLINT(RAND()*35)*10
+     , DECIMAL(RAND()*10000, 7, 2)
+FROM temp1
+WHERE col1 + 1 < 10
+)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|COL1|COL2|COL3
+|0   |0   |9342.32
+|1   |250 |8916.28
+|2   |310 |5430.76
+|3   |150 |5996.88
+|4   |110 |8066.34
+|5   |50  |5589.77
+|6   |130 |8602.86
+|7   |340 |184.94
+|8   |310 |5441.14
+|9   |70  |9267.55
+|===
+
+NOTE: See the section titled "Making Sample Data" for more detailed examples of using the RAND function and recursion to make test data.
+
+===== Making Many Distinct Random Values
+
+The RAND function generates 32K distinct random values. To get a larger set of (evenly distributed) random values, combine the result of two RAND calls in the manner shown below for the RAN2 column:
+
+.Use RAND to make many distinct random values
+[source,sql]
+....
+WITH temp1 (col1,ran1,ran2) AS
+(VALUES (0, 
+         RAND(2),
+         RAND()+(RAND()/1E5)
+        )
+  UNION ALL
+SELECT col1 + 1
+     , RAND()
+     , RAND() +(RAND()/1E5)
+FROM temp1
+WHERE col1 + 1 < 30000
+)
+SELECT COUNT(*)             AS col#1
+     , COUNT(DISTINCT ran1) AS ran#1
+     , COUNT(DISTINCT ran2) AS ran#2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|COL#1|RAN#1|RAN#2
+|30000|19698|29998
+|===
+
+Observe that we do not multiply the two values that make up the RAN2 column above. If we did this, it would skew the average (from 0.5 to 0.25), and we would always get a zero whenever either one of the two RAND functions returned a zero. 
+
+NOTE: The GENERATE_UNIQUE function can also be used to get a list of distinct values, and actually does a better job that the RAND function. With a bit of simple data manipulation (see <<generate.unique.function>>), these values can also be made random.
+
+===== Selecting Random Rows, Percentage
+
+WARNING: Using the RAND function in a predicate can result in unpredictable results. See <<rand.in.predicate>> for a detailed description of this issue.
+
+Imagine that you want to select approximately 10% of the matching rows from some table. The predicate in the following query will do the job: 
+
+.Randomly select 10% of matching rows
+[source,sql]
+....
+SELECT id
+     , name
+FROM staff
+WHERE RAND() < 0.1
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |NAME
+|140|Fraye
+|190|Sneider
+|290|Quill
+|===
+
+The RAND function randomly generates values in the range of zero through one, so the above query should return approximately 10% the matching rows. But it may return anywhere from zero to all of the matching rows - depending on the specific values that the RAND function generates. If the number of rows to be processed is large, then the fraction (of rows) that you get will be pretty close to what you asked for. But for small sets of matching rows, the result set size is quite often anything but what you wanted.
+
+===== Selecting Random Rows, Number
+
+The following query will select five random rows from the set of matching rows. It begins (in the inner-most nested table expression) by using the RAND function to assign random values to each matching row.
+Subsequently, the ROW_NUMBER function is used to sequence each random value. Finally, those rows with the five lowest row numbers are selected:
+
+.Select five random rows
+[source,sql]
+....
+SELECT id
+     , name
+FROM
+  (SELECT s2.*
+        , ROW_NUMBER() OVER(ORDER BY r1) AS r2
+   FROM
+       (SELECT s1.*
+             , RAND() AS r1
+        FROM staff s1
+        WHERE id <= 100) AS s2
+  ) as s3
+WHERE r2 <= 5
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |NAME
+|10 |Sanders
+|30 |Marenghi
+|40 |O'Brien
+|70 |Rothman
+|100|Plotz
+|===
+
+===== Use in DML
+
+Imagine that in act of inspired unfairness, we decided to update a selected set of employee's salary to a random number in the range of zero to $10,000. This too is easy:
+
+.Use RAND to assign random salaries
+[source,sql]
+....
+UPDATE staff
+SET salary = RAND()*10000
+WHERE id < 50;
+....
+
+==== REAL
+
+Returns a single-precision floating-point representation of a number.
+
+.REAL and other numeric function examples
+[source,sql]
+....
+SELECT n1          AS dec
+     , DOUBLE(n1)  AS dbl
+     , REAL(n1)    AS rel
+     , INTEGER(n1) AS int
+     , BIGINT(n1)  AS big
+FROM
+  (SELECT 1234567890.123456789012345678901 AS n1
+   FROM staff 
+   WHERE id = 10) AS xxx;
+....
+
+_ANSWER_
+|===
+|DEC                             |DBL                  |REL          |INT       |BIG
+|1234567890.123456789012345678901|1.23456789012346e+009|1.234568e+009|1234567890|1234567890
+|===
+
+==== REPEAT
+
+Repeats a character string "n" times.
+
+.REPEAT function example
+[source,sql]
+....
+SELECT id
+     , CHAR(REPEAT(name, 3), 40)
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|2
+|10|SandersSandersSanders
+|20|PernalPernalPernal
+|30|MarenghiMarenghiMarenghi
+|===
+
+==== REPLACE
+
+Replaces all occurrences of one string with another. The output is of type varchar(4000).
+
+.REPLACE function examples
+[source,sql]
+....
+SELECT c1
+     , REPLACE(c1,'AB','XY') AS r1
+     , REPLACE(c1,'BA','XY') AS r2
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|C1    |R1    |R2
+|ABCDEF|XYCDEF|ABCDEF
+|ABCD  |XYCD  |ABCD
+|AB    |XY    |AB
+|===
+
+The REPLACE function is case sensitive. To replace an input value, regardless of the case, one can nest the REPLACE function calls. Unfortunately, this technique gets to be a little tedious when the number of characters to replace is large. 
+
+.Nested REPLACE functions
+[source,sql]
+....
+SELECT c1
+, REPLACE(
+    REPLACE(
+      REPLACE(
+        REPLACE(c1, 'AB', 'XY')
+        , 'ab', 'XY')
+      , 'Ab', 'XY')
+    , 'aB', 'XY')
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|C1    |R1
+|ABCDEF|XYCDEF
+|ABCD  |XYCD
+|AB    |XY
+|===
+
+==== RID
+
+Returns the RID (i.e. row identifier - of type BIGINT) for the matching row. The row identifier contains the page number, and the row number within the page. A unique table identifier must be provided.
+
+.RID function example
+[source,sql]
+....
+SELECT id
+     , salary
+     , RID(staff) AS staff_rid
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |STAFF_RID
+|10|98357.50|100663300
+|20|78171.25|100663301
+|30|77506.75|100663302
+|===
+
+The RID function is similar to the RID_BIT function, but less useful (e.g. does not work in a DPF environment). All subsequent examples will refer to the RID_BIT function.
+
+==== RID_BIT
+
+Returns the row identifier, of type VARCHAR(16) FOR BIT DATA, for the row. The row identifier contains the page number, and the row number within the page. The only input value, which must be provided, is the (unique) table identifier. The table must be listed in the subsequent FROM statement.
+
+.RID_BIT function example – single table
+[source,sql]
+....
+SELECT id
+     , RID_BIT(staff) AS rid_bit
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|RID_BIT
+|10|x'04000006000000000000000000FCE14D'
+|20|x'05000006000000000000000000FCE14D'
+|30|x'06000006000000000000000000FCE14D'
+|===
+
+When the same table is referenced twice in the FROM, the correlation name must be used:
+
+.RID_BIT function example – multiple tables
+[source,sql]
+....
+SELECT s1.id
+     , RID_BIT(s1) AS rid_bit
+FROM staff s1
+   , staff s2
+WHERE s1.id < 40
+AND   s1.id = s2.id - 10
+ORDER BY s1.id;
+....
+
+_ANSWER_
+|===
+|ID|RID_BIT
+|10|x'04000006000000000000000000FCE14D'
+|20|x'05000006000000000000000000FCE14D'
+|30|x'06000006000000000000000000FCE14D'
+|===
+
+The RID function can be used in a predicate to uniquely identify a row. To illustrate, the following query gets the RID and ROW CHANGE TOKEN for a particular row:
+
+.RID_BIT function example – select row to update
+[source,sql]
+....
+SELECT id
+     , salary
+     , RID_BIT(staff)
+     , ROW CHANGE TOKEN FOR staff
+FROM staff
+WHERE id = 20;
+....
+
+_ANSWER_ 
+
+|===
+|ID|SALARY  |3                                  |4
+|20|78171.25|x'05000006000000000000000000FCE14D'|3999250443959009280
+|===
+
+If at some subsequent point in time we want to update this row, we can use the RID value to locate it directly, and the ROW CHANGE TOKEN to confirm that it has not been changed:
+
+.RID_BIT function example – update row
+[source,sql]
+....
+UPDATE staff
+SET salary = salary * 1.1
+WHERE RID_BIT(staff) = x'05000006000000000000000000FCE14D'
+AND ROW CHANGE TOKEN FOR staff = 3999250443959009280;
+....
+
+*Usage Notes*
+
+* The table name provided to the RID_BIT function must uniquely identify the table being processed. If a view is referenced, the view must be deletable.
+* The RID_BIT function will return a different value for a particular row a REORG is run.
+* The ROW CHANGE TOKEN changes every time a row is updated, including when an update is rolled back. So after a rollback the value will be different from what it was at the beginning of the unit of work.
+* The ROW CHANGE TOKEN is unique per page, not per row. So if any other row in the same page is changed, the prior update will not match. This is called a "false negative". To avoid, define a ROW CHANGE TIMESTAMP column for the table, as the value in this field is unique per row. 
+
+==== RIGHT
+
+Has two arguments: The first is an input string of type char, varchar, clob, or blob. The second is a positive integer value. The output, of type varchar(4000), is the right most characters in the string.
+
+.RIGHT function examples
+[source,sql]
+....
+WITH temp1(c1) AS
+(VALUES (' ABC')
+      , (' ABC ')
+      , ('ABC ')
+)
+SELECT c1
+     , RIGHT(c1, 4)        AS c2
+     , LENGTH(RIGHT(c1,4)) AS l2
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |C2 |L2
+|ABC|ABC|4
+|ABC|ABC|4
+|ABC|BC |4
+|===
+
+==== ROUND
+
+Rounds the rightmost digits of number (1st argument). If the second argument is positive, it rounds to the right of the decimal place. If the second argument is negative, it rounds to the left. A second argument of zero results rounds to integer. The input and output types are the same, except for decimal where the precision will be increased by one - if possible. Therefore, a DEC(5,2)field will be returned as DEC(6,2), and a DEC(31,2) field as DEC(31,2). To truncate instead of round, use the TRUNCATE function.
+
+.ROUND function examples
+[source,sql]
+....
+WITH temp1(d1) AS
+(VALUES (123.400)
+      , ( 23.450)
+      , ( 3.456)
+      , (   .056))
+SELECT d1
+     , DEC(ROUND(d1,+2),6,3) AS p2
+     , DEC(ROUND(d1,+1),6,3) AS p1
+     , DEC(ROUND(d1,+0),6,3) AS p0
+     , DEC(ROUND(d1,-1),6,3) AS n1
+     , DEC(ROUND(d1,-2),6,3) AS v
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|D1     |P2     |P1     |P0     |N1     |N2
+|123.400|123.400|123.400|123.000|120.000|100.000
+|23.450 |23.450 |23.400 |23.000 |20.000 |0.000
+|3.456  |3.460  |3.500  |3.000  |0.000  |0.000
+|0.056  |0.060  |0.100  |0.000  |0.000  |0.000
+|===
+
+==== RTRIM
+
+Trims the right-most blanks of a character string.
+
+.RTRIM function example
+[source,sql]
+....
+SELECT c1
+     , RTRIM(c1)         AS r1
+     , LENGTH(c1)        AS r2
+     , LENGTH(RTRIM(c1)) AS r3
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|C1    |R1     |R2|R3
+|ABCDEF| ABCDEF|6 |6
+|ABCD  |ABCD   |6 |4
+|AB    |AB     |6 |2
+|===
+
+==== SECLABEL Functions
+
+The SECLABEL, SECLABEL_BY_NAME, and SECLABEL_BY_CHAR functions are used to process security labels. See the SQL Reference for more details.
+
+==== SECOND
+
+Returns the second (of minute) part of a time or timestamp (or equivalent) value.
+
+==== SIGN
+
+Returns -1 if the input number is less than zero, 0 if it equals zero, and +1 if it is greater than zero. The input and output types will equal, except for decimal which returns double.
+
+.SIGN function examples
+[source,sql]
+....
+SELECT d1
+     , SIGN(d1)
+     , f1
+     , SIGN(f1)
+FROM scalar;
+....
+
+_ANSWER (float output shortened)_
+|===
+|D1  |2        |F1       |4
+|-2.4|-1.000E+0|-2.400E+0|-1.000E+0
+|0.0 |+0.000E+0|+0.000E+0|+0.000E+0
+|1.8 |+1.000E+0|+1.800E+0|+1.000E+0
+|===
+
+==== SIN
+
+Returns the SIN of the argument where the argument is an angle expressed in radians. The output format is double. 
+
+.SIN function example
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (0)
+   UNION ALL
+ SELECT n1 + 10
+ FROM temp1
+ WHERE n1 < 80
+)
+SELECT n1
+     , DEC(RADIANS(n1),4,3)      AS ran
+     , DEC(SIN(RADIANS(n1)),4,3) AS sin
+     , DEC(TAN(RADIANS(n1)),4,3) AS tan
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1|RAN  |SIN  |TAN
+|0 |0.000|0.000|0.000
+|10|0.174|0.173|0.176
+|20|0.349|0.342|0.363
+|30|0.523|0.500|0.577
+|40|0.698|0.642|0.839
+|50|0.872|0.766|1.191
+|60|1.047|0.866|1.732
+|70|1.221|0.939|2.747
+|80|1.396|0.984|5.671
+|===
+
+==== SINH
+
+Returns the hyperbolic sin for the argument, where the argument is an angle expressed in radians. The output format is double.
+
+==== SMALLINT
+
+Converts either a number or a valid character value into a smallint value.
+
+.SMALLINT function examples
+[source,sql]
+....
+SELECT d1
+     , SMALLINT(d1)
+     , SMALLINT('+123')
+     , SMALLINT('-123')
+     , SMALLINT(' 123 ')
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|D1  |2 |3  |4   |5
+|-2.4|-2|123|-123|123
+|0.0 |0 |123|-123|123
+|1.8 |1 |123|-123|123
+|===
+
+==== SNAPSHOT Functions
+
+The various SNAPSHOT functions can be used to analyze the system. They are beyond the scope of this book. Refer instead to the Db2 System Monitor Guide and Reference.
+
+==== SOUNDEX
+
+Returns a 4-character code representing the sound of the words in the argument. Use the DIFFERENCE function to convert words to soundex values and then compare. 
+
+.SOUNDEX function example
+[source,sql]
+....
+SELECT a.name          AS n1
+     , SOUNDEX(a.name) AS s1
+	 , b.name          AS n2
+	 , SOUNDEX(b.name) AS s2
+	 , DIFFERENCE(a.name,b.name) AS df 
+FROM staff a
+   , staff b 
+WHERE a.id = 10 
+AND b.id > 150 AND b.id < 250 
+ORDER BY df DESC
+       , n2 ASC;
+....
+_ANSWER_
+|===
+|N1     |S1  |N2       |S2  |DF
+|Sanders|S536|Sneider  |S536|4
+|Sanders|S536|Smith    |S530|3
+|Sanders|S536|Lundquist|L532|2
+|Sanders|S536|Daniels  |D542|1
+|Sanders|S536|Molinare |M456|1
+|Sanders|S536|Scoutten |S350|1
+|Sanders|S536|Abrahams |A165|0
+|Sanders|S536|Kermisch |K652|0
+|Sanders|S536|Lu       |L000|0
+|===
+
+===== SOUNDEX Formula
+
+There are several minor variations on the SOUNDEX algorithm. Below is one example:
+
+* The first letter of the name is left unchanged.
+* The letters W and H are ignored.
+* The vowels, A, E, I, O, U, and Y are not coded, but are used as separators (see last item).
+* The remaining letters are coded as:
+|===
+|Letters                 |Value
+|B, P, F, V              |1
+|C, G, J, K, Q, S, X, Z 2|2
+|D, T                    |3
+|L                       |4
+|M, N                    |5
+|R                       |6
+|===
+* Letters that follow letters with same code are ignored unless a separator (see the third item above) precedes them.
+
+The result of the above calculation is a four byte value. The first byte is a character as defined in step one. The remaining three bytes are digits as defined in steps two through four.
+
+Output longer than four bytes is truncated If the output is not long enough, it is padded on the right with zeros. The maximum number of distinct values is 8,918. 
+
+NOTE: The SOUNDEX function is something of an industry standard that was developed several decades ago. Since that time, several other similar functions have been developed. You may want to investigate writing your own Db2 function to search for similarsounding names.
+
+==== SPACE
+
+Returns a string consisting of "n" blanks. The output format is varchar(4000).
+
+.SPACE function examples
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (1)
+      , (2)
+      , (3)
+)
+SELECT n1
+     , SPACE(n1)         AS s1
+     , LENGTH(SPACE(n1)) AS s2
+     , SPACE(n1) || 'X'  AS s3
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1|S1|S2|S3
+|1 |  |1 |"X"
+|2 |  |2 |" X"
+|3 |  |3 |" X"
+|===
+
+==== SQRT
+
+Returns the square root of the input value, which can be any positive number. The output format is double.
+
+.SQRT function example
+[source,sql]
+....
+WITH temp1(n1) AS
+(VALUES (0.5)
+      , (0.0)
+      , (1.0)
+      , (2.0)
+)
+SELECT DEC(n1,4,3)       AS n1
+     , DEC(SQRT(n1),4,3) AS s1
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|N1   |S1
+|0.500|0.707
+|0.000|0.000
+|1.000|1.000
+|2.000|1.414
+|===
+
+==== STRIP
+
+Removes leading, trailing, or both (the default), characters from a string. If no strip character is provided, leading and/or trailing blank characters are removed.
+
+Observe in the following query that the last example removes leading "A" characters:
+
+.STRIP function example
+[source,sql]
+....
+WITH temp1(c1) AS
+(VALUES (' ABC')
+      , (' ABC ')
+      , ('ABC ')
+)
+SELECT c1                        AS c1
+     , STRIP(c1)                 AS c2
+     , LENGTH(STRIP(c1))         AS l2
+     , STRIP(c1,LEADING)         AS c3
+     , LENGTH(STRIP(c1,LEADING)) AS l3
+     , STRIP(c1,LEADING,'A')     AS C4
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|C1 |C2 |L2|C3 |L3|C4
+|ABC|ABC|3 |ABC|3 |ABC
+|ABC|ABC|3 |ABC|4 |ABC
+|ABC|ABC|3 |ABC|5 |BC
+|===
+
+The TRIM function works the same way.
+
+==== SUBSTR
+
+Returns part of a string. If the length is not provided, the output is from the start value to the end of the string.
+
+If the length is provided, and it is longer than the field length, a SQL error results. The following statement illustrates this. Note that in this example the DAT1 field has a "field length" of 9 (i.e. the length of the longest input string).
+
+.SUBSTR function - error because length parm too long
+[source,sql]
+....
+WITH temp1 (len, dat1) AS
+(VALUES ( 6,'123456789')
+      , ( 4,'12345')
+      , ( 16,'123')
+)
+SELECT len
+     , dat1
+     , LENGTH(dat1)         AS ldat
+     , SUBSTR(dat1, 1, len) AS subdat
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|LEN|DAT1     |LDAT|SUBDAT
+|6  |123456789|9   |123456
+|4  |12345    |5   |1234
+|===
+
+The best way to avoid the above problem is to simply write good code. If that sounds too much like hard work, try the following SQL:
+
+.SUBSTR function - avoid error using CASE (see previous)
+[source,sql]
+....
+WITH temp1 (len, dat1) AS
+(VALUES ( 6,'123456789')
+      , ( 4,'12345')
+      , ( 16,'123'
+)
+SELECT len
+     , dat1
+     , LENGTH(dat1) AS ldat
+     , SUBSTR(dat1, 1,
+         CASE
+           WHEN len < LENGTH(dat1) THEN len
+           ELSE LENGTH(dat1)
+         END ) AS subdat
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|LEN|DAT1     |LDAT|SUBDAT
+|6  |123456789|9   |123456
+|4  |12345    |5   |1234
+|16 |123      |3   |123
+|===
+
+In the above SQL a CASE statement is used to compare the LEN value against the length of the DAT1 field. If the former is larger, it is replaced by the length of the latter. If the input is varchar, and no length value is provided, the output is varchar. However, if the length is provided, the output is of type char - with padded blanks (if needed):
+
+.SUBSTR function - fixed length output if third parm. used
+[source,sql]
+....
+SELECT name
+     , LENGTH(name) AS len
+     , SUBSTR(name,5) AS s1
+     , LENGTH(SUBSTR(name,5)) AS l1
+     , SUBSTR(name,5,3) AS s2
+     , LENGTH(SUBSTR(name,5,3)) AS l2
+FROM staff
+WHERE id < 60;
+....
+
+_ANSWER_
+|===
+|NAME    |LEN|S1  |L1|S2 |L2
+|Sanders |7  |ers |3 |ers|3
+|Pernal  |6  |al  |2 |al |3
+|Marenghi|8  |nghi|4 |ngh|3
+|O'Brien |7  |ien |3 |ien|3
+|Hanes   |5  |s   |1 |s  |3
+|===
+
+==== TABLE
+
+There isn't really a TABLE function, but there is a TABLE phrase that returns a result, one row at a time, from either an external (e.g. user written) function, or from a nested table expression. The TABLE phrase (function) has to be used in the latter case whenever there is a reference in the nested table expression to a row that exists outside of the expression. An example follows:
+
+.Fullselect with external table reference
+[source,sql]
+....
+SELECT a.id
+     , a.dept
+     , a.salary
+     , b.deptsal
+FROM staff a
+, TABLE 
+    (SELECT b.dept
+          , SUM(b.salary) AS deptsal
+     FROM staff b
+     WHERE b.dept = a.dept
+     GROUP BY b.dept
+    ) AS b
+WHERE a.id < 40
+ORDER BY a.id;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY  |DEPTSAL
+|10|20  |98357.50|254286.10
+|20|20  |78171.25|254286.10
+|30|38  |77506.75|302285.55
+|===
+
+See <<table.function.usage>> for more details on using of the TABLE phrase in a nested table expression.
+
+==== TABLE_NAME
+
+Returns the base view or table name for a particular alias after all alias chains have been resolved. The output type is varchar(18). If the alias name is not found, the result is the input values. There are two input parameters. The first, which is required, is the alias name. The second, which is optional, is the alias schema. If the second parameter is not provided, the default schema is used for the qualifier.
+
+TABLE_NAME function example
+[source,sql]
+....
+CREATE ALIAS emp1 FOR employee;
+CREATE ALIAS emp2 FOR emp1;
+
+SELECT tabschema
+     , tabname
+     , card
+FROM syscat.tables
+WHERE tabname = TABLE_NAME('emp2', 'graeme');
+....
+
+_ANSWER_
+|===
+|TABSCHEMA|TABNAME |CARD
+|graeme   |employee|-1
+|===
+
+==== TABLE_SCHEMA
+
+Returns the base view or table schema for a particular alias after all alias chains have been resolved. The output type is char(8). If the alias name is not found, the result is the input values. There are two input parameters. The first, which is required, is the alias name. The second, which is optional, is the alias schema. If the second parameter is not provided, the default schema is used for the qualifier.
+
+*Resolving non-existent Objects*
+
+Dependent aliases are not dropped when a base table or view is removed. After the base table or view drop, the TABLE_SCHEMA and TABLE_NAME functions continue to work fine (see the 1st output line below). 
+However, when the alias being checked does not exist, the original input values (explicit or implied) are returned (see the 2nd output line below).
+
+.TABLE_SCHEMA and TABLE_NAME functions example
+[source,sql]
+....
+CREATE VIEW fred1 (c1, c2, c3)
+AS VALUES (11, 'AAA', 'BBB');
+CREATE ALIAS fred2 FOR fred1;
+CREATE ALIAS fred3 FOR fred2;
+
+DROP VIEW fred1;
+
+WITH temp1 (tab_sch, tab_nme) AS
+(VALUES  (TABLE_SCHEMA('fred3', 'graeme')
+       , TABLE_NAME('fred3'))
+       , (TABLE_SCHEMA('xxxxx')
+       , TABLE_NAME('xxxxx', 'xxx')))
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|TAB_SCH|TAB_NME
+|graeme |fred1
+|graeme |xxxxx
+|===
+
+==== TAN
+
+Returns the tangent of the argument where the argument is an angle expressed in radians.
+
+==== TANH
+
+Returns the hyperbolic tan for the argument, where the argument is an angle expressed in radians. The output format is double.
+
+==== TIME
+
+Converts the input into a time value.
+
+==== TIMESTAMP
+
+Converts the input(s) into a timestamp value.
+
+*Argument Options*
+
+If only one argument is provided, it must be (one of):
+
+* A timestamp value.
+* A character representation of a timestamp (the microseconds are optional).
+* A 14 byte string in the form: YYYYMMDDHHMMSS.
+
+If both arguments are provided:
+
+* The first must be a date, or a character representation of a date.
+* The second must be a time, or a character representation of a time.
+
+.TIMESTAMP function examples
+[source,sql]
+....
+SELECT TIMESTAMP('1997-01-11-22.44.55.000000')
+     , TIMESTAMP('1997-01-11-22.44.55.000')
+	 , TIMESTAMP('1997-01-11-22.44.55')
+	 , TIMESTAMP('19970111224455')
+	 , TIMESTAMP('1997-01-11','22.44.55')
+FROM staff WHERE id = 10;
+....
+
+[[timestamp_format.function]]
+==== TIMESTAMP_FORMAT
+
+Takes an input string with the format: "YYYY-MM-DD HH:MM:SS" and converts it into a valid timestamp value. The VARCHAR_FORMAT function does the inverse.
+
+.TIMESTAMP_FORMAT function example
+[source,sql]
+....
+WITH temp1 (ts1) AS
+(VALUES ('1999-12-31 23:59:59')
+      , ('2002-10-30 11:22:33')
+)
+SELECT ts1
+     , TIMESTAMP_FORMAT(ts1, 'YYYY-MM-DD HH24:MI:SS') AS ts2
+FROM temp1
+ORDER BY ts1;
+....
+
+_ANSWER_
+|===
+|TS1                |TS2
+|1999-12-31 23:59:59|1999-12-31-23.59.59.000000
+|2002-10-30 11:22:33|2002-10-30-11.22.33.000000
+|===
+
+Note that the only allowed formatting mask is the one shown.
+
+==== TIMESTAMP_ISO
+
+Returns a timestamp in the ISO format (yyyy-mm-dd hh:mm:ss.nnnnnn) converted from the IBM internal format (yyyy-mm-dd-hh.mm.ss.nnnnnn). If the input is a date, zeros are inserted in the time part. If the input is a time, the current date is inserted in the date part and zeros in the microsecond section.
+
+.TIMESTAMP_ISO function example
+[source,sql]
+....
+SELECT tm1
+     , TIMESTAMP_ISO(tm1)
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|TM1     |2
+|23:58:58|2000-09-01-23.58.58.000000
+|15:15:15|2000-09-01-15.15.15.000000
+|00:00:00|2000-09-01-00.00.00.000000
+|===
+
+==== TIMESTAMPDIFF
+
+Returns an integer value that is an estimate of the difference between two timestamp values. Unfortunately, the estimate can sometimes be seriously out (see the example below), so this function should be used with extreme care.
+
+*Arguments*
+
+There are two arguments. The first argument indicates what interval kind is to be returned. Valid options are:
+
+* *1* = Microseconds.
+* *2* = Seconds.
+* *4* = Minutes.
+* *8* = Hours.
+* *16* = Days.
+* *32* = Weeks.
+* *64* = Months.
+* *128* = Quarters.
+* *256* = Years.
+
+The second argument is the result of one timestamp subtracted from another and then converted to character.
+
+.TIMESTAMPDIFF function example
+[source,sql]
+....
+WITH
+temp1 (ts1,ts2) AS
+(VALUES ('1996-03-01-00.00.01','1995-03-01-00.00.00')
+      , ('1996-03-01-00.00.00','1995-03-01-00.00.01')
+),
+temp2 (ts1,ts2) AS
+(SELECT TIMESTAMP(ts1)
+      , TIMESTAMP(ts2)
+ FROM temp1
+),
+temp3 (ts1,ts2,df) AS
+(SELECT ts1
+      , ts2
+      , CHAR(TS1 - TS2) AS df
+FROM temp2)
+SELECT df
+     , TIMESTAMPDIFF(16,df)  AS dif
+     , DAYS(ts1) - DAYS(ts2) AS dys
+FROM temp3;
+....
+
+_ANSWER_
+|===
+|DF                   |DIF|DYS
+|00010000000001.000000|365|366
+|00001130235959.000000|360|366
+|===
+
+WARNING: Some the interval types return estimates, not definitive differences, so should be used with care. For example, to get the difference between two timestamps in days, use the DAYS function as shown above. It is always correct.
+
+===== Roll Your Own
+
+The following user-defined function will get the difference, in microseconds, between two timestamp values. It can be used as an alternative to the above:
+
+.Function to get difference between two timestamps
+[source,sql]
+....
+CREATE FUNCTION ts_diff_works(in_hi TIMESTAMP, in_lo TIMESTAMP)
+RETURNS BIGINT
+RETURN (BIGINT(DAYS(in_hi))             * 86400000000
+      + BIGINT(MIDNIGHT_SECONDS(in_hi)) * 1000000
+      + BIGINT(MICROSECOND(in_hi)))
+      -(BIGINT(DAYS(in_lo))             * 86400000000
+      + BIGINT(MIDNIGHT_SECONDS(in_lo)) * 1000000
+      + + BIGINT(MICROSECOND(in_lo)));
+....
+
+==== TO_CHAR
+
+This function is a synonym for VARCHAR_FORMAT (see <<varchar_format.function>>). It converts a timestamp value into a string using a template to define the output layout.
+
+==== TO_DATE
+
+This function is a synonym for TIMESTAMP_FORMAT (see <<timestamp_format.function>>). It converts a character string value into a timestamp using a template to define the input layout.
+
+==== TOTALORDER
+
+Compares two DECFLOAT expressions and returns a SMALLINT number:
+
+* *-1* if the first value is less than the second value.
+* *0* if both values exactly equal (i.e. no trailing-zero differences)
+* *+1* if the first value is greater than the second value.
+
+Several values that compare as "less than" or "greater than" in the example below are equal in the usual sense. See the section on DECFLOAT arithmetic for details (see <<decfloat.arithmetic>>).
+
+,TOTALORDER function example
+[source,sql]
+....
+WITH temp1 (d1, d2) AS
+(VALUES (DECFLOAT(+1.0), DECFLOAT(+1.0))
+      , (DECFLOAT(+1.0), DECFLOAT(+1.00))
+      , (DECFLOAT(-1.0), DECFLOAT(-1.00))
+      , (DECFLOAT(+0.0), DECFLOAT(+0.00))
+      , (DECFLOAT(-0.0), DECFLOAT(-0.00))
+      , (DECFLOAT(1234), +infinity)
+      , (+infinity, +infinity)
+      , (+infinity, -infinity)
+      , (DECFLOAT(1234), -NaN)
+)
+SELECT TOTALORDER(d1,d2)
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|1
+|0
+|1
+|-1
+|1
+|1
+|-1
+|0
+|1
+|1
+|===
+
+==== TRANSLATE
+
+Converts individual characters in either a character or graphic input string from one value to another. It can also convert lower case data to upper case.
+
+*Usage Notes*
+
+* The use of the input string alone generates upper case output.
+* When "from" and "to" values are provided, each individual "from" character in the input string is replaced by the corresponding "to" character (if there is one).
+* If there is no "to" character for a particular "from" character, those characters in the input string that match the "from" are set to blank (if there is no substitute value).
+* A fourth, optional, single-character parameter can be provided that is the substitute character to be used for those "from" values having no "to" value.
+* If there are more "to" characters than "from" characters, the additional "to" characters are ignored. 
+
+.TRANSLATE function examples
+[source,sql]
+....
+SELECT 'abcd'
+      , TRANSLATE('abcd')
+	  , TRANSLATE('abcd', '', 'a')
+	  , TRANSLATE('abcd', 'A', 'A')
+	  , TRANSLATE('abcd', 'A', 'a')
+	  , TRANSLATE('abcd', 'A', 'ab')
+	  , TRANSLATE('abcd', 'A', 'ab', ' ')
+	  , TRANSLATE('abcd', 'A', 'ab', 'z')
+	  , TRANSLATE('abcd', 'AB', 'a')
+FROM staff WHERE id = 10;
+....
+|===
+|ANS.|NOTES
+|abcd|No change
+|ABCD|Make upper case
+|bcd |'a'=>' '
+|abcd|'A'=>'A'
+|Abcd|'a'=>'A'
+|A cd|'a'=>'A','b'=>' '
+|A cd|'a'=>'A','b'=>' '
+|Azcd|'a'=>'A','b'=>'z'
+|Abcd|'a'=>'A'
+|===
+
+[[replace-vs-translate---a-comparison]]
+===== REPLACE vs. TRANSLATE - A Comparison
+
+Both the REPLACE and the TRANSLATE functions alter the contents of input strings. They differ in that the REPLACE converts whole strings while the TRANSLATE converts multiple sets of individual characters. Also, the "to" and "from" strings are back to front.
+
+.REPLACE vs. TRANSLATE
+[source,sql]
+....
+SELECT c1
+     , REPLACE(c1, 'AB', 'XY')
+     , REPLACE(c1, 'BA', 'XY')
+     , TRANSLATE(c1, 'XY', 'AB')
+     , TRANSLATE(c1, 'XY', 'BA')
+FROM scalar
+WHERE c1 = 'ABCD';
+....
+
+_ANSWER_
+|===
+|1   |2   |3   |4   |5
+|ABCD|XYCD|ABCD|XYCD|YXCD
+|===
+
+==== TRIM
+
+See STRIP function on page 173.
+
+==== TRUNC or TRUNCATE
+
+Truncates (not rounds) the rightmost digits of an input number (1st argument). If the second argument is positive, it truncates to the right of the decimal place. If the second value is negative, it truncates to the left. A second value of zero truncates to integer. The input and output types will equal. To round instead of truncate, use the ROUND function.
+
+.TRUNCATE function examples
+[source,sql]
+....
+WITH temp1(d1) AS
+(VALUES (123.400)
+      , ( 23.450)
+      , ( 3.456)
+      , ( .056)
+)
+SELECT d1
+     , DEC(TRUNC(d1,+2), 6, 3) AS pos2
+     , DEC(TRUNC(d1,+1), 6, 3) AS pos1
+     , DEC(TRUNC(d1,+0), 6, 3) AS zero
+     , DEC(TRUNC(d1,-1), 6, 3) AS neg1
+     , DEC(TRUNC(d1,-2), 6, 3) AS neg2
+FROM temp1
+ORDER BY 1 DESC;
+....
+
+_ANSWER_
+|===
+|D1     |POS2   |POS1   |ZERO   |NEG1   |NEG2
+|123.400|123.400|123.400|123.000|120.000|100.000
+|23.450 |23.440 |23.400 |23.000 |20.000 |0.000
+|3.456  |3.450  |3.400  |3.000  |0.000  |0.000
+|0.056  |0.050  |0.000  |0.000  |0.000  |0.000
+|===
+
+==== TYPE_ID
+
+Returns the internal type identifier of the dynamic data type of the expression.
+
+==== TYPE_NAME
+
+Returns the unqualified name of the dynamic data type of the expression.
+
+==== TYPE_SCHEMA
+
+Returns the schema name of the dynamic data type of the expression.
+
+==== UCASE or UPPER
+
+Converts a mixed or lower-case string to upper case. The output is the same data type and length as the input. 
+
+.UCASE function example
+[source,sql]
+....
+SELECT name
+     , LCASE(name) AS lname
+     , UCASE(name) AS uname
+FROM staff
+WHERE id < 30;
+....
+
+_ANSWER_
+|===
+|NAME   |LNAME  |UNAME
+|Sanders|sanders|SANDERS
+|Pernal |pernal |PERNAL
+|===
+
+==== VALUE
+
+Same as COALESCE.
+
+==== VARCHAR
+
+Converts the input (1st argument) to a varchar data type. The output length (2nd argument) is optional. Trailing blanks are not removed.
+
+,VARCHAR function examples
+[source,sql]
+....
+SELECT c1
+     , LENGTH(c1) AS l1
+     , VARCHAR(c1) AS v2
+     , LENGTH(VARCHAR(c1)) AS l2
+     , VARCHAR(c1,4) AS v3
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|C1    |L1|V2    |L2|V3
+|ABCDEF|6 |ABCDEF|6 |ABCD
+|ABCD  |6 |ABCD  |6 |ABCD
+|AB    |6 |AB    |6 |AB
+|===
+
+==== VARCHAR_BIT_FORMAT
+
+Returns a VARCHAR bit-data representation of a character string. See the SQL Reference for more details.
+
+[[varchar_format.function]]
+==== VARCHAR_FORMAT
+
+Converts a timestamp value into a string with the format: "YYYY-MM-DD HH:MM:SS". The TIMESTAMP_FORMAT function does the inverse.
+
+.VARCHAR_FORMAT function example
+[source,sql]
+....
+WITH temp1 (ts1) AS
+(VALUES (TIMESTAMP('1999-12-31-23.59.59'))
+      , (TIMESTAMP('2002-10-30-11.22.33'))
+)
+SELECT ts1
+     , VARCHAR_FORMAT(ts1,'YYYY-MM-DD HH24:MI:SS') AS ts2
+FROM temp1
+ORDER BY ts1;
+....
+
+_ANSWER_
+|===
+|TS1                       |TS2
+|1999-12-31-23.59.59.000000|1999-12-31 23:59:59
+|2002-10-30-11.22.33.000000|2002-10-30 11:22:33
+|===
+
+Note that the only allowed formatting mask is the one shown.
+
+==== VARCHAR_FORMAT_BIT
+
+Returns a VARCHAR representation of a character bit-data string. See the SQL Reference for more details.
+
+==== VARGRAPHIC
+
+Converts the input (1st argument) to a VARGRAPHIC data type. The output length (2nd argument) is optional.
+
+==== WEEK
+
+Returns a value in the range 1 to 53 or 54 that represents the week of the year, where a week begins on a Sunday, or on the first day of the year. Valid input types are a date, a timestamp, or an equivalent character value. The output is of type integer.
+
+.WEEK function examples
+[source,sql]
+....
+SELECT WEEK(DATE('2000-01-01')) AS w1
+     , WEEK(DATE('2000-01-02')) AS w2
+     , WEEK(DATE('2001-01-02')) AS w3
+     , WEEK(DATE('2000-12-31')) AS w4
+     , WEEK(DATE('2040-12-31')) AS w5
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+|===
+|W1|W2|W3|W4|W5
+|1 |2 |1 |54|53
+|===
+
+Both the first and last week of the year may be partial weeks. Likewise, from one year to the next, a particular day will often be in a different week (see <<comparing.weeks>>).
+
+==== WEEK_ISO
+
+Returns an integer value, in the range 1 to 53, that is the "ISO" week number. An ISO week differs from an ordinary week in that it begins on a Monday and it neither ends nor begins at the exact end of the year. Instead, week 1 is the first week of the year to contain a Thursday. Therefore, it is possible for up to three days at the beginning of the year to appear in the last week of the previous year. As with ordinary weeks, not all ISO weeks contain seven days. 
+
+WEEK_ISO function example
+[source,sql]
+....
+WITH temp1 (n) AS
+(VALUES (0)
+   UNION ALL
+ SELECT n+1
+ FROM temp1
+ WHERE n < 10
+), temp2 (dt2) AS
+(SELECT DATE('1998-12-27') + y.n YEARS + d.n DAYS
+ FROM temp1 y
+    , temp1 d
+ WHERE y.n IN (0,2)
+)
+SELECT CHAR(dt2,ISO)             AS dte
+     , SUBSTR(DAYNAME(dt2),1,3)  AS dy
+     , WEEK(dt2)                 AS wk
+     , DAYOFWEEK(dt2)            AS dy
+     , WEEK_ISO(dt2)             AS wi
+     , DAYOFWEEK_ISO(dt2)        AS di
+FROM temp2
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|DTE       |DY |WK|DY|WI|DI
+|1998-12-27|Sun|53|1 |52|7
+|1998-12-28|Mon|53|2 |53|1
+|1998-12-29|Tue|53|3 |53|2
+|1998-12-30|Wed|53|4 |53|3
+|1998-12-31|Thu|53|5 |53|4
+|1999-01-01|Fri|1 |6 |53|5
+|1999-01-02|Sat|1 |7 |53|6
+|1999-01-03|Sun|2 |1 |53|7
+|1999-01-04|Mon|2 |2 |1 |1
+|1999-01-05|Tue|2 |3 |1 |2
+|1999-01-06|Wed|2 |4 |1 |3
+|2000-12-27|Wed|53|4 |52|3
+|2000-12-28|Thu|53|5 |52|4
+|2000-12-29|Fri|53|6 |52|5
+|2000-12-30|Sat|53|7 |52|6
+|2000-12-31|Sun|54|1 |52|7
+|2001-01-01|Mon|1 |2 |1 |1
+|2001-01-02|Tue|1 |3 |1 |2
+|2001-01-03|Wed|1 |4 |1 |3
+|2001-01-04|Thu|1 |5 |1 |4
+|2001-01-05|Fri|1 |6 |1 |5
+|2001-01-06|Sat|1 |7 |1 |6
+|===
+
+==== YEAR
+
+Returns a four-digit year value in the range 0001 to 9999 that represents the year (including the century). The input is a date or timestamp (or equivalent) value. The output is integer.
+
+.YEAR and WEEK functions example
+[source,sql]
+....
+SELECT dt1
+     , YEAR(dt1) AS yr
+     , WEEK(dt1) AS wk
+FROM scalar;
+....
+
+_ANSWER_
+|===
+|DT1       |YR  |WK
+|1996-04-22|1996|17
+|1996-08-15|1996|33
+|0001-01-01|1   |1
+|===
+
+==== "+" PLUS
+
+The PLUS function is same old plus sign that you have been using since you were a kid. One can use it the old fashioned way, or as if it were normal a Db2 function - with one or two input items. If there is a single input item, then the function acts as the unary "plus" operator. If there are two items, the function adds them:
+
+.PLUS function examples
+[source,sql]
+....
+SELECT id
+     , salary
+     , "+"(salary)     AS s2
+     , "+"(salary, id) AS s3
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |S2      |S3
+|10|98357.50|98357.50|98367.50
+|20|78171.25|78171.25|78191.25
+|30|77506.75|77506.75|77536.75
+|===
+
+Both the PLUS and MINUS functions can be used to add and subtract numbers, and also date and time values. For the latter, one side of the equation has to be a date/time value, and the other either a date or time duration (a numeric representation of a date/time), or a specified date/time type. To illustrate, below are three different ways to add one year to a date:
+
+.Adding one year to date value
+[source,sql]
+....
+SELECT empno
+     , CHAR(birthdate,ISO)                            AS bdate1
+     , CHAR(birthdate + 1 YEAR,ISO)                   AS bdate2
+     , CHAR("+"(birthdate,DEC(00010000,8)),ISO)       AS bdate3
+     , CHAR("+"(birthdate,DOUBLE(1),SMALLINT(1)),ISO) AS bdate4
+FROM employee
+WHERE empno < '000040'
+ORDER BY empno;
+....
+
+_ANSWER_
+|===
+|EMPNO |BDATE1    |BDATE2    |BDATE3    |BDATE4
+|000010|1933-08-24|1934-08-24|1934-08-24|1934-08-24
+|000020|1948-02-02|1949-02-02|1949-02-02|1949-02-02
+|000030|1941-05-11|1942-05-11|1942-05-11|1942-05-11
+|===
+
+==== "-" MINUS
+
+The MINUS works the same way as the PLUS function, but does the opposite:
+
+.MINUS function examples
+[source,sql]
+....
+SELECT id
+     , salary
+	 , "-"(salary)     AS s2
+	 , "-"(salary, id) AS s3
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |S2       |S3
+|10|98357.50|-98357.50|98347.50
+|20|78171.25|-78171.25|78151.25
+|30|77506.75|-77506.75|77476.75
+|===
+
+==== "*" MULTIPLY
+
+The MULTIPLY function is used to multiply two numeric values:
+
+.MULTIPLY function examples
+[source,sql]
+....
+SELECT id
+     , salary
+     , salary * id     AS s2
+     , "*"(salary, id) AS s3
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |S2        |S3
+|10|98357.50|983575.00 |983575.00
+|20|78171.25|1563425.00|1563425.00
+|30|77506.75|2325202.50|2325202.50
+|===
+
+==== "/" DIVIDE
+
+The DIVIDE function is used to divide two numeric values:
+
+.DIVIDE function examples
+[source,sql]
+....
+SELECT id
+     , salary
+     , salary / id     AS s2
+     , "/"(salary, id) AS s3
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |S2     |S3
+|10|98357.50|9835.75|9835.75
+|20|78171.25|3908.56|3908.56
+|30|77506.75|2583.55|2583.55
+|===
+
+==== "||" CONCAT
+
+Same as the CONCAT function:
+
+.CONCAT function examples
+[source,sql]
+....
+SELECT id
+     , name || 'Z'      AS n1
+     , name CONCAT 'Z'  AS n2
+     , "||"(name,'Z')   AS n3
+     , CONCAT(name,'Z') AS n4
+FROM staff
+WHERE LENGTH(name) < 5
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |N1   |N2   |N3   |N4
+|110|NganZ|NganZ|NganZ|NganZ
+|210|LuZ  |LuZ  |LuZ  |LuZ
+|270|LeaZ |LeaZ |LeaZ |LeaZ
+|===
+
+=== User Defined Functions
+
+Many problems that are really hard to solve using raw SQL become surprisingly easy to address, once one writes a simple function. This chapter will cover some of the basics of user defined functions. These can be very roughly categorized by their input source, their output type, and the language used:
+
+* External scalar functions use an external process (e.g. a C program), and possibly also an external data source, to return a single value.
+* External table functions use an external process, and possibly also an external data source, to return a set of rows and columns.
+* Internal sourced functions are variations of an existing Db2 function 
+* Internal scalar functions use compound SQL code to return a single value.
+* Internal table functions use compound SQL code to return a set of rows and columns.
+ 
+This chapter will briefly go over the last three types of function listed above. See the official Db2 documentation for more details.
+
+WARNING: As of the time of writing, there is a known bug in Db2 that causes the prepare cost of a dynamic SQL statement to go up exponentially when a user defined function that is written in the SQL language is referred to multiple times in a single SQL statement.
+
+==== Sourced Functions
+
+A sourced function is used to redefine an existing Db2 function so as to in some way restrict or enhance its applicability. 
+Below is a scalar function that is a variation on the standard DIGITS function, but which only works on small integer fields:
+
+.Create sourced function
+[source,sql]
+....
+CREATE FUNCTION digi_int (SMALLINT)
+RETURNS CHAR(5)
+SOURCE SYSIBM.DIGITS(SMALLINT);
+....
+
+Here is an example of the function in use:
+
+.Using sourced function - works
+[source,sql]
+....
+SELECT id           AS ID
+     , DIGITS(id)   AS I2
+     , digi_int(id) AS I3
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|I2   |I3
+|10|00010|00010
+|20|00020|00020
+|30|00030|00030
+|===
+
+By contrast, the following statement will fail because the input is an integer field:
+
+.Using sourced function - fails
+[source,sql]
+....
+SELECT id
+     , digi_int(INT(id))
+FROM staff
+WHERE id < 50;
+....
+
+_ANSWER_: Error
+
+Sourced functions are especially useful when one has created a distinct (data) type, because these do not come with any of the usual Db2 functions. To illustrate, in the following example a distinct type is created, then a table using the type, then two rows are inserted:
+
+Create distinct type and test table
+[source,sql]
+....
+CREATE DISTINCT TYPE us_dollars AS DEC(7,2) WITH COMPARISONS;
+CREATE TABLE customers
+  ( ID      SMALLINT   NOT NULL
+  , balance us_dollars NOT NULL);
+
+INSERT INTO customers VALUES (1, 111.11), (2, 222.22);
+
+SELECT *
+FROM customers
+ORDER BY ID;
+....
+
+_ANSWER_
+|===
+|ID|balance
+|1 |111.11
+|2 |222.22
+|===
+
+The next query will fail because there is currently no multiply function for "us_dollars":
+
+Do multiply - fails
+[source,sql]
+....
+SELECT id
+     , balance * 10
+FROM customers
+ORDER BY id;
+....
+
+_ANSWER_: Error
+
+The enable the above, we have to create a sourced function:
+
+.Create sourced function
+[source,sql]
+....
+CREATE FUNCTION "*" (us_dollars, INT)
+RETURNS us_dollars
+SOURCE SYSIBM."*"(DECIMAL, INT);
+....
+
+Now we can do the multiply:
+
+.Do multiply - works
+[source,sql]
+....
+SELECT id
+     , balance * 10 AS newbal
+FROM customers
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NEWBAL
+|1 |1111.10
+|2 |2222.20
+|===
+
+For the record, here is another way to write the same:
+
+.Do multiply - works
+[source,sql]
+....
+SELECT id
+     , "*"(balance,10) AS newbal
+FROM customers
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NEWBAL
+|1 |1111.10
+|2 |2222.20
+|===
+
+==== Scalar Functions
+
+A scalar function has as input a specific number of values (i.e. not a table) and returns a single output item.
+
+If a function returns a value (as opposed to a table), that value will always be nullable, regardless of whether or not the returned value can ever actually be null. This may cause problems if one is not prepared to handle a null indicator. To illustrate, the following function will return a nullable value that never be null:
+
+.Function returns nullable, but never null, value
+[source,sql]
+....
+CREATE FUNCTION Test()
+RETURNS CHAR(5)
+RETURN 'abcde';
+....
+
+===== Input and Output Limits
+
+One can have multiple scalar functions with the same name and different input/output data types, but not with the same name and input/output types, but with different lengths. So if one wants to support all possible input/output lengths for, say, varchar data, one has to define the input and output lengths to be the maximum allowed for the field type. For varchar input, one would need an output length of 32,672 bytes to support all possible input values. But this is a problem, because it is very close to the maximum allowable table (row) length in Db2, which is 32,677 bytes. Decimal field types are even more problematic, because one needs to define both a length and a scale. To illustrate, imagine that one defines the input as being of type decimal(31,12). The following input values would be treated thus: 
+
+* A decimal(10,5) value would be fine.
+* A decimal(31,31) value would lose precision.
+* A decimal(31,0) value may fail because it is too large.
+* See <<convert.number.to.character>> for a detailed description of this problem.
+
+_Examples_
+
+Below is a very simple scalar function - that always returns zero:
+
+.Simple function usage
+[source,sql]
+....
+CREATE FUNCTION returns_zero() RETURNS SMALLINT RETURN 0;
+
+SELECT id             AS id
+     , returns_zero() AS zz
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+|===
+|ID|ZZ
+|10|0
+|===
+
+Two functions can be created with the same name. Which one is used depends on the input type that is provided:
+
+.Two functions with same name
+[source,sql]
+....
+CREATE FUNCTION calc(inval SMALLINT) RETURNS INT RETURN inval * 10;
+CREATE FUNCTION calc(inval INTEGER)  RETURNS INT RETURN inval * 5;
+
+SELECT id                 AS id
+     , calc(SMALLINT(id)) AS c1
+     , calc(INTEGER (id)) AS C2
+FROM staff
+WHERE id < 30
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|C1 |C2
+|10|100|50
+|20|200|100
+|===
+....
+DROP FUNCTION calc(SMALLINT);
+DROP FUNCTION calc(INTEGER);
+....
+
+Below is an example of a function that is not deterministic, which means that the function result can not be determined based on the input:
+
+.Not deterministic function
+[source,sql]
+....
+CREATE FUNCTION rnd(inval INT)
+RETURNS SMALLINT
+NOT DETERMINISTIC
+RETURN RAND() * 50;
+
+SELECT id     AS id
+     , rnd(1) AS RND
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|RND
+|10|37
+|20|8
+|30|42
+|===
+
+The next function uses a query to return a single row/column value:
+
+.Function using query
+[source,sql]
+....
+CREATE FUNCTION get_sal(inval SMALLINT)
+RETURNS DECIMAL(7, 2)
+RETURN SELECT salary
+       FROM staff
+       WHERE id = inval;
+
+SELECT id          AS id
+     , get_sal(id) AS salary
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY
+|10|98357.50
+|20|78171.25
+|30|77506.75
+|===
+
+More complex SQL statements are also allowed - as long as the result (in a scalar function) is just one row/column value. In the next example, the either the maximum salary in the same department is obtained, or the maximum salary for the same year - whatever is higher:
+
+.Function using common table expression
+[source,sql]
+....
+CREATE FUNCTION max_sal(inval SMALLINT)
+RETURNS DECIMAL(7, 2)
+RETURN 
+WITH ddd (max_sal) AS
+(SELECT MAX(S2.salary)
+ FROM staff S1
+    , staff S2
+ WHERE S1.id   = inval
+ AND   S1.dept = s2.dept
+)
+, yyy (max_sal) AS
+(SELECT MAX(S2.salary)
+ FROM staff S1
+    , staff S2
+ WHERE S1.id    = inval
+ AND   S1.years = s2.years
+)
+SELECT 
+  CASE
+    WHEN ddd.max_sal > yyy.max_sal THEN ddd.max_sal
+    ELSE yyy.max_sal
+  END
+FROM ddd, yyy;
+
+SELECT id          AS id
+     , salary      AS SAL1
+     , max_sal(id) AS SAL2
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SAL1    |SAL2
+|10|98357.50|98357.50
+|20|78171.25|98357.50
+|30|77506.75|79260.25
+|===
+
+A scalar or table function cannot change any data, but it can be used in a DML statement. In the next example, a function is used to remove all "e" characters from the name column:
+
+.Function used in update
+[source,sql]
+....
+CREATE FUNCTION remove_e(instr VARCHAR(50))
+RETURNS VARCHAR(50)
+RETURN replace(instr,'e','');
+
+UPDATE staff
+SET name = remove_e(name)
+WHERE id < 40;
+....
+
+==== Compound SQL Usage
+
+A function can use compound SQL, with the following limitations:
+
+* The statement delimiter, if needed, cannot be a semi-colon.
+* No DML statements are allowed.
+
+Below is an example of a scalar function that uses compound SQL to reverse the contents of a text string:
+
+.Function using compound SQL
+[source,sql]
+....
+--#SET DELIMITER !
+
+CREATE FUNCTION reverse(instr VARCHAR(50))
+RETURNS VARCHAR(50)
+BEGIN ATOMIC
+    DECLARE outstr VARCHAR(50) DEFAULT '';
+    DECLARE curbyte SMALLINT
+    DEFAULT 0;
+    SET curbyte = LENGTH(RTRIM(instr));
+    WHILE curbyte >= 1 DO
+        SET outstr = outstr || SUBSTR(instr,curbyte,1);
+        SET curbyte = curbyte - 1;
+    END WHILE;
+    RETURN outstr;
+END!
+
+SELECT id AS id
+     , name AS name1
+     , reverse(name) AS name2
+FROM staff
+WHERE id < 40
+ORDER BY id!
+....
+
+_ANSWER_
+|===
+|ID|NAME1   |NAME2
+|10|Sanders |srednaS
+|20|Pernal  |lanreP
+|30|Marenghi|ihgneraM|
+|===
+
+IMPORTANT: This example uses an "!" as the stmt delimiter.
+
+Because compound SQL is a language with basic logical constructs, one can add code that does different things, depending on what input is provided. To illustrate, in the next example the possible output values are as follows:
+
+* If the input is null, the output is set to null.
+* If the length of the input string is less than 6, an error is flagged.
+* If the length of the input string is less than 7, the result is set to -1.
+* Otherwise, the result is the length of the input string.
+
+Now for the code:
+
+.Function with error checking logic
+[source,sql]
+....
+--#SET DELIMITER !
+CREATE FUNCTION check_len(instr VARCHAR(50))
+RETURNS SMALLINT
+BEGIN ATOMIC
+    IF instr IS NULL THEN
+        RETURN NULL;
+    END IF;
+    IF length(instr) < 6 THEN
+        SIGNAL SQLSTATE '75001'
+        SET MESSAGE_TEXT = 'Input string is < 6';
+    ELSEIF length(instr) < 7 THEN
+        RETURN -1;
+    END IF;
+    RETURN length(instr);
+END!
+
+SELECT id              AS id
+     , name            AS name1
+     , check_len(name) AS name2
+FROM staff
+WHERE id < 60
+ORDER BY id!
+....
+
+IMPORTANT: This example uses an "!" as the stmt delimiter.
+
+_ANSWER_
+|===
+|ID|NAME1   |NAME2
+|10|Sanders |7
+|20|Pernal  |-1
+|30|Marenghi|8
+|40|O'Brien |7
+|===
+
+The above query failed when it got to the name "Hanes", which is less than six bytes long.
+
+

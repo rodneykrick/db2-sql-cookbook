@@ -1,0 +1,2403 @@
+== Fun with SQL
+
+In this chapter will shall cover some of the fun things that one can and, perhaps, should not do, using Db2 SQL. Read on at your own risk.
+
+=== Creating Sample Data
+
+If every application worked exactly as intended from the first, we would never have any need for test databases. Unfortunately, one often needs to builds test systems in order to both tune the application SQL, and to do capacity planning. In this section we shall illustrate how very large volumes of extremely complex test data can be created using relatively simple SQL statements.
+
+Good Sample Data is
+
+* Reproducible.
+* Easy to make.
+* Similar to Production:
+** Same data volumes (if needed).
+** Same data distribution characteristics.
+
+==== Data Generation
+
+Create the set of integers between zero and one hundred. In this statement we shall use recursive coding to expand a single value into many more.
+
+.Use recursion to get list of 100 numbers
+[source,sql]
+....
+WITH temp1 (col1) AS
+(VALUES 0
+   UNION ALL
+ SELECT col1 + 1
+ FROM temp1
+ WHERE col1 + 1 < 100)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|COL1
+|1
+|2
+|3
+|etc
+|===
+
+Instead of coding a recursion join every time, we use the table function described on page 196 to create the required rows. Assuming that the function exists, one would write the following:
+
+.Use user-defined-function to get list of 100 numbers
+[source,sql]
+....
+SELECT *
+FROM TABLE(NumList(100)) AS xxx;
+....
+
+==== Make Reproducible Random Data
+
+So far, all we have done is create sets of fixed values. These are usually not suitable for testing purposes because they are too consistent. To mess things up a bit we need to use the RAND function, which generates random numbers in the range of zero to one inclusive. In the next example we will get a (reproducible) list of five random numeric values:
+
+.Use RAND to create pseudo-random numbers
+[source,sql]
+....
+WITH temp1 (s1, r1) AS
+(VALUES (0, RAND(1))
+   UNION ALL
+ SELECT s1+1
+     , RAND()
+ FROM temp1
+ WHERE s1+1 < 5)
+SELECT SMALLINT(s1)    AS seq#
+     , DECIMAL(r1,5,3) AS ran1
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|SEQ#|RAN1
+|0   |0.001 
+|1   |0.563 
+|2   |0.193 
+|3   |0.808 
+|4   |0.585
+|===
+
+The initial invocation of the RAND function above is seeded with the value 1. Subsequent invocations of the same function (in the recursive part of the statement) use the initial value to generate a reproducible set of pseudo-random numbers.
+
+==== Using the GENERATE_UNIQUE function
+
+With a bit of data manipulation, the GENERATE_UNIQUE function can be used (instead of the RAND function) to make suitably random test data. The are advantages and disadvantages to using both functions:
+
+* The GENERATE_UNIQUE function makes data that is always unique. The RAND function only outputs one of 32,000 distinct values.
+* The RAND function can make reproducible random data, while the GENERATE_UNIQUE function can not.
+
+See the description of the GENERATE_UNIQUE function (see <<generate.unique.function>>) for an example of how to use it to make random data.
+
+==== Make Random Data - Different Ranges
+
+There are several ways to mess around with the output from the RAND function: We can use simple arithmetic to alter the range of numbers generated (e.g. convert from 0 to 10 to 0 to 10,000). We can alter the format (e.g. from FLOAT to DECIMAL). Lastly, we can make fewer, or more, distinct random values (e.g. from 32K distinct values down to just 10). All of this is done below:
+
+.Make differing ranges of random numbers
+[source,sql]
+....
+WITH temp1 (s1, r1) AS
+(VALUES (0
+       , RAND(2))
+   UNION ALL
+ SELECT s1+1
+      , RAND()
+ FROM temp1
+ WHERE s1+1 < 5)
+SELECT SMALLINT(s1) AS seq#
+     , SMALLINT(r1*10000) AS ran2
+     , DECIMAL(r1,6,4) AS ran1
+     , SMALLINT(r1*10) AS ran3
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|SEQ#|RAN2|RAN1  |RAN3 
+|0   |13  |0.0013|0 
+|1   |8916|0.8916|8 
+|2   |7384|0.7384|7 
+|3   |5430|0.5430|5 
+|4   |8998|0.8998|8
+|===
+
+==== Make Random Data - Varying Distribution
+
+In the real world, there is a tendency for certain data values to show up much more frequently than others. Likewise, separate fields in a table usually have independent semi-random data distribution patterns. In the next statement we create three independently random fields. The first has the usual 32K distinct values evenly distributed in the range of zero to one. The second and third have random numbers that are skewed towards the low end of the range, and have many more distinct values:
+
+.Create RAND data with different distributions
+[source,sql]
+....
+WITH temp1 (s1) AS
+(VALUES (0)
+   UNION ALL
+ SELECT s1 + 1
+ FROM temp1
+ WHERE s1 + 1 < 5)
+SELECT SMALLINT(s1)                             AS s#
+     , INTEGER((RAND(1)) * 1E6)                 AS ran1
+     , INTEGER((RAND() * RAND()) * 1E6)         AS ran2
+     , INTEGER((RAND() * RAND()* RAND()) * 1E6) AS ran3
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|S#|RAN1  |RAN2   |RAN3 
+|0 |1251  |365370 |114753 
+|1 |350291|280730 |88106
+|2 |710501|149549 |550422 
+|3 |147312|33311  |2339 
+|4 |8911  |556    |73091
+|===
+
+==== Make Random Data - Different Flavours
+
+The RAND function generates random numbers. To get random character data one has to convert the RAND output into a character. There are several ways to do this. The first method shown below uses the CHR function to convert a number in the range: 65 to 90 into the ASCII equivalent: "A" to "Z". The second method uses the CHAR function to translate a number into the character equivalent.
+
+.Converting RAND output from number to character
+[source,sql]
+....
+WITH temp1 (s1, r1) AS
+(VALUES (0
+       , RAND(2))
+   UNION ALL
+ SELECT s1+1
+      , RAND()
+ FROM temp1
+ WHERE s1+1 < 5)
+SELECT SMALLINT(s1)             AS seq#
+     , SMALLINT(r1*26+65)       AS ran2
+     , CHR(SMALLINT(r1*26+65))  AS ran3
+     , CHAR(SMALLINT(r1*26)+65) AS ran4
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|SEQ#|RAN2|RAN3|RAN4
+|0   |65  |A   |65 
+|1   |88  |X   |88 
+|2   |84  |T   |84
+|3   |79  |O   |79 
+|4   |88  |X   |88
+|===
+
+==== Make Test Table & Data
+
+So far, all we have done in this chapter is use SQL to select sets of rows. Now we shall create a Production-like table for performance testing purposes. We will then insert 10,000 rows of suitably lifelike test data into the table. The DDL, with constraints and index definitions, follows. The important things to note are:
+
+* The EMP# and the SOCSEC# must both be unique.
+* The JOB_FTN, FST_NAME, and LST_NAME fields must all be non-blank.
+* The SOCSEC# must have a special format.
+* The DATE_BN must be greater than 1900.
+
+Several other fields must be within certain numeric ranges.
+
+.Production-like test table DDL
+[source,sql]
+....
+CREATE TABLE personnel
+( emp#     INTEGER       NOT NULL
+, socsec#  CHAR(11)      NOT NULL
+, job_ftn  CHAR(4)       NOT NULL
+, dept     SMALLINT      NOT NULL
+, salary   DECIMAL(7, 2) NOT NULL
+, date_bn  DATE          NOT NULL WITH DEFAULT
+, fst_name VARCHAR(20)
+, lst_name VARCHAR(20)
+, CONSTRAINT pex1 PRIMARY KEY (emp#)
+, CONSTRAINT pe01 CHECK (emp# > 0)
+, CONSTRAINT pe02 CHECK (LOCATE(' ', socsec#) = 0)
+, CONSTRAINT pe03 CHECK (LOCATE('-', socsec#,1) = 4)
+, CONSTRAINT pe04 CHECK (LOCATE('-', socsec#,5) = 7)
+, CONSTRAINT pe05 CHECK (job_ftn <> '')
+, CONSTRAINT pe06 CHECK (dept BETWEEN 1 AND 99)
+, CONSTRAINT pe07 CHECK (salary BETWEEN 0 AND 99999)
+, CONSTRAINT pe08 CHECK (fst_name <> '')
+, CONSTRAINT pe09 CHECK (lst_name <> '')
+, CONSTRAINT pe10 CHECK (date_bn >= '1900-01-01' ));
+
+CREATE UNIQUE INDEX PEX2 ON PERSONNEL (SOCSEC#);
+CREATE UNIQUE INDEX PEX3 ON PERSONNEL (DEPT, EMP#);
+....
+
+Now we shall populate the table. The SQL shall be described in detail latter. For the moment, note the four RAND fields. These contain, independently generated, random numbers which are used to populate the other data fields.
+
+.Production-like test table INSERT
+[source,sql]
+....
+INSERT INTO personnel
+WITH temp1 (s1, r1, r2, r3, r4) AS
+(VALUES (0
+       , RAND(2)
+       , RAND() + (RAND() /1E5)
+       , RAND() * RAND()
+       , RAND() * RAND() * RAND())
+   UNION ALL
+ SELECT s1 + 1
+      , RAND()
+      , RAND() + (RAND() / 1E5)
+      , RAND() * RAND()
+      , RAND() * RAND() * RAND()
+ FROM temp1
+ WHERE s1 < 10000)
+SELECT 100000 + s1
+     , SUBSTR(DIGITS(INT(r2*988+10)), 8) || '-' ||
+       SUBSTR(DIGITS(INT(r1*88+10)),9) || '-' ||
+       TRANSLATE(SUBSTR(DIGITS(s1), 7), '9873450126', '0123456789')
+     , CASE
+         WHEN INT(r4*9) > 7 THEN 'MGR'
+         WHEN INT(r4*9) > 5 THEN 'SUPR'
+         WHEN INT(r4*9) > 3 THEN 'PGMR'
+         WHEN INT(R4*9) > 1 THEN 'SEC'
+         ELSE 'WKR'
+       END
+     , INT(r3*98+1)
+     , DECIMAL(r4*99999, 7, 2)
+     , DATE('1930-01-01') + INT(50-(r4*50)) YEARS + INT(r4*11) MONTHS + INT(r4*27) DAYS
+     , CHR(INT(r1*26+65))|| CHR(INT(r2*26+97))|| CHR(INT(r3*26+97)) ||
+       CHR(INT(r4*26+97))|| CHR(INT(r3*10+97))|| CHR(INT(r3*11+97))
+     , CHR(INT(r2*26+65))|| TRANSLATE(CHAR(INT(r2*1E7)), 'aaeeiibmty', '0123456789')
+FROM temp1;
+....
+
+Some sample data follows:
+|===
+|EMP#  |SOCSEC#    |JOB_|DEPT|SALARY  |DATE_BN   |F_NME |L_NME
+|100000|484-10-9999|WKR |47  |13.63   |1979-01-01|Ammaef|Mimytmbi
+|100001|449-38-9998|SEC |53  |35758.87|1962-04-10|Ilojff|Liiiemea
+|100002|979-90-9997|WKR |1   |8155.23 |1975-01-03|Xzacaa|Zytaebma
+|100003|580-50-9993|WKR |31  |16643.50|1971-02-05|Lpiedd|Pimmeeat
+|100004|264-87-9994|WKR |21  |962.87  |1979-01-01|Wgfacc|Geimteei
+|100005|661-84-9995|WKR |19  |4648.38 |1977-01-02|Wrebbc|Rbiybeet
+|100006|554-53-9990|WKR |8   |375.42  |1979-01-01|Mobaaa|Oiiaiaia
+|100007|482-23-9991|SEC |36  |23170.09|1968-03-07|Emjgdd|Mimtmamb
+|100008|536-41-9992|WKR |6   |10514.11|1974-02-03|Jnbcaa|Nieebayt
+|===
+
+In order to illustrate some of the tricks that one can use when creating such data, each field above was calculated using a different schema:
+
+* The EMP# is a simple ascending number.
+* The SOCSEC# field presented three problems: It had to be unique, it had to be random with respect to the current employee number, and it is a character field with special layout constraints (see the DDL on page 392).
+* To make it random, the first five digits were defined using two of the temporary random number fields. To try and ensure that it was unique, the last four digits contain part of the employee number with some digit-flipping done to hide things. Also, the first random number used is the one with lots of unique values. The special formatting that this field required is addressed by making everything in pieces and then concatenating.
+* The JOB FUNCTION is determined using the fourth (highly skewed) random number. This ensures that we get many more workers than managers.
+* The DEPT is derived from another, somewhat skewed, random number with a range of values from one to ninety nine. 
+* The SALARY is derived using the same, highly skewed, random number that was used for the job function calculation. This ensures that theses two fields have related values.
+* The BIRTH DATE is a random date value somewhere between 1930 and 1981.
+* The FIRST NAME is derived using seven independent invocation of the CHR function, each of which is going to give a somewhat different result.
+* The LAST NAME is (mostly) made by using the TRANSLATE function to convert a large random number into a corresponding character value. The output is skewed towards some of the vowels and the lower-range characters during the translation.
+
+==== Time-Series Processing
+
+The following table holds data for a typical time-series application. Observe is that each row has both a beginning and ending date, and that there are three cases where there is a gap between the end-date of one row and the begin-date of the next (with the same key).
+
+.Sample Table DDL - Time Series
+[source,sql]
+....
+CREATE TABLE time_series
+( KYY CHAR(03) NOT NULL
+, bgn_dt DATE NOT NULL
+, end_dt DATE NOT NULL
+, CONSTRAINT tsc1 CHECK (kyy <> '')
+, CONSTRAINT tsc2 CHECK (bgn_dt <= end_dt));
+
+COMMIT;
+
+INSERT INTO TIME_series values
+  ('AAA','1995-10-01','1995-10-04')
+, ('AAA','1995-10-06','1995-10-06')
+, ('AAA','1995-10-07','1995-10-07')
+, ('AAA','1995-10-15','1995-10-19')
+, ('BBB','1995-10-01','1995-10-01')
+, ('BBB','1995-10-03','1995-10-03');
+....
+
+===== Find Overlapping Rows
+
+We want to find any cases where the begin-to-end date range of one row overlaps another with the same KYY value. The following diagram illustrates our task. The bold line at the top represents the begin and end date for a row. This row is overlapped (in time) by the six lower rows, but the nature of the overlap differs in each case.
+
+.Overlapping Time-Series rows - Definition
+....
+                                time
+     >>>------------------------------------------------------------------>>>
+                     <<<------------------------------>>>
+                     <<<------------------------------>>>
+                 <<<--->>>   <<<--->>>        <<<------------->>>
+                                                         <<<---------->>>
+              <<<---------------------------------------------------------->>>>
+....
+
+The general types of overlap are:
+
+* The related row has identical date ranges.
+* The related row begins before the start-date and ends after the same.
+* The row begins and ends between the start and finish dates.
+
+WARNING: When writing SQL to check overlapping data ranges, make sure that all possible types of overlap (see diagram above) are tested. Some SQL statements work with some flavors of overlap, but not with others.
+
+The relevant SQL follows. When reading it, think of the "A" table as being the bold line above and "B" table as being the four overlapping rows shown as single lines.
+
+.Find overlapping rows in time-series
+[source,sql]
+....
+SELECT kyy
+     , bgn_dt
+     , end_dt
+FROM time_series a
+WHERE EXISTS
+    (SELECT *
+     FROM time_series b
+     WHERE a.kyy = b.kyy
+     AND a.bgn_dt <> b.bgn_dt
+     AND (a.bgn_dt BETWEEN b.bgn_dt AND b.end_dt
+          OR
+          b.bgn_dt BETWEEN a.bgn_dt AND a.end_dt)
+    )
+ORDER BY 1,2;
+....
+
+_ANSWER_:
+|===
+|KEYCOL|BGN_DT    |END_DT    |BGN_DT    |END_DT    |DIFF
+|AAA   |1995-10-01|1995-10-04|1995-10-06|1995-10-06|2
+|AAA   |1995-10-07|1995-10-07|1995-10-15|1995-10-19|8
+|BBB   |1995-10-01|1995-10-01|1995-10-03|1995-10-03|2
+|===
+
+The first predicate in the above sub-query joins the rows together by matching key value. The second predicate makes sure that one row does not match against itself. The final two predicates look for overlapping date ranges.
+
+The above query relies on the sample table data being valid (as defined by the CHECK constraints in the DDL on page 394. This means that the END_DT is always greater than or equal to the BGN_DT, and each KYY, BGN_DT combination is unique. 
+
+===== Find Gaps in Time-Series
+
+We want to find all those cases in the TIME_SERIES table when the ending of one row is not exactly one day less than the beginning of the next (if there is a next). The following query will answer this question. It consists of both a join and a sub-query. In the join (which is done first), we match each row with every other row that has the same key and a BGN_DT that is more than one day greater than the current END_DT. Next, the sub-query excludes from the result those join-rows where there is an intermediate third row.
+
+.Find gap in Time-Series, SQL
+[source,sql]
+....
+SELECT a.kyy
+     , a.bgn_dt
+     , a.end_dt
+     , b.bgn_dt
+     , b.end_dt
+     , DAYS(b.bgn_dt) - DAYS(A.end_dt) as diff
+FROM time_series a
+   , time_series b
+WHERE a.kyy = b.kyy
+AND a.end_dt < b.bgn_dt - 1 DAY
+AND NOT EXISTS
+    (SELECT *
+     FROM time_series z
+     WHERE z.kyy = a.kyy
+     AND z.kyy = b.kyy
+     AND z.bgn_dt > a.bgn_dt
+     AND z.bgn_dt < b.bgn_dt)
+ORDER BY 1,2;
+....
+
+_TIME_SERIES_
+|===
+|KYY|BGN_DT    |END_DT     
+|AAA|1995-10-01|1995-10-04
+|AAA|1995-10-06|1995-10-06 
+|AAA|1995-10-07|1995-10-07
+|AAA|1995-10-15|1995-10-19 
+|BBB|1995-10-01|1995-10-01
+|BBB|1995-10-03|1995-10-03
+|===
+_ANSWER_
+|===
+|KEYCOL|BGN_DT    |END_DT    |BGN_DT    |END_DT    |DIFF
+|AAA   |1995-10-01|1995-10-04|1995-10-06|1995-10-06|2 
+|AAA   |1995-10-07|1995-10-07|1995-10-15|1995-10-19|8 
+|BBB   |1995-10-01|1995-10-01|1995-10-03|1995-10-03|2
+|===
+
+WARNING: If there are many rows per key value, the above SQL will be very inefficient. This is because the join (done first) does a form of Cartesian Product (by key value) making an internal result table that can be very large. The sub-query then cuts this temporary table down to size by removing results-rows that have other intermediate rows.
+
+Instead of looking at those rows that encompass a gap in the data, we may want to look at the actual gap itself. To this end, the following SQL differs from the prior in that the SELECT list has been modified to get the start, end, and duration, of each gap.
+
+.Find gap in Time-Series
+[source,sql]
+....
+SELECT a.kyy AS kyy
+     , a.end_dt + 1 DAY AS bgn_gap
+     , b.bgn_dt - 1 DAY AS end_gap
+     , (DAYS(b.bgn_dt) - DAYS(a.end_dt) - 1) AS sz
+FROM time_series a
+   , time_series b
+WHERE a.kyy = b.kyy
+AND a.end_dt < b.bgn_dt - 1 DAY
+AND NOT EXISTS
+    (SELECT *
+     FROM time_series z
+     WHERE z.kyy = a.kyy
+     AND z.kyy = b.kyy
+     AND z.bgn_dt > a.bgn_dt
+     AND z.bgn_dt < b.bgn_dt)
+ORDER BY 1,2;
+....
+
+_TIME_SERIES_
+|===
+|KYY|BGN_DT    |END_DT     
+|AAA|1995-10-01|1995-10-04
+|AAA|1995-10-06|1995-10-06 
+|AAA|1995-10-07|1995-10-07
+|AAA|1995-10-15|1995-10-19 
+|BBB|1995-10-01|1995-10-01
+|BBB|1995-10-03|1995-10-03
+|===
+_ANSWER_
+|===
+|KYY|BGN_GAP   |END_GAP   |SZ
+|AAA|1995-10-05|1995-10-05|1 
+|AAA|1995-10-08|1995-10-14|7 
+|BBB|1995-10-02|1995-10-02|1
+|===
+
+===== Show Each Day in Gap
+
+Imagine that we wanted to see each individual day in a gap. The following statement does this by taking the result obtained above and passing it into a recursive SQL statement which then generates additional rows - one for each day in the gap after the first.
+
+.Show each day in Time-Series gap
+[source,sql]
+....
+WITH temp (kyy, gap_dt, gsize) AS
+(SELECT a.kyy
+      , a.end_dt + 1 DAY
+      , (DAYS(b.bgn_dt) DAYS(a.end_dt) - 1)
+ FROM time_series a
+    , time_series b
+ WHERE a.kyy = b.kyy
+ AND a.end_dt < b.bgn_dt - 1 DAY
+ AND NOT EXISTS 
+     (SELECT *
+      FROM time_series z
+      WHERE z.kyy = a.kyy
+      AND z.kyy = b.kyy
+      AND z.bgn_dt > a.bgn_dt
+      AND z.bgn_dt < b.bgn_dt)
+   UNION ALL
+ SELECT kyy
+      , gap_dt + 1 DAY
+      , gsize - 1
+ FROM temp WHERE gsize > 1)
+SELECT *
+FROM temp
+ORDER BY 1, 2;
+....
+
+_ANSWER_
+|===
+|KEYCOL|GAP_DT     |GSIZE 
+|AAA   |1995-10-05 |1 
+|AAA   |1995-10-08 |7
+|AAA   |1995-10-09 |6 
+|AAA   |1995-10-10 |5 
+|AAA   |1995-10-11 |4 
+|AAA   |1995-10-12 |3
+|AAA   |1995-10-13 |2 
+|AAA   |1995-10-14 |1 
+|BBB   |1995-10-02 |1
+|===
+
+=== Other Fun Things
+
+[[randomly.sample.data]]
+==== Randomly Sample Data
+
+One can use the TABLESAMPLE schema to randomly sample rows for subsequent analysis.
+
+*Notes*
+
+* The table-name must refer to a real table. This can include a declared global temporary table, or a materialized query table. It cannot be a nested table expression.
+* The sampling is an addition to any predicates specified in the where clause. Under the covers, sampling occurs before any other query processing, such as applying predicates or doing a join.
+* The BERNOUL option checks each row individually.
+* The SYSTEM option lets Db2 find the most efficient way to sample the data. This may mean that all rows on each page that qualifies are included. For small tables, this method often results in a misleading percentage of rows selected. 
+* The "percent" number must be equal to or less than 100, and greater than zero. It determines what percentage of the rows processed are returns.
+* The REPEATABLE option and number is used if one wants to get the same result every time the query is run (assuming no data changes). Without this option, each run will be both random and different.
+
+===== Examples
+
+Sample 5% of the rows in the staff table. Get the same result each time:
+
+.Sample rows in STAFF table
+[source,sql]
+....
+SELECT *
+FROM staff TABLESAMPLE BERNOULLI(5) REPEATABLE(1234)
+ORDER BY id;
+....
+
+Sample 18% of the rows in the employee table and 25% of the rows in the employee-activity table, then join the two tables together. Because each table is sampled independently, the fraction of rows that join will be much less either sampling rate: 
+
+.Sample rows in two tables
+[source,sql]
+....
+SELECT *
+FROM employee ee TABLESAMPLE BERNOULLI(18)
+   , emp_act  ea TABLESAMPLE BERNOULLI(25)
+WHERE ee.empno = ea.empno
+ORDER BY ee.empno;
+....
+
+Sample a declared global temporary table, and also apply other predicates:
+
+.Sample Views used in Join Examples
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.nyc_staff
+LIKE staff;
+
+SELECT *
+FROM session.nyc_staff TABLESAMPLE SYSTEM(34.55)
+WHERE id < 100
+AND salary > 100
+ORDER BY id;
+....
+
+=== Convert Character to Numeric
+
+The DOUBLE, DECIMAL, INTEGER, SMALLINT, and BIGINT functions call all be used to convert a character field into its numeric equivalent:
+
+.Convert Character to Numeric - SQL
+[source,sql]
+....
+WITH temp1 (c1) AS
+(VALUES '123 ', ' 345 ', ' 567')
+SELECT c1
+     , DOUBLE(c1)    AS dbl
+     , DECIMAL(c1,3) AS dec
+     , SMALLINT(c1)  AS sml
+     , INTEGER(c1)   AS int
+FROM temp1;
+....
+
+_ANSWER (numbers shortened)_
+|===
+|C1 |DBL       |DEC |SML|INT
+|123|+1.2300E+2|123.|123|123
+|345|+3.4500E+2|345.|345|345 
+|567|+5.6700E+2|567.|567|567
+|===
+
+Not all numeric functions support all character representations of a number. The following table illustrates what's allowed and what's not:
+.Acceptable conversion values
+|===
+|INPUT STRING|COMPATIBLE FUNCTIONS
+|" 1234"     |DOUBLE, DECIMAL, INTEGER, SMALLINT, BIGINT 
+|" 12.4"     |DOUBLE, DECIMAL 
+|" 12E4"     |DOUBLE
+|===
+
+==== Checking the Input
+
+There are several ways to check that the input character string is a valid representation of a number - before doing the conversion. One simple solution involves converting all digits to blank, then removing the blanks. If the result is not a zero length string, then the input must have had a character other than a digit:
+
+.Checking for non-digits
+[source,sql]
+....
+WITH temp1 (c1) AS
+(VALUES ' 123', '456 ', ' 1 2', ' 33%', NULL)
+SELECT c1
+     , TRANSLATE(c1, '          ', '1234567890') AS c2
+     , LENGTH(LTRIM(TRANSLATE(c1,'          ', '1234567890'))) AS c3
+FROM temp1;
+....
+
+_ANSWER_
+
+....
+ C1   C2  C3
+---- ---- --
+ 123       0
+456        0
+ 1 2       0
+ 33%    %  1
+-    -     -
+....
+
+One can also write a user-defined scalar function to check for non-numeric input, which is what is done below. This function returns "Y" if the following is true:
+
+* The input is not null.
+* There are no non-numeric characters in the input.
+* The only blanks in the input are to the left of the digits.
+* There is only one "+" or "-" sign, and it is next to the left-side blanks, if any.
+* There is at least one digit in the input.
+
+Now for the code:
+
+IMPORTANT: This example uses an "!" as the stmt delimiter
+
+.Check Numeric function
+[source,sql]
+....
+--#SET DELIMITER !
+
+CREATE FUNCTION isnumeric(instr VARCHAR(40))
+RETURNS CHAR(1)
+BEGIN ATOMIC
+  DECLARE is_number CHAR(1) DEFAULT 'Y';
+  DECLARE bgn_blank CHAR(1) DEFAULT 'Y';
+  DECLARE found_num CHAR(1) DEFAULT 'N';
+  DECLARE found_pos CHAR(1) DEFAULT 'N';
+  DECLARE found_neg CHAR(1) DEFAULT 'N';
+  DECLARE found_dot CHAR(1) DEFAULT 'N';
+  DECLARE ctr SMALLINT DEFAULT 1;
+  IF instr IS NULL THEN
+    RETURN NULL;
+  END IF;
+  wloop:
+  WHILE ctr <= LENGTH(instr) AND is_number = 'Y'
+  DO
+    ----------------------------
+    --- ERROR CHECKS         ---
+    ---------------------------
+    IF SUBSTR(instr, ctr, 1) NOT IN (' ', '.', '+', '-', '0', '1', '2'
+                                    ,'3', '4', '5', '6', '7', '8', '9') THEN
+      SET is_number = 'N';
+      ITERATE wloop;
+    END IF;
+    IF SUBSTR(instr, ctr, 1) = ' ' AND bgn_blank = 'N' THEN
+      SET is_number = 'N';
+      ITERATE wloop;
+    END IF;
+    IF SUBSTR(instr, ctr, 1) = '.' AND found_dot = 'Y' THEN
+      SET is_number = 'N';
+      ITERATE wloop;
+    END IF;
+    IF SUBSTR(instr,ctr,1) = '+' AND (found_neg = 'Y' OR bgn_blank = 'N') THEN
+      SET is_number = 'N';
+      ITERATE wloop;
+    END IF;
+    IF SUBSTR(instr,ctr,1) = '-' AND (found_neg = 'Y' OR bgn_blank = 'N') THEN
+      SET is_number = 'N';
+      ITERATE wloop;
+    END IF;
+    ----------------------------
+    --- MAINTAIN FLAGS & CTR ---
+    ---------------------------
+    IF SUBSTR(instr,ctr,1) IN ('0', '1', '2', '3', '4'
+                              ,'5', '6', '7', '8', '9') THEN
+      SET found_num = 'Y';
+    END IF;
+    IF SUBSTR(instr,ctr,1) = '.' THEN
+      SET found_dot = 'Y';
+    END IF;
+    IF SUBSTR(instr,ctr,1) = '+' THEN
+      SET found_pos = 'Y';
+    END IF;
+    IF SUBSTR(instr,ctr,1) = '-' THEN
+      SET found_neg = 'Y';
+    END IF;
+    IF SUBSTR(instr,ctr,1) <> ' ' THEN
+      SET bgn_blank = 'N';
+    END IF;
+    SET ctr = ctr + 1;
+  END WHILE wloop;
+  IF found_num = 'N' THEN
+    SET is_number = 'N';
+  END IF;
+  RETURN is_number;
+END!
+
+WITH TEMP1 (C1) AS
+(VALUES '    123'
+      , '+123.45'
+      , '456    '
+      , ' 10 2  '
+      , '   -.23'
+      , '++12356'
+      , '.012349'
+      , '    33%'
+      , '       '
+      , NULL)
+SELECT C1            AS C1
+     , isnumeric(C1) AS C2
+     , CASE
+         WHEN isnumeric(C1) = 'Y' THEN DECIMAL(C1, 10, 6)
+         ELSE NULL
+       END           AS C3
+FROM TEMP1!
+....
+
+_ANSWER_
+|===
+|C1     |C2|C3
+|123    |Y |123.00000 
+|+123.45|Y |123.45000 
+|456    |N |-
+|10 2   |N |- 
+|.23    |Y |-0.23000 
+|++12356|N |- 
+|.012349|Y |0.01234 
+|33%    |N |-
+|       |N |- 
+|-      |- |-
+|===
+
+NOTE: See <<check.data.value.type>> for a much simpler function that is similar to the above.
+
+[[convert.number.to.character]]
+=== Convert Number to Character
+
+The CHAR and DIGITS functions can be used to convert a Db2 numeric field to a character representation of the same, but as the following example demonstrates, both functions return problematic output:
+
+.CHAR and DIGITS function usage
+[source,sql]
+....
+SELECT d_sal
+     , CHAR(d_sal) AS d_chr
+     , DIGITS(d_sal) AS d_dgt
+     , i_sal
+     , CHAR(i_sal) AS i_chr
+     , DIGITS(i_sal) AS i_dgt
+FROM (SELECT DEC(salary - 11000, 6, 2) AS d_sal
+           , SMALLINT(salary - 11000) AS i_sal
+      FROM staff
+      WHERE salary > 10000
+      AND salary < 12200) AS xxx
+ORDER BY d_sal;
+....
+
+_ANSWER_
+|===
+|D_SAL  |D_CHR   |D_DGT |I_SAL|I_CHR|I_DGT
+|494.10 |-0494.10|049410|-494 |-494 |00494 
+|-12.00 |-0012.00|001200|-12  |-12  |00012
+|508.60 |0508.60 |050860|508  |508  |00508 
+|1009.75|1009.75 |100975|1009 |1009 |01009
+|===
+
+The DIGITS function discards both the sign indicator and the decimal point, while the CHAR function output is (annoyingly) left-justified, and (for decimal data) has leading zeros. We can do better.
+
+Below are three user-defined functions that convert integer data from numeric to character, displaying the output right-justified, and with a sign indicator if negative. There is one function for each flavor of integer that is supported in Db2:
+
+.User-defined functions - convert integer to character
+[source,sql]
+....
+CREATE FUNCTION char_right(inval SMALLINT)
+RETURNS CHAR(06)
+RETURN RIGHT(CHAR('',06) CONCAT RTRIM(CHAR(inval)),06);
+
+CREATE FUNCTION char_right(inval INTEGER)
+RETURNS CHAR(11)
+RETURN RIGHT(CHAR('',11) CONCAT RTRIM(CHAR(inval)),11);
+
+CREATE FUNCTION char_right(inval BIGINT)
+RETURNS CHAR(20)
+RETURN RIGHT(CHAR('',20) CONCAT RTRIM(CHAR(inval)),20);
+....
+
+Each of the above functions works the same way (working from right to left):
+
+* First, convert the input number to character using the CHAR function.
+* Next, use the RTRIM function to remove the right-most blanks.
+* Then, concatenate a set number of blanks to the left of the value. The number of blanks appended depends upon the input type, which is why there are three separate functions.
+* Finally, use the RIGHT function to get the right-most "n" characters, where "n" is the maximum number of digits (plus the sign indicator) supported by the input type.
+
+The next example uses the first of the above functions:
+
+.Convert SMALLINT to CHAR
+[source,sql]
+....
+SELECT i_sal
+     , char_right(i_sal) AS i_chr
+FROM (SELECT SMALLINT(salary - 11000) AS i_sal
+      FROM staff
+      WHERE salary > 10000
+      AND salary < 12200) AS xxx
+ORDER BY i_sal;
+....
+
+_ANSWER_
+|===
+|I_SAL|I_CHR
+|494  |-494 
+|-12  |-12 
+|508  |508 
+|1009 |1009
+|===
+
+=== Decimal Input
+
+Creating a similar function to handle decimal input is a little more tricky. One problem is that the CHAR function adds leading zeros to decimal data, which we don't want. A more serious problem is that there are many sizes and scales of decimal data, but we can only create one function (with a given name) for a particular input data type. Decimal values can range in both length and scale from 1 to 31 digits. This makes it impossible to define a single function to convert any possible decimal value to character with possibly running out of digits, or losing some precision.
+
+NOTE: The fact that one can only have one user-defined function, with a given name, per Db2 data type, presents a problem for all variable-length data types - notably character, varchar, and decimal. For character and varchar data, one can address the problem, to some extent, by using maximum length input and output fields. But decimal data has both a scale and a length, so there is no way to make an all-purpose decimal function.
+
+Despite the above, below is a function that converts decimal data to character. It compromises by assuming an input of type decimal(22,2), which should handle most monetary values:
+
+.User-defined function - convert decimal to character
+[source,sql]
+....
+CREATE FUNCTION char_right(inval DECIMAL(20,2))
+RETURNS CHAR(22)
+RETURN RIGHT(CHAR('', 19)                                    CONCAT
+             REPLACE(SUBSTR(CHAR(inval * 1), 1, 1), '0', '') CONCAT
+             STRIP(CHAR(ABS(BIGINT(inval))))                 CONCAT
+             '.'                                             CONCAT
+             SUBSTR(DIGITS(inval), 19, 2), 22);
+....
+
+The function works as follows:
+
+* The input value is converted to CHAR and the first byte obtained. This will be a minus sign if the number is negative, else blank. 
+* The non-fractional part of the number is converted to BIGINT then to CHAR.
+* A period (dot) is included.
+* The fractional digits (converted to character using the DIGITS function) are appended to the back of the output.
+* All of the above is concatenation together, along with some leading blanks. Finally, the 22 right-most characters are returned.
+
+Below is the function in action:
+
+.Convert DECIMAL to CHAR
+[source,sql]
+....
+WITH temp1 (num, tst) AS
+(VALUES (1, DEC(0.01, 20, 2))
+   UNION ALL
+ SELECT num + 1
+      , tst * -3.21
+ FROM temp1
+ WHERE num < 8)
+SELECT num
+     , tst
+     , char_right(tst) AS tchar
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|NUM|TST   |TCHAR 
+|1  |0.01  |0.01 
+|2  |-0.03 |-0.03 
+|3  |0.09  |0.09 
+|4  |-0.28 |-0.28 
+|5  |0.89  |0.89 
+|6  |-2.85 |-2.85 
+|7  |9.14  |9.14 
+|8  |-29.33|-29.33
+|===
+
+Floating point data can be processed using the above function, as long as it is first converted to decimal using the standard DECIMAL function.
+
+==== Adding Commas
+
+The next function converts decimal input to character, with embedded comas. It first coverts the value to character - as per the above function. It then steps though the output string, three bytes at a time, from right to left, checking to see if the next-left character is a number. If it is, it insert a comma, else it adds a blank byte to the front of the string:
+
+.User-defined function - convert decimal to character - with commas
+[source,sql]
+....
+CREATE FUNCTION comma_right(inval DECIMAL(20, 2))
+RETURNS CHAR(27)
+LANGUAGE SQL
+DETERMINISTIC
+NO EXTERNAL ACTION
+BEGIN ATOMIC
+  DECLARE i INTEGER DEFAULT 17;
+  DECLARE abs_inval BIGINT;
+  DECLARE out_value CHAR(27);
+  SET abs_inval = ABS(BIGINT(inval));
+  SET out_value = RIGHT(CHAR('', 19)             CONCAT
+                  RTRIM(CHAR(BIGINT(inval))),19) CONCAT
+                  '.'                            CONCAT
+                  SUBSTR(DIGITS(inval),19,2);
+  WHILE i > 2 DO
+    IF SUBSTR(out_value, i-1, 1) BETWEEN '0' AND '9' THEN
+      SET out_value = SUBSTR(out_value,1,i-1) CONCAT
+                      ','                     CONCAT
+                      SUBSTR(out_value,i);
+    ELSE
+      SET out_value = ' ' CONCAT out_value;
+    END IF;
+    SET i = i - 3;
+  END WHILE;
+  RETURN out_value;
+END
+....
+
+Below is an example of the above function in use:
+
+.Convert DECIMAL to CHAR with commas
+[source,sql]
+....
+WITH temp1 (num) AS
+(VALUES (DEC(+1,20,2))
+      , (DEC(-1,20,2))
+   UNION ALL
+ SELECT num * 987654.12
+ FROM temp1
+ WHERE ABS(num) < 1E10)
+, temp2 (num) AS
+(SELECT num - 1
+ FROM temp1)
+SELECT num              AS input
+     , comma_right(num) AS output
+FROM temp2
+ORDER BY num;
+....
+
+_ANSWER_
+|===
+|INPUT           |OUTPUT
+|-975460660753.97|-975,460,660,753.97
+|-987655.12      |-987,655.12 
+|-2.00           |-2.00 
+|0.00            |0.00 
+|987653.12       |987,653.12
+|975460660751.97 |975,460,660,751.97
+|===
+
+==== Convert Timestamp to Numeric
+
+There is absolutely no sane reason why anyone would want to convert a date, time, or timestamp value directly to a number. The only correct way to manipulate such data is to use the provided date/time functions. But having said that, here is how one does it:
+
+.Convert Timestamp to number
+[source,sql]
+....
+WITH tab1(ts1) AS
+(VALUES CAST('1998-11-22-03.44.55.123456' AS TIMESTAMP))
+SELECT ts1                         --=> 1998-11-22-03.44.55.123456
+     , HEX(ts1)                    --=> 19981122034455123456
+     , DEC(HEX(ts1), 20)           --=> 19981122034455123456.
+     , FLOAT(DEC(HEX(ts1), 20))    --=> 1.99811220344551e+019
+     , REAL (DEC(HEX(ts1), 20))    --=> 1.998112e+019
+FROM tab1;
+....
+
+==== Selective Column Output
+
+There is no way in static SQL to vary the number of columns returned by a select statement. In order to change the number of columns you have to write a new SQL statement and then rebind. But one can use CASE logic to control whether or not a column returns any data. Imagine that you are forced to use static SQL. Furthermore, imagine that you do not always want to retrieve the data from all columns, and that you also do not want to transmit data over the network that you do not need. For character columns, we can address this problem by retrieving the data only if it is wanted, and otherwise returning to a zero-length string. To illustrate, here is an ordinary SQL statement:
+
+.Sample query with no column control
+[source,sql]
+....
+SELECT empno
+     , firstnme
+     , lastname
+     , job
+FROM employee
+WHERE empno < '000100'
+ORDER BY empno;
+....
+
+Here is the same SQL statement with each character column being checked against a hostvariable. If the host-variable is 1, the data is returned, otherwise a zero-length string:
+
+.Sample query with column control
+[source,sql]
+....
+SELECT empno
+     , CASE :host-var-1 
+         WHEN 1 THEN firstnme
+         ELSE ''
+       END AS firstnme
+     , CASE :host-var-2
+         WHEN 1 THEN lastname
+         ELSE ''
+       END AS lastname
+     , CASE :host-var-3
+         WHEN 1 THEN VARCHAR(job)
+         ELSE ''
+       END AS job
+FROM employee
+WHERE empno < '000100'
+ORDER BY empno;
+....
+
+==== Making Charts Using SQL
+
+Imagine that one had a string of numeric values that one wants to display as a line-bar chart. With a little coding, this is easy to do in SQL:
+
+.Make chart using SQL
+[source,sql]
+....
+SELECT id
+     , salary
+     , INT(salary / 1500) AS len
+     , REPEAT('*', INT(salary / 1500)) AS salary_chart
+FROM staff
+WHERE id > 120
+AND   id < 190
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |SALARY  |LEN|SALARY_CHART 
+|130|10505.90|7  |******* 
+|140|21150.00|14 |************** 
+|150|19456.50|12 |************ 
+|160|22959.20|15 |*************** 
+|170|12258.50|8  |******** 
+|180|12009.75|8  |********
+|===
+
+To create the above graph we first converted the column of interest to an integer field of a manageable length, and then used this value to repeat a single "_" character a set number of times. One problem with the above query is that we won't know how long the chart will be until we run the statement. This may cause problems if we guess wrongly and we are tight for space. The next query addresses this issue by creating a chart of known length. It does it by dividing the row value by the maximum value for the selected rows (all divided by 20). The result is used to repeat the "_" character "n" times:
+
+.Make chart of fixed length
+[source,sql]
+....
+SELECT dept
+     , id
+     , salary
+     , VARCHAR(REPEAT('*', INT(salary / (MAX(salary) OVER() / 20))), 20) AS chart
+FROM staff
+WHERE dept <= 15
+AND id >= 100
+ORDER BY 1,2;
+....
+
+ANSWER
+|===
+|DEPT|ID |SALARY  |CHART 
+|10  |160|82959.20|******************
+|10  |210|90010.00|******************** 
+|10  |240|79260.25|***************** 
+|10  |260|81234.00|****************** 
+|15  |110|42508.20|********* 
+|15  |170|42258.50|*********
+|===
+
+The above code can be enhanced to have two charts in the same column. To illustrate, the next query expresses the salary as a chart, but separately by department. This can be useful to do when the two departments have very different values and one wants to analyze the data in each department independently:
+
+.Make two fixed length charts in the same column
+[source,sql]
+....
+SELECT dept
+     , id
+     , salary
+     , VARCHAR(REPEAT('*', 
+                      INT(salary / (MAX(salary)
+                                          OVER(PARTITION BY dept) / 20)
+                          )
+                     ), 20) AS chart
+FROM staff
+WHERE dept <= 15
+AND id >= 100
+ORDER BY 1,2;
+....
+
+_ANSWER_
+|===
+|DEPT|ID |SALARY   |CHART 
+|10  |160|82959.20 |******************
+|10  |210|90010.00 |******************** 
+|10  |240|79260.25 |***************** 
+|10  |260|81234.00 |****************** 
+|15  |110|42508.20 |******************** 
+|15  |170|42258.50 |*******************
+|===
+
+==== Multiple Counts in One Pass
+
+The STATS table that is defined on page 116 has a SEX field with just two values, 'F' (for female) and 'M' (for male). To get a count of the rows by sex we can write the following:
+
+.Use GROUP BY to get counts
+[source,sql]
+....
+SELECT sex
+     , COUNT(*) AS num
+FROM stats
+GROUP BY sex
+ORDER BY sex;
+....
+
+_ANSWER_
+|===
+|SEX|NUM
+|F  |595 
+|M  |405
+|===
+
+Imagine now that we wanted to get a count of the different sexes on the same line of output. One, not very efficient, way to get this answer is shown below. It involves scanning the data table twice (once for males, and once for females) then joining the result.
+
+.Use Common Table Expression to get counts
+[source,sql]
+....
+WITH f (f) AS
+(SELECT COUNT(*) FROM stats WHERE sex = 'F')
+, m (m) AS
+(SELECT COUNT(*) FROM stats WHERE sex = 'M')
+SELECT f, m
+FROM f
+   , m;
+....
+
+It would be more efficient if we answered the question with a single scan of the data table. This we can do using a CASE statement and a SUM function:
+
+.Use CASE and SUM to get counts
+[source,sql]
+....
+SELECT SUM(CASE sex WHEN 'F' THEN 1 ELSE 0 END) AS female
+     , SUM(CASE sex WHEN 'M' THEN 1 ELSE 0 END) AS male
+FROM stats;
+....
+
+We can now go one step further and also count something else as we pass down the data. In the following example we get the count of all the rows at the same time as we get the individual sex counts.
+
+.Use CASE and SUM to get counts
+[source,sql]
+....
+SELECT COUNT(*)                                 AS total
+     , SUM(CASE sex WHEN 'F' THEN 1 ELSE 0 END) AS female
+     , SUM(CASE sex WHEN 'M' THEN 1 ELSE 0 END) AS male
+FROM stats;
+....
+
+==== Find Missing Rows in Series / Count all Values
+
+One often has a sequence of values (e.g. invoice numbers) from which one needs both found and not-found rows. This cannot be done using a simple SELECT statement because some of rows being selected may not actually exist. For example, the following query lists the number of staff that have worked for the firm for "n" years, but it misses those years during which no staff joined:
+
+.Count staff joined per year
+[source,sql]
+....
+SELECT years
+     , COUNT(*) AS #staff
+FROM staff
+WHERE UCASE(name) LIKE '%E%'
+AND years <= 5
+GROUP BY years;
+....
+
+_ANSWER_
+|===
+|YEARS|#STAFF
+|1    |1 
+|4    |2 
+|5    |3
+|===
+
+The simplest way to address this problem is to create a complete set of target values, then do an outer join to the data table. This is what the following example does:
+
+.Count staff joined per year, all years
+[source,sql]
+....
+WITH list_years (year#) AS
+(VALUES (0), (1), (2), (3), (4), (5))
+SELECT year#              AS years
+     , COALESCE(#stff, 0) AS #staff
+FROM list_years
+LEFT OUTER JOIN
+    (SELECT years
+          , COUNT(*) AS #stff
+     FROM staff
+     WHERE UCASE(name) LIKE '%E%'
+     AND years <= 5
+     GROUP BY years) AS xxx
+ON year# = years
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|YEARS|#STAFF 
+|0    |0 
+|1    |1 
+|2    |0 
+|3    |0 
+|4    |2 
+|5    |3
+|===
+
+The use of the VALUES syntax to create the set of target rows, as shown above, gets to be tedious if the number of values to be made is large. To address this issue, the following example uses recursion to make the set of target values:
+
+.Count staff joined per year, all years
+[source,sql]
+....
+WITH list_years (year#) AS
+(VALUES SMALLINT(0)
+   UNION ALL
+ SELECT year# + 1
+ FROM list_years
+ WHERE year# < 5)
+SELECT year#              AS years
+     , COALESCE(#stff, 0) AS #staff
+FROM list_years
+LEFT OUTER JOIN
+    (SELECT years
+          , COUNT(*) AS #stff
+     FROM staff
+     WHERE UCASE(name) LIKE '%E%'
+     AND years <= 5
+     GROUP BY years) AS xxx
+ON year# = years
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|YEARS|#STAFF
+|0    |0 
+|1    |1 
+|2    |0 
+|3    |0 
+|4    |2 
+|5    |3
+|===
+
+If one turns the final outer join into a (negative) sub-query, one can use the same general logic to list those years when no staff joined:
+
+.List years when no staff joined
+[source,sql]
+....
+WITH list_years (year#) AS
+(VALUES SMALLINT(0)
+   UNION ALL
+ SELECT year# + 1
+ FROM list_years
+ WHERE year# < 5)
+SELECT year#
+FROM list_years y
+WHERE NOT EXISTS
+    (SELECT *
+     FROM staff s
+     WHERE UCASE(s.name) LIKE '%E%'
+     AND s.years = y.year#)
+ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|YEAR#
+|0
+|2
+|3
+|===
+
+==== Multiple Counts from the Same Row
+
+Imagine that we want to select from the EMPLOYEE table the following counts presented in a tabular list with one line per item. In each case, if nothing matches we want to get a zero:
+
+* Those with a salary greater than $20,000
+* Those whose first name begins 'ABC%'
+* Those who are male.
+* Employees per department.
+* A count of all rows.
+
+Note that a given row in the EMPLOYEE table may match more than one of the above criteria. If this were not the case, a simple nested table expression could be used. Instead we will do the following:
+
+.Multiple counts in one pass
+[source,sql]
+....
+WITH category (cat, subcat, dept) AS
+(VALUES ('1ST', 'ROWS IN TABLE ', '')
+      , ('2ND', 'SALARY > $20K ', '')
+      , ('3RD', 'NAME LIKE ABC%', '')
+      , ('4TH', 'NUMBER MALES ', '')
+   UNION
+ SELECT '5TH'
+      , deptname
+      , deptno
+ FROM department)
+SELECT xxx.cat        AS "category"
+     , xxx.subcat     AS "subcategory/dept"
+     , SUM(xxx.found) AS "#rows"
+FROM (SELECT cat.cat
+           , cat.subcat
+           , CASE 
+               WHEN emp.empno IS NULL THEN 0
+               ELSE 1
+             END AS found
+      FROM category cat
+      LEFT OUTER JOIN employee emp
+      ON cat.subcat = 'ROWS IN TABLE'
+      OR (cat.subcat = 'NUMBER MALES'
+          AND
+          emp.sex = 'M')
+      OR (cat.subcat = 'SALARY > $20K'
+          AND
+          emp.salary > 20000)
+      OR (cat.subcat = 'NAME LIKE ABC%'
+          AND
+          emp.firstnme LIKE 'ABC%')
+      OR (cat.dept <> '' 
+          AND
+          cat.dept = emp.workdept)
+         ) AS xxx
+GROUP BY xxx.cat
+       , xxx.subcat
+ORDER BY 1,2;
+....
+
+In the above query, a temporary table is defined and then populated with all of the summation types. This table is then joined (using a left outer join) to the EMPLOYEE table. Any matches (i.e. where EMPNO is not null) are given a FOUND value of 1. The output of the join is then feed into a GROUP BY to get the required counts.
+|===
+|CATEGORY| SUBCATEGORY/DEPT            |#ROWS 
+|1ST     | ROWS IN TABLE               |32
+|2ND     | SALARY > $20K               |25 
+|3RD     | NAME LIKE ABC%              |0 
+|4TH     | NUMBER MALES                |19
+|5TH     | ADMINISTRATION SYSTEMS      |6 
+|5TH     | DEVELOPMENT CENTER          |0 
+|5TH     | INFORMATION CENTER          |3 
+|5TH     | MANUFACTURING SYSTEMS       |9 
+|5TH     | OPERATIONS                  |5
+|5TH     | PLANNING                    |1 
+|5TH     | SOFTWARE SUPPORT            |4 
+|5TH     | SPIFFY COMPUTER SERVICE DIV.|3 
+|5TH     | SUPPORT SERVICES            |1
+|===
+
+=== Normalize Denormalized Data
+
+Imagine that one has a string of text that one wants to break up into individual words. As long as the word delimiter is fairly basic (e.g. a blank space), one can use recursive SQL to do this task. One recursively divides the text into two parts (working from left to right). The first part is the word found, and the second part is the remainder of the text:
+
+.Break text into words - SQL
+[source,sql]
+....
+WITH temp1 (id, data) AS
+(VALUES (01, 'SOME TEXT TO PARSE.')
+      , (02, 'MORE SAMPLE TEXT.')
+      , (03, 'ONE-WORD.')
+      , (04,''))
+, temp2 (id, word#, word, data_left) AS
+(SELECT id
+      , SMALLINT(1)
+      , SUBSTR(data, 1, CASE LOCATE(' ', data)
+                          WHEN 0 THEN LENGTH(data)
+                          ELSE LOCATE(' ', data)
+                          END
+              )
+      , LTRIM(SUBSTR(data, CASE LOCATE(' ', data)
+                             WHEN 0 THEN LENGTH(data) + 1
+                             ELSE LOCATE(' ', data)
+                           END
+                    )
+             )
+ FROM temp1
+ WHERE data <> ''
+   UNION ALL
+ SELECT id
+      , word# + 1
+      , SUBSTR(data_left, 1, CASE LOCATE(' ', data_left)
+                               WHEN 0 THEN LENGTH(data_left)
+                               ELSE LOCATE(' ', data_left)
+                             END
+              )
+      , LTRIM(SUBSTR(data_left, CASE LOCATE(' ', data_left)
+                                  WHEN 0 THEN LENGTH(data_left) + 1
+                                  ELSE LOCATE(' ', data_left)
+                                END
+                    )
+             )
+ FROM temp2
+ WHERE data_left <> '')
+SELECT *
+FROM temp2
+ORDER BY 1,2;
+....
+
+The SUBSTR function is used above to extract both the next word in the string, and the remainder of the text. If there is a blank byte in the string, the SUBSTR stops (or begins, when getting the remainder) at it. If not, it goes to (or begins at) the end of the string. CASE logic is used to decide what to do.
+.Break text into words
+|===
+|ID|WORD#|WORD     |DATA_LEFT 
+|1 |1    |SOME     |TEXT TO PARSE. 
+|1 |2    |TEXT     |TO PARSE. 
+|1 |3    |TO       |PARSE. 
+|1 |4    |PARSE.   |
+|2 |1    |MORE     |SAMPLE TEXT. 
+|2 |2    |SAMPLE   |TEXT. 
+|2 |3    |TEXT.    |
+|3 |1    |ONE-WORD.|
+|===
+
+=== Denormalize Normalized Data
+
+The SUM function can be used to accumulate numeric values. To accumulate character values (i.e. to string the individual values from multiple lines into a single long value) is a little harder, but it can also be done. The following example uses the XMLAGG column function to aggregate multiple values into one. The processing goes as follows:
+
+* The XMLTEXT scalar function converts each character value into XML. A space is put at the end of the each name, so there is a gap before the next.
+* The XMLAGG column function aggregates the individual XML values in name order. 
+* The XMLSERIALIZE scalar function converts the aggregated XML value into a CLOB.
+* The SUBSTR scalar function converts the CLOB to a CHAR.
+
+Now for the code:
+
+.Denormalize Normalized Data
+[source,sql]
+....
+SELECT dept
+     , SMALLINT(COUNT(*)) AS #w
+     , MAX(name) AS max_name
+     , SUBSTR(
+         XMLSERIALIZE(
+           XMLAGG(
+             XMLTEXT(name || ' ')
+           ORDER BY name) AS CLOB(1M))
+         , 1, 50) AS all_names
+FROM staff
+GROUP BY dept
+ORDER BY dept;
+....
+
+Here is the answer:
+|===
+|DEPT|W#|MAX_NAME |ALL_NAMES 
+|10  |4 |Molinare |Daniels Jones Lu Molinare 
+|15  |4 |Rothman  |Hanes Kermisch Ngan Rothman 
+|20  |4 |Sneider  |James Pernal Sanders Sneider 
+|38  |5 |Quigley  |Abrahams Marenghi Naughton O'Brien Quigley 
+|42  |4 |Yamaguchi|Koonitz Plotz Scoutten Yamaguchi 
+|51  |5 |Williams |Fraye Lundquist Smith Wheeler Williams 
+|66  |5 |Wilson   |Burke Gonzales Graham Lea Wilson 
+|84  |4 |Quill    |Davis Edwards Gafney Quill
+|===
+
+The next example uses recursion to do exactly the same thing. It begins by getting the minimum name in each department. It then recursively gets the next to lowest name, then the next, and so on. As the query progresses, it maintains a count of names added, stores the current name in the temporary NAME field, and appends the same to the end of the ALL_NAMES field. Once all of the names have been processed, the final SELECT eliminates from the answer-set all rows, except the last for each department:
+
+.Denormalize Normalized Data
+[source,sql]
+....
+WITH temp1 (dept,w#,name,all_names) AS
+(SELECT dept
+      , SMALLINT(1)
+      , MIN(name)
+      , VARCHAR(MIN(name), 50)
+ FROM staff a
+ GROUP BY dept
+   UNION ALL
+ SELECT a.dept
+      , SMALLINT(b.w#+1)
+      , a.name
+      , b.all_names || ' ' || a.name
+ FROM staff a
+    , temp1 b
+ WHERE a.dept = b.dept
+ AND a.name > b.name
+ AND a.name = 
+      (SELECT MIN(c.name)
+       FROM staff c
+       WHERE c.dept = b.dept
+       AND c.name > b.name)
+ )
+SELECT dept
+     , w#
+     , name AS max_name
+     , all_names
+FROM temp1 d
+WHERE w# = (SELECT MAX(w#)
+            FROM temp1 e
+            WHERE d.dept = e.dept)
+ORDER BY dept;
+....
+
+If there are no suitable indexes, the above query may be horribly inefficient. If this is the case, one can create a user-defined function to string together the names in a department(IMPORTANT: This example uses an "!" as the stmt delimiter):
+
+.Creating a function to denormalize names
+[source,sql]
+....
+CREATE FUNCTION list_names(indept SMALLINT)
+RETURNS VARCHAR(50)
+BEGIN ATOMIC
+  DECLARE outstr VARCHAR(50) DEFAULT '';
+  FOR list_names AS
+    SELECT name
+    FROM staff
+    WHERE dept = indept
+    ORDER BY name
+  DO
+    SET outstr = outstr || name || ' ';
+  END FOR;
+  SET outstr = rtrim(outstr);
+  RETURN outstr;
+END!
+
+SELECT dept          AS DEPT
+     , SMALLINT(cnt) AS W#
+     , mxx AS MAX_NAME
+     , list_names(dept) AS ALL_NAMES
+FROM (SELECT dept
+           , COUNT(*) as cnt
+           , MAX(name) AS mxx
+      FROM staff
+      GROUP BY dept) as ddd
+ORDER BY dept!
+....
+
+Even the above might have unsatisfactory performance - if there is no index on department. If adding an index to the STAFF table is not an option, it might be faster to insert all of the rows into a declared temporary table, and then add an index to that.
+
+[[transpose.numeric.data]]
+=== Transpose Numeric Data
+
+In this section we will turn rows of numeric data into columns. This cannot be done directly in SQL because the language does not support queries where the output columns are unknown at query start. We will get around this limitation by sending the transposed output to a suitably long VARCHAR field. Imagine that we want to group the data in the STAFF sample table by DEPT and JOB to get the SUM salary for each instance, but not in the usual sense with one output row per DEPT and JOB value. Instead, we want to generate one row per DEPT, with a set of "columns" (in a VARCHAR field) that hold the SUM salary values for each JOB in the department. We will also put column titles on the first line of output. To make the following query simpler, three simple scalar functions will be used to convert data from one type to another: 
+
+* Convert decimal data to character - similar to the one on page 401.
+* Convert smallint data to character - same as the one page 401.
+* Right justify and add leading blanks to character data.
+
+Now for the functions:
+
+.Data Transformation Functions
+[source,sql]
+....
+CREATE FUNCTION num_to_char(inval SMALLINT)
+RETURNS CHAR(06)
+RETURN RIGHT(CHAR('',06) CONCAT RTRIM(CHAR(inval)), 06);
+
+CREATE FUNCTION num_to_char(inval DECIMAL(9, 2))
+RETURNS CHAR(10)
+RETURN RIGHT(CHAR('', 7)               CONCAT
+       RTRIM(CHAR(BIGINT(inval))), 7)  CONCAT
+       '.'                             CONCAT
+       SUBSTR(DIGITS(inval), 8, 2);
+
+CREATE FUNCTION right_justify(inval CHAR(5))
+RETURNS CHAR(10)
+RETURN RIGHT(CHAR('', 10) || RTRIM(inval), 10);
+....
+
+The query consists of lots of little steps that are best explained by describing each temporary table built:
+
+* *DATA_INPUT*: This table holds the set of matching rows in the STAFF table, grouped by DEPT and JOB as per a typical query (see <<transpose.numeric.data>> for the contents). This is the only time that we touch the original STAFF table. All subsequent queries directly or indirectly reference this table.
+* *JOBS_LIST*: The list of distinct jobs in all matching rows. Each job is assigned two rownumbers, one ascending, and one descending.
+* *DEPT_LIST*: The list of distinct departments in all matching rows. 
+* *DEPT_JOB_LIST*: The list of all matching department/job combinations. We need this table because not all departments have all jobs.
+* *DATA_ALL_JOBS*: The DEPT_JOB_LIST table joined to the original DATA_INPUT table using a left outer join, so we now have one row with a sum-salary value for every JOB and DEPT instance.
+* *DATA_TRANSFORM*: Recursively go through the DATA_ALL_JOBS table (for each department), adding the a character representation of the current sum-salary value to the back of a VARCHAR column.
+* *DATA_LAST_ROW*: For each department, get the row with the highest ascending JOB# value. This row has the concatenated string of sum-salary values.
+
+At this point we are done, except that we don't have any column headings in our output. The rest of the query gets these.
+
+* *JOBS_TRANSFORM*: Recursively go through the list of distinct jobs, building a VARCHAR string of JOB names. The job names are right justified - to match the sumsalary values, and have the same output length.
+* *JOBS_LAST_ROW*: Get the one row with the lowest descending job number. This row has the complete string of concatenated job names. 
+* *DATA_AND_JOBS*: Use a UNION ALL to vertically combine the JOBS_LAST_ROW and DATA_LAST_ROW tables. The result is a new table with both column titles and sum-salary values.
+
+Finally, we select the list of column names and sum-salary values. The output is ordered so that the column names are on the first line fetched.
+
+Now for the query:
+
+.Transform numeric data
+[source,sql]
+....
+WITH data_input AS
+(SELECT dept
+      , job
+      , SUM(salary) AS sum_sal
+ FROM staff
+ WHERE id < 200
+ AND name <> 'Sue'
+ AND salary > 10000
+ GROUP BY dept
+        , job)
+, jobs_list AS
+(SELECT job
+      , ROW_NUMBER() OVER(ORDER BY job ASC) AS job#A
+      , ROW_NUMBER() OVER(ORDER BY job DESC) AS job#D
+ FROM data_input
+ GROUP BY job)
+, dept_list AS
+(SELECT dept
+ FROM data_input
+ GROUP BY dept)
+, dept_jobs_list AS
+(SELECT dpt.dept
+      , job.job
+      , job.job#A
+      , job.job#D
+ FROM jobs_list job
+ FULL OUTER JOIN dept_list dpt
+ ON 1 = 1)
+, data_all_jobs AS
+(SELECT djb.dept
+      , djb.job
+      , djb.job#A
+      , djb.job#D
+      , COALESCE(dat.sum_sal, 0) AS sum_sal
+ FROM dept_jobs_list djb
+ LEFT OUTER JOIN data_input dat
+ ON djb.dept = dat.dept
+ AND djb.job = dat.job)
+, data_transform (dept, job#A, job#D, outvalue) AS
+(SELECT dept
+      , job#A
+      , job#D
+      , VARCHAR(num_to_char(sum_sal), 250)
+ FROM data_all_jobs
+ WHERE job#A = 1
+   UNION ALL
+ SELECT dat.dept
+      , dat.job#A
+      , dat.job#D
+      , trn.outvalue || ',' || num_to_char(dat.sum_sal)
+ FROM data_transform trn
+    , data_all_jobs dat
+ WHERE trn.dept = dat.dept
+ AND trn.job#A = dat.job#A - 1)
+, data_last_row AS
+(SELECT dept
+      , num_to_char(dept) AS dept_char
+     , outvalue
+ FROM data_transform
+ WHERE job#D = 1)
+, jobs_transform (job#A, job#D, outvalue) AS
+(SELECT job#A
+      , job#D
+      , VARCHAR(right_justify(job), 250)
+ FROM jobs_list
+ WHERE job#A = 1
+   UNION ALL
+ SELECT job.job#A
+      , job.job#D
+      , trn.outvalue || ',' || right_justify(job.job)
+ FROM jobs_transform trn
+    , jobs_list job
+ WHERE trn.job#A = job.job#A - 1)
+, jobs_last_row AS
+(SELECT 0      AS dept
+     , ' DEPT' AS dept_char
+     , outvalue
+ FROM jobs_transform
+ WHERE job#D = 1)
+, data_and_jobs AS
+(SELECT ept
+      , ept_char
+      , outvalue
+ FROM jobs_last_row
+   UNION ALL
+ SELECT dept
+      , dept_char
+      , outvalue
+ FROM data_last_row)
+SELECT dept_char || ',' || outvalue AS output
+FROM data_and_jobs
+ORDER BY dept;
+....
+
+For comparison, below are the contents of the first temporary table, and the final output: 
+
+.Contents of first temporary table and final output
+
+*DATA_INPUT*
+|===
+|DEPT |JOB  |SUM_SAL
+|10   |Mgr  |22959.20
+|15   |Clerk|24766.70 
+|15   |Mgr  |20659.80 
+|15   |Sales|16502.83 
+|20   |Clerk|27757.35 
+|20   |Mgr  |18357.50
+|20   |Sales|78171.25 
+|38   |Clerk|24964.50 
+|38   |Mgr  |77506.75 
+|38   |Sales|34814.30 
+|42   |Clerk|10505.90 
+|42   |Mgr  |18352.80 
+|42   |Sales|18001.75
+|51   |Mgr  |21150.00 
+|51   |Sales|19456.50
+|===
+
+*OUTPUT*
+|===
+|DEPT|Clerk   |Mgr      |Sales
+|10  |0.00    |22959.20 |0.00 
+|15  |24766.70|20659.80 |16502.83 
+|20  |27757.35|18357.50 |78171.25 
+|38  |24964.50|77506.75 |34814.30 
+|42  |10505.90|18352.80 |18001.75 
+|51  |0.00    |21150.00 |19456.50
+|===
+
+[[reversing.field.contents]]
+=== Reversing Field Contents
+
+Db2 lacks a simple function for reversing the contents of a data field. Fortunately, we can create a function to do it ourselves.
+
+==== Input vs. Output
+
+Before we do any data reversing, we have to define what the reversed output should look like relative to a given input value. For example, if we have a four-digit numeric field, the reverse of the number 123 could be 321, or it could be 3210. The latter value implies that the input has a leading zero. It also assumes that we really are working with a four digit field. Likewise, the reverse of the number 123.45 might be 54.321, or 543.21. Another interesting problem involves reversing negative numbers. If the value "-123" is a string, then the reverse is probably "321-". If it is a number, then the desired reverse is more likely to be "-321". Trailing blanks in character strings are a similar problem. Obviously, the reverse of "ABC" is "CBA", but what is the reverse of "ABC "? There is no general technical answer to any of these questions. The correct answer depends upon the business needs of the application. Below is a user defined function that can reverse the contents of a character field (IMPORTANT: This example uses an "!" as the stmt delimiter):
+
+.Reversing character field
+[source,sql]
+....
+--#SET DELIMITER !
+
+CREATE FUNCTION reverse(instr VARCHAR(50))
+RETURNS VARCHAR(50)
+BEGIN ATOMIC
+  DECLARE outstr VARCHAR(50) DEFAULT '';
+  DECLARE curbyte SMALLINT DEFAULT 0;
+  SET curbyte = LENGTH(RTRIM(instr));
+  WHILE curbyte >= 1 DO
+    SET outstr = outstr || SUBSTR(instr,curbyte, 1);
+    SET curbyte = curbyte - 1;
+  END WHILE;
+  RETURN outstr;
+END!
+
+SELECT id AS ID
+     , name AS NAME1
+     , reverse(name) AS NAME2
+FROM staff
+WHERE id < 40
+ORDER BY id!
+....
+
+_ANSWER_
+|===
+|ID|NAME1   |NAME2
+|10|Sanders |srednaS 
+|20|Pernal  |lanreP 
+|30|Marenghi|ihgneraM
+|===
+
+The same function can be used to reverse numeric values, as long as they are positive:
+
+.Reversing numeric field
+[source,sql]
+....
+SELECT id                               AS ID
+     , salary                           AS SALARY1
+     , DEC(reverse(CHAR(salary)), 7, 4) AS SALARY2
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY1 |SALARY2 
+|10|18357.50|5.7538 
+|20|78171.25|52.1718
+|30|77506.75|57.6057
+|===
+
+Simple CASE logic can be used to deal with negative values (i.e. to move the sign to the front of the string, before converting back to numeric), if they exist.
+
+=== Fibonacci Series
+
+A Fibonacci Series is a series of numbers where each value is the sum of the previous two. Regardless of the two initial (seed) values, if run for long enough, the division of any two adjacent numbers will give the value 0.618 or inversely 1.618.  The following user defined function generates a Fibonacci series using three input values:
+
+* First seed value.
+* Second seed value.
+* Number values to generate in series.
+
+Observe that that the function code contains a check to stop series generation if there is not enough space in the output field for more numbers (IMPORTANT: This example uses an "!" as the stmt delimiter):
+
+.Fibonacci Series function
+[source,sql]
+....
+--#SET DELIMITER !
+
+CREATE FUNCTION Fibonacci (inval1 INTEGER
+                         , inval2 INTEGER
+                         , loopno INTEGER)
+RETURNS VARCHAR(500)
+BEGIN ATOMIC
+  DECLARE loopctr INTEGER DEFAULT 0;
+  DECLARE tempval1 BIGINT;
+  DECLARE tempval2 BIGINT;
+  DECLARE tempval3 BIGINT;
+  DECLARE outvalue VARCHAR(500);
+  SET tempval1 = inval1;
+  SET tempval2 = inval2;
+  SET outvalue = RTRIM(LTRIM(CHAR(tempval1))) || ', ' ||
+                 RTRIM(LTRIM(CHAR(tempval2)));
+  calc:
+  WHILE loopctr < loopno DO
+    SET tempval3 = tempval1 + tempval2;
+    SET tempval1 = tempval2;
+    SET tempval2 = tempval3;
+    SET outvalue = outvalue || ', ' || RTRIM(LTRIM(CHAR(tempval3)));
+    SET loopctr = loopctr + 1;
+    IF LENGTH(outvalue) > 480 THEN
+      SET outvalue = outvalue || ' etc...';
+      LEAVE calc;
+    END IF;
+  END WHILE;
+  RETURN outvalue;
+END!
+....
+
+The following query references the function:
+
+.Fibonacci Series generation
+[source,sql]
+....
+WITH temp1 (v1, v2, lp) AS
+(VALUES (00, 01, 11)
+      , (12, 61, 10)
+      , (02, 05, 09)
+      , (01, -1, 08))
+SELECT t1.*
+     , Fibonacci(v1, v2, lp) AS sequence
+FROM temp1 t1;
+....
+
+_ANSWER_
+|===
+|V1|V2|LP|SEQUENCE
+|0 |1 |11|0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144 
+|12|61|10|12, 61, 73, 134, 207, 341, 548, 889, 1437, 2326, 3763, 6089 
+|2 |5 |9 |2, 5, 7, 12, 19, 31, 50, 81, 131, 212, 343
+|1 |-1|8 |1, -1, 0, -1, -1, -2, -3, -5, -8, -13
+|===
+
+The above example generates the complete series of values. If needed, the code could easily be simplified to simply return only the last value in the series. Likewise, a recursive join can be used to create a set of rows that are a Fibonacci series.
+
+=== Business Day Calculation
+
+The following function will calculate the number of business days (i.e. Monday to Friday) between to two dates:
+
+IMPORTANT: This example uses an "!" as the stmt delimiter.
+
+.Calculate number of business days between two dates
+[source,sql]
+....
+CREATE FUNCTION business_days (lo_date DATE, hi_date DATE)
+RETURNS INTEGER
+BEGIN ATOMIC
+  DECLARE bus_days INTEGER DEFAULT 0;
+  DECLARE cur_date DATE;
+  SET cur_date = lo_date;
+  WHILE cur_date < hi_date DO
+    IF DAYOFWEEK(cur_date) IN (2,3,4,5,6) THEN
+      SET bus_days = bus_days + 1;
+    END IF;
+    SET cur_date = cur_date + 1 DAY;
+  END WHILE;
+  RETURN bus_days;
+END!
+....
+
+Below is an example of the function in use:
+
+.Use business-day function
+[source,sql]
+....
+WITH temp1 (ld, hd) AS
+(VALUES (DATE('2006-01-10'), DATE('2007-01-01'))
+      , (DATE('2007-01-01'), DATE('2007-01-01'))
+      , (DATE('2007-02-10'), DATE('2007-01-01')))
+SELECT t1.*
+     , DAYS(hd) - DAYS(ld)   AS diff
+     , business_days(ld, hd) AS bdays
+FROM temp1 t1;
+....
+
+_ANSWER_
+|===
+|LD        |HD        |DIFF|BDAYS
+|2006-01-10|2007-01-01|356 |254
+|2007-01-01|2007-01-01|0   |0 
+|2007-02-10|2007-01-01|-40 |0
+|===
+
+=== Query Runs for "n" Seconds
+
+Imagine that one wanted some query to take exactly four seconds to run. The following query does just this - by looping (using recursion) until such time as the current system timestamp is four seconds greater than the system timestamp obtained at the beginning of the query:
+
+.Run query for four seconds
+[source,sql]
+....
+WITH temp1 (num,ts1,ts2) AS
+(VALUES (INT(1)
+       , TIMESTAMP(GENERATE_UNIQUE())
+       , TIMESTAMP(GENERATE_UNIQUE()))
+   UNION ALL
+ SELECT num + 1
+      , ts1
+      , TIMESTAMP(GENERATE_UNIQUE())
+ FROM temp1
+ WHERE TIMESTAMPDIFF(2, CHAR(ts2 - ts1)) < 4)
+SELECT MAX(num) AS #loops
+     , MIN(ts2) AS bgn_timestamp
+     , MAX(ts2) AS end_timestamp
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|#LOOPS|BGN_TIMESTAMP             |END_TIMESTAMP
+|58327 |2001-08-09-22.58.12.754579|2001-08-09-22.58.16.754634
+|===
+
+Observe that the CURRENT TIMESTAMP special register is not used above. It is not appropriate for this situation, because it always returns the same value for each invocation within a single query. 
+
+=== Function to Pause for "n" Seconds
+
+We can take the above query and convert it into a user-defined function that will loop for "n" seconds, where "n" is the value passed to the function. However, there are several caveats:
+
+* Looping in SQL is a "really stupid" way to hang around for a couple of seconds. A far better solution would be to call a stored procedure written in an external language that has a true pause command.
+* The number of times that the function is invoked may differ, depending on the access path used to run the query.
+* The recursive looping is going to result in the calling query getting a warning message.
+
+Now for the code:
+
+.Function that pauses for "n" seconds
+[source,sql]
+....
+CREATE FUNCTION pause(inval INT)
+RETURNS INTEGER
+NOT DETERMINISTIC
+EXTERNAL ACTION
+RETURN
+WITH ttt (num, strt, stop) AS
+       (VALUES (1
+              , TIMESTAMP(GENERATE_UNIQUE())
+              , TIMESTAMP(GENERATE_UNIQUE()))
+          UNION ALL
+        SELECT num + 1
+             , strt
+             , TIMESTAMP(GENERATE_UNIQUE())
+        FROM ttt
+        WHERE TIMESTAMPDIFF(2, CHAR(stop - strt)) < inval)
+SELECT MAX(num)
+FROM ttt;
+....
+
+Below is a query that calls the above function:
+
+.Query that uses pause function
+[source,sql]
+....
+SELECT id
+     , SUBSTR(CHAR(TIMESTAMP(GENERATE_UNIQUE())),18) AS ss_mmmmmm
+     , pause(id / 10) AS #loops
+     , SUBSTR(CHAR(TIMESTAMP(GENERATE_UNIQUE())),18) AS ss_mmmmmm
+FROM staff
+WHERE id < 31;
+....
+
+_ANSWER_
+|===
+|ID|SS_MMMMMM|#LOOPS|SS_MMMMMM
+|10|50.068593|76386 |50.068587
+|20|52.068744|144089|52.068737 
+|30|55.068930|206101|55.068923
+|===
+
+=== Sort Character Field Contents
+
+The following user-defined scalar function will sort the contents of a character field in either ascending or descending order. There are two input parameters:
+
+* The input string: As written, the input can be up to 20 bytes long. To sort longer fields, change the input, output, and OUT-VAL (variable) lengths as desired.
+* The sort order (i.e. 'A' or 'D').
+
+The function uses a very simple, and not very efficient, bubble-sort. In other words, the input string is scanned from left to right, comparing two adjacent characters at a time. If they are not in sequence, they are swapped - and flag indicating this is set on. The scans are repeated until all of the characters in the string are in order:
+
+.Define sort-char function
+[source,sql]
+....
+--#SET DELIMITER !
+
+CREATE FUNCTION sort_char(in_val VARCHAR(20), sort_dir VARCHAR(1))
+RETURNS VARCHAR(20)
+BEGIN ATOMIC
+  DECLARE cur_pos SMALLINT;
+  DECLARE do_sort CHAR(1);
+  DECLARE out_val VARCHAR(20);
+  IF UCASE(sort_dir) NOT IN ('A','D') THEN
+    SIGNAL SQLSTATE '75001'
+    SET MESSAGE_TEXT = 'Sort order not ''A'' or ''D''';
+  END IF;
+  SET out_val = in_val;
+  SET do_sort = 'Y';
+  WHILE do_sort = 'Y' DO
+    SET do_sort = 'N';
+    SET cur_pos = 1;
+    WHILE cur_pos < length(in_val) DO
+      IF (UCASE(sort_dir) = 'A' 
+          AND SUBSTR(out_val, cur_pos+1, 1) < SUBSTR(out_val, cur_pos, 1)
+         ) OR 
+         (UCASE(sort_dir) = 'D' 
+          AND SUBSTR(out_val, cur_pos+1, 1) > SUBSTR(out_val, cur_pos, 1)) THEN
+        SET do_sort = 'Y';
+        SET out_val = CASE
+        WHEN cur_pos = 1
+          THEN ''
+          ELSE SUBSTR(out_val, 1, cur_pos-1)
+        END CONCAT SUBSTR(out_val, cur_pos+1, 1)
+            CONCAT SUBSTR(out_val, cur_pos , 1)
+            CONCAT CASE WHEN cur_pos = length(in_val) - 1
+                     THEN ''
+                     ELSE SUBSTR(out_val,cur_pos+2)
+                   END;
+      END IF;
+      SET cur_pos = cur_pos + 1;
+    END WHILE;
+  END WHILE;
+  RETURN out_val;
+END!
+....
+
+Here is the function in action:
+
+.Use sort-char function
+[source,sql]
+....
+WITH word1 (w#, word_val) AS
+(VALUES(1, '12345678')
+     , (2, 'ABCDEFG')
+     , (3, 'AaBbCc')
+     , (4,'abccb')
+     , (5,'''%#.')
+     , (6,'bB')
+     , (7,'a')
+     , (8,''))
+SELECT w#
+     , word_val
+     , sort_char(word_val, 'a') sa
+     , sort_char(word_val, 'D') sd
+FROM word1
+ORDER BY w#;
+....
+
+_ANSWER_
+|===
+|W#|WORD_VAL|SA      |SD
+|1 |12345678|12345678|87654321 
+|2 |ABCDEFG |ABCDEFG |GFEDCBA 
+|3 |AaBbCc  |aAbBcC  |CcBbAa 
+|4 |abccb   |abbcc   |ccbba 
+|5 |'%#.    |.'#%    |%#'. 
+|6 |bB      |bB      |Bb 
+|7 |a       |a       |a 
+|8 |        |        |
+|===
+
+=== Calculating the Median
+
+The median is defined at that value in a series of values where half of the values are higher to it and the other half are lower. The median is a useful number to get when the data has a few very extreme values that skew the average. If there are an odd number of values in the list, then the median value is the one in the middle (e.g. if 7 values, the median value is #4). If there is an even number of matching values, there are two formulas that one can use:
+
+* The most commonly used definition is that the median equals the sum of the two middle values, divided by two.
+* A less often used definition is that the median is the smaller of the two middle values.
+
+Db2 does not come with a function for calculating the median, but it can be obtained using the ROW_NUMBER function. This function is used to assign a row number to every matching row, and then one searches for the row with the middle row number.
+
+==== Using Formula #1
+
+Below is some sample code that gets the median SALARY, by JOB, for some set of rows in the STAFF table. Two JOB values are referenced - one with seven matching rows, and one with four. The query logic goes as follows:
+
+* Get the matching set of rows from the STAFF table, and give each row a row-number, within each JOB value. 
+* Using the set of rows retrieved above, get the maximum row-number, per JOB value, then add 1.0, then divide by 2, then add or subtract 0.6. This will give one two values that encompass a single row-number, if an odd number of rows match, and two row-numbers, if an even number of rows match.
+* Finally, join the one row per JOB obtained in step 2 above to the set of rows retrieved in step 1 - by common JOB value, and where the row-number is within the high/low range. The average salary of whatever is retrieved is the median.
+
+Now for the code:
+
+.Calculating the median
+[source,sql]
+....
+WITH numbered_rows AS
+(SELECT s.*
+      , ROW_NUMBER() OVER(PARTITION BY job
+                          ORDER BY salary, id) AS row#
+ FROM staff s
+ WHERE comm > 0
+ AND name LIKE '%e%')
+, median_row_num AS
+(SELECT job
+    , (MAX(row# + 1.0) / 2) - 0.5 AS med_lo
+    , (MAX(row# + 1.0) / 2) + 0.5 AS med_hi
+ FROM numbered_rows
+ GROUP BY job)
+SELECT nn.job
+     , DEC(AVG(nn.salary), 7, 2) AS med_sal
+FROM numbered_rows nn
+   , median_row_num mr
+WHERE nn.job = mr.job
+AND nn.row# BETWEEN mr.med_lo AND mr.med_hi
+GROUP BY nn.job
+ORDER BY nn.job;
+....
+
+_ANSWER_
+|===
+|JOB  |MED_SAL
+|Clerk|13030.50 
+|Sales|17432.10
+|===
+
+IMPORTANT: To get consistent results when using the ROW_NUMBER function, one must ensure that the ORDER BY column list encompasses the unique key of the table. Otherwise the row-number values will be assigned randomly - if there are multiple rows with the same value. In this particular case, the ID has been included in the ORDER BY list, to address duplicate SALARY values.
+
+The next example is the essentially the same as the prior, but there is additional code that gets the average SALARY, and a count of the number of matching rows per JOB value. Observe that all this extra code went in the second step:
+
+.Get median plus average
+[source,sql]
+....
+WITH numbered_rows AS
+(SELECT s.*
+      , ROW_NUMBER() OVER(PARTITION BY job
+                          ORDER BY salary, id) AS row#
+ FROM staff s
+ WHERE comm > 0
+ AND name LIKE '%e%')
+, median_row_num AS
+(SELECT job
+     , (MAX(row# + 1.0) / 2) - 0.5 AS med_lo
+     , (MAX(row# + 1.0) / 2) + 0.5 AS med_hi
+     , DEC(AVG(salary),7,2)        AS avg_sal
+     , COUNT(*)                    AS #rows
+ FROM numbered_rows
+ GROUP BY job)
+SELECT nn.job
+     , DEC(AVG(nn.salary),7,2) AS med_sal
+     , MAX(mr.avg_sal)         AS avg_sal
+     , MAX(mr.#rows)           AS #r
+FROM numbered_rows  nn
+   , median_row_num mr
+WHERE nn.job = mr.job
+AND nn.row# BETWEEN mr.med_lo AND mr.med_hi
+GROUP BY nn.job
+ORDER BY nn.job;
+....
+
+_ANSWER_
+|===
+|JOB  |MED_SAL |AVG_SAL |#R
+|Clerk|13030.50|12857.56|7 
+|Sales|17432.10|17460.93|4
+|===
+
+==== Using Formula #2
+
+Once again, the following sample code gets the median SALARY, by JOB, for some set of rows in the STAFF table. Two JOB values are referenced - one with seven matching rows, the other with four. In this case, when there is an even number of matching rows, the smaller of the two middle values is chosen. The logic goes as follows:
+
+* Get the matching set of rows from the STAFF table, and give each row a row-number, within each JOB value.
+* Using the set of rows retrieved above, get the maximum row-number per JOB, then add 1, then divide by 2. This will get the row-number for the row with the median value.
+* Finally, join the one row per JOB obtained in step 2 above to the set of rows retrieved in step 1 - by common JOB and row-number value.
+
+.Calculating the median
+[source,sql]
+....
+WITH numbered_rows AS 
+(SELECT s.* 
+      , ROW_NUMBER() OVER(PARTITION BY job
+                          ORDER BY salary, id) AS row# 
+ FROM staff s 
+ WHERE comm > 0 
+ AND name LIKE '%e%')
+, median_row_num AS 
+(SELECT job
+      , MAX(row# + 1) / 2 AS med_row#
+ FROM numbered_rows GROUP BY job)
+SELECT nn.job
+     , nn.salary AS med_sal
+FROM numbered_rows nn
+   , median_row_num mr 
+WHERE nn.job = mr.job 
+AND nn.row# = mr.med_row# 
+ORDER BY nn.job;
+....
+_ANSWER_
+|===
+|JOB  |MED_SAL
+|Clerk|13030.50 
+|Sales|16858.20
+|===
+
+The next query is the same as the prior, but it uses a sub-query, instead of creating and then joining to a second temporary table:
+
+.Calculating the median
+[source,sql]
+....
+WITH numbered_rows AS
+(SELECT s.*
+      , ROW_NUMBER() OVER(PARTITION BY job
+                          ORDER BY salary, id) AS row#
+ FROM staff s
+ WHERE comm > 0
+ AND name LIKE '%e%')
+SELECT job
+     , salary AS med_sal
+FROM numbered_rows
+WHERE (job, row#) IN
+    (SELECT job
+          , MAX(row# + 1) / 2
+     FROM numbered_rows
+     GROUP BY job)
+ORDER BY job;
+....
+
+_ANSWER_
+|===
+|JOB  |MED_SAL 
+|Clerk|13030.50 
+|Sales|16858.20
+|===
+
+The next query lists every matching row in the STAFF table (per JOB), and on each line of output, shows the median salary: 
+
+.List matching rows and median
+[source,sql]
+....
+WITH numbered_rows AS
+(SELECT s.*
+      , ROW_NUMBER() OVER(PARTITION BY job
+                          ORDER BY salary, id) AS row#
+ FROM staff s
+ WHERE comm > 0
+ AND name LIKE '%e%')
+SELECT r1.*
+    , (SELECT r2.salary
+       FROM numbered_rows r2
+       WHERE r2.job = r1.job
+       AND r2.row# = (SELECT MAX(r3.row# + 1) / 2
+                      FROM numbered_rows r3
+                      WHERE r2.job = r3.job
+                     )
+      ) AS med_sal
+FROM numbered_rows r1
+ORDER BY job
+       , salary;
+....
+
+=== Converting HEX Data to Number
+
+The following function accepts as input a hexadecimal representation of an integer value, and returns a BIGINT number. It works for any integer type:
+
+.Function to convert HEX value to integer
+[source,sql]
+....
+CREATE FUNCTION hex_to_int(input_val VARCHAR(16))
+RETURNS BIGINT
+BEGIN ATOMIC
+  DECLARE parse_val VARCHAR(16) DEFAULT '';
+  DECLARE sign_val BIGINT DEFAULT 1;
+  DECLARE out_val BIGINT DEFAULT 0;
+  DECLARE cur_exp BIGINT DEFAULT 1;
+  DECLARE input_len SMALLINT DEFAULT 0;
+  DECLARE cur_byte SMALLINT DEFAULT 1;
+  IF LENGTH(input_val) NOT IN (4,8,16) THEN
+    SIGNAL SQLSTATE VALUE '70001'
+    SET MESSAGE_TEXT = 'Length wrong';
+  END IF;
+  SET input_len = LENGTH(input_val);
+  WHILE cur_byte <= input_len DO
+    SET parse_val = parse_val                        ||
+                    SUBSTR(input_val,cur_byte + 1,1) ||
+                    SUBSTR(input_val,cur_byte + 0,1);
+    SET cur_byte = cur_byte + 2;
+  END WHILE;
+  IF SUBSTR(parse_val,input_len,1) BETWEEN '8' AND 'F' THEN
+    SET sign_val = -1;
+    SET out_val = -1;
+    SET parse_val = TRANSLATE(parse_val, '0123456789ABCDEF', 'FEDCBA9876543210');
+  END IF;
+  SET cur_byte = 1;
+  WHILE cur_byte <= input_len DO
+    SET out_val = out_val + (cur_exp *
+                             sign_val *
+                             CASE SUBSTR(parse_val, cur_byte, 1)
+                               WHEN '0' THEN 00
+                               WHEN '1' THEN 01
+                               WHEN '2' THEN 02
+                               WHEN '3' THEN 03
+                               WHEN '4' THEN 04
+                               WHEN '5' THEN 05
+                               WHEN '6' THEN 06
+                               WHEN '7' THEN 07
+                               WHEN '8' THEN 08
+                               WHEN '9' THEN 09
+                               WHEN 'A' THEN 10
+                               WHEN 'B' THEN 11
+                               WHEN 'C' THEN 12
+                               WHEN 'D' THEN 13
+                               WHEN 'E' THEN 14
+                               WHEN 'F' THEN 15
+                             END);
+    IF cur_byte < input_len THEN
+      SET cur_exp = cur_exp * 16;
+    END IF;
+    SET cur_byte = cur_byte + 1;
+  END WHILE;
+  RETURN out_val;
+END
+....
+
+==== Function Logic
+
+The function does the following:
+
+* Check that the input value is the correct length for an integer value. If not, flag an error.
+* Transpose every second byte in the input value. This is done because the HEX representation of an integer does not show the data as it really is.
+* Check the high-order bit of what is now the last byte. If it is a "1", the value is a negative number, so the processing will be slightly different.
+* Starting with the first byte in the (transposed) input, covert each byte to an integer value using CASE logic. Multiply each digit obtained by the (next) power of sixteen.
+* Return the final result.
+
+==== Usage Examples
+
+.Using trigger to convert data
+[source,sql]
+....
+WITH temp1 (num) AS
+(VALUES (SMALLINT(+0))
+      , (SMALLINT(+1))
+      , (SMALLINT(-1))
+      , (SMALLINT(+32767))
+      , (SMALLINT(-32768)))
+SELECT num
+     , HEX(num)             AS hex
+     , hex_to_int(HEX(num)) AS h2i
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|NUM   |HEX  |H2I 
+|0     |0000 |0 
+|1     |0100 |1 
+|-1    |FFFF |-1 
+|32767 |FF7F |32767 
+|-32768|0080 |-32768
+|===
+
+.Using trigger to convert data
+[source,sql]
+...
+WITH temp1 (num) AS
+(VALUES (INTEGER(0))
+   UNION ALL
+ SELECT (num + 1) * 7
+ FROM temp1
+ WHERE num < 1E6)
+, temp2 (sgn) AS
+(VALUES (+1)
+      , (-13))
+, temp3 (num) AS
+(SELECT DISTINCT num * sgn
+ FROM temp1
+    , temp2)
+SELECT num
+     , HEX(num)             AS hex
+     , hex_to_int(HEX(num)) AS h2i
+FROM temp3
+ORDER BY num;
+....
+
+_ANSWER_
+|===
+|NUM      |HEX     |H2I 
+|87432800 |A0E1C9FA|-87432800 
+|-12490387|6D6941FF|-12490387 
+|-1784328 |F8C5E4FF|-1784328 
+|-254891  |551CFCFF|-254891 
+|-36400   |D071FFFF|-36400 
+|-5187    |BDEBFFFF|-5187 
+|-728     |28FDFFFF|-728 
+|-91      |A5FFFFFF|-91 
+|0        |00000000|0 
+|7        |07000000|7 
+|56       |38000000|56 
+|399      |8F010000|399 
+|2800     |F00A0000|2800 
+|19607    |974C0000|19607 
+|137256   |28180200|137256 
+|960799   |1FA90E00|960799
+|6725600  |E09F6600|6725600
+|===
+
+*Usage Notes*
+
+* The above function won't work on the mainframe because the internal representation of an integer value is different (see below). The modifications required to make it work are minor.
+* The above function won't work on the HEX representation of packed-decimal or floatingpoint data.
+* One could have three different flavors of the above function - one for each type of integer value. The input value length would determine the output type.
+
+=== Endianness
+
+Most computers use one of two internal formats to store binary data. In big-endian, which is used on z/OS, the internal representation equals the HEX value. So the four-byte integer value 1,234,567,890 is stored as "49 96 02 D2". In little-endian, which is used on all Intel chips, the bytes are reversed, so the above value is stored internally as "D2 02 96 49". This is why the above function transposed every two-byte block before converting the HEX value to numeric. 
+
+

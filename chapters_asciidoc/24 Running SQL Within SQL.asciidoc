@@ -1,0 +1,1299 @@
+== Running SQL Within SQL
+
+This chapter describes how to generate and run SQL statements within SQL statements.
+
+=== Introduction
+
+Consider the following query:
+
+.Sample query
+[source,sql]
+....
+SELECT empno
+     , lastname
+     , workdept
+     , salary
+FROM employee
+WHERE empno = '000250';
+....
+
+The above query exhibits all the usual strengths and weaknesses of the SQL language. It is easy to understand, simple to write, and assuming suitable indexes, efficient to run. But the query is annoyingly rigid in the sense that the both the internal query logic (i.e. which rows to fetch from what tables), and the set of columns to be returned, are fixed in the query syntax. Reasonably intelligent programs accessing suitably well-structured data might want to run queries like the following:
+
+.Sample pseudo-query
+[source,sql]
+....
+SELECT all-columns
+FROM all-relevant-tables
+WHERE all-predicates-are-true
+....
+
+It would of course be possible to compose the required query in the program and then run it. But there are some situations where it would be nice if we could also generate and then run the above pseudo-query inside the SQL language itself. This can be done, if there are two simple enhancements to the language:
+
+* The ability to generate and run SQL within SQL.
+* A way to make the query output-column-independent.
+
+=== Generate SQL within SQL
+
+To test the first concept above I wrote some very simple user-defined scalar functions (see <<db2.sql.functions>>) that enable one to generate and run SQL within SQL. In these functions the first row/column value fetched is returned. To illustrate, consider the following pseudoquery:
+
+.Sample pseudo-query
+[source,sql]
+....
+SELECT COUNT(*)
+FROM all-relevant-tables
+WHERE empno = '000250';
+....
+
+In the above pseudo-query we want to count all matching rows in all matching tables where the EMPNO is a given value. If we use the Db2 catalogue tables as a source dictionary, and we call a user-defined scalar function that can run SQL within SQL (see <<db2.sql.functions>> for the function definition), we can write the following query:
+
+.Count matching rows in all matching tables
+[source,sql]
+....
+SELECT CHAR(tabname,15) AS tabname
+     , get_INTEGER(
+           ' SELECT COUNT(*)' ||
+           ' FROM ' || tabschema || '.' || tabname ||
+           ' WHERE ' || colname || ' = ''000250'''
+       ) AS num_rows
+FROM syscat.columns
+WHERE tabschema = USER
+AND colname = 'EMPNO'
+AND typename = 'CHARACTER'
+ORDER BY tabname;
+....
+
+ANSWER
+|===
+|TABNAME    |NUM_ROWS
+|EMP_PHOTO  |0
+|VEMP       |1
+|VEMPDPT1   |1
+|VEMPPROJACT|9
+|VSTAFAC2   |9
+|===
+
+=== Make Query Column-Independent
+
+The second issue to address was how to make the SQL language output-column-independent. This capability is needed in order to support the following type of pseudo-query:
+
+.Sample pseudo-query
+[source,sql]
+....
+SELECT all-columns
+FROM all-relevant-tables
+WHERE empno = '000250';
+....
+
+The above query cannot be written in SQL because the set of columns to be returned can not be determined until the set of matching tables are identified. To get around this constraint, I wrote a very simple Db2 table function in Java (see <<transpose.function>>) that accepts any valid query as input, runs it, and then returns all of the rows and columns fetched. But before returning anything, the function transposes each row/column instance into a single row – with a set of fixed columns returned that describe each row/column data instance. The function is used below to run the above pseudo-query:
+
+.Select all matching columns/rows in all matching tables
+.Transpose query output
+[source,sql]
+....
+WITH temp1 AS
+(SELECT tabname
+      , VARCHAR(
+            ' SELECT *' ||
+            ' FROM ' || tabschema || '.' || tabname ||
+            ' WHERE ' || colname || ' = ''000250'''
+        ) AS SQL_text
+FROM syscat.columns
+WHERE tabschema = USER
+AND colname = 'EMPNO'
+AND typename = 'CHARACTER'
+)
+SELECT CHAR(t1.tabname,10) AS tabname
+  , t2.row_number AS row#
+  , t2.col_num AS col#
+  , CHAR(t2.col_name,15) AS colname
+  , CHAR(t2.col_type,15) AS coltype
+  , CHAR(t2.col_value,20) AS colvalue
+FROM temp1 t1
+   , TABLE(tab_transpose(sql_text)) AS t2
+ORDER BY t1.tabname
+       , t2.row_number
+       , t2.col_num;
+....
+
+Below are the first three "rows" of the answer:
+|===
+|TABNAME   |ROW#|COL#|COLNAME  |COLTYPE |COLVALUE
+|EMPLOYEE  |1   |1   |EMPNO    |CHAR    |000250
+|EMPLOYEE  |1   |2   |FIRSTNME |VARCHAR |DANIEL
+|EMPLOYEE  |1   |3   |MIDINIT  |CHAR    |S
+|EMPLOYEE  |1   |4   |LASTNAME |VARCHAR |SMITH
+|EMPLOYEE  |1   |5   |WORKDEPT |CHAR    |D21
+|EMPLOYEE  |1   |6   |PHONENO  |CHAR    |0961
+|EMPLOYEE  |1   |7   |HIREDATE |DATE    |1999-10-30
+|EMPLOYEE  |1   |8   |JOB      |CHAR    |CLERK
+|EMPLOYEE  |1   |9   |EDLEVEL  |SMALLINT|15
+|EMPLOYEE  |1   |10  |SEX      |CHAR    |M
+|EMPLOYEE  |1   |11  |BIRTHDATE|DATE    |1969-11-12
+|EMPLOYEE  |1   |12  |SALARY   |DECIMAL |49180.00
+|EMPLOYEE  |1   |13  |BONUS    |DECIMAL |400.00
+|EMPLOYEE  |1   |14  |COMM     |DECIMAL |1534.00
+|EMPPROJACT|1   |1   |EMPNO    |CHAR    |000250
+|EMPPROJACT|1   |2   |PROJNO   |CHAR    |AD3112
+|EMPPROJACT|1   |3   |ACTNO    |SMALLINT|60
+|EMPPROJACT|1   |4   |EMPTIME  |DECIMAL |1.00
+|EMPPROJACT|1   |5   |EMSTDATE |DATE    |2002-01-01
+|EMPPROJACT|1   |6   |EMENDATE |DATE    |2002-02-01
+|EMPPROJACT|2   |1   |EMPNO    |CHAR    |000250
+|EMPPROJACT|2   |2   |PROJNO   |CHAR    |AD3112
+|EMPPROJACT|2   |3   |ACTNO    |SMALLINT|60
+|EMPPROJACT|2   |4   |EMPTIME  |DECIMAL |0.50
+|EMPPROJACT|2   |5   |EMSTDATE |DATE    |2002-02-01
+|EMPPROJACT|2   |6   |EMENDATE |DATE    |2002-03-15
+|===
+
+=== Business Uses
+
+At this point, I've got an interesting technical solution looking for a valid business problem. Some possible uses follow: 
+
+==== Frictionless Query
+
+Imagine a relational database application where the table definitions are constantly changing. The programs using the data are able adapt accordingly, in which case the intermediate SQL queries have to also be equally adaptable. The application could maintain a data dictionary that was updated in sync with the table changes. Each query would reference the dictionary at the start of its processing, and then build the main body of the query (i.e. that which obtains the desired application data) as needed. I did some simple experiments using this concept. It worked, but I could see no overwhelming reason why one would use it, as opposed to building the query external to Db2, and then running it. 
+
+==== Adaptive Query
+
+One could write a query where the internal query logic changed – depending on what data was encountered along the way. I tested this concept, and found that it works, but one still needs to define the general processing logic of the query somewhere. It was often easier to code a series of optional joins (in the query) to get the same result.
+
+==== Meta-Data to Real-Data Join
+
+A meta-data to real-data join can only be done using the SQL enhancements described above.
+
+Some examples of such a join include:
+
+* List all tables containing a row where EMPID = '123'.
+* List all rows (in any table) that duplicate a given row.
+* Confirm that two "sets of tables" have identical data.
+* Scan all plan-tables looking for specific access paths.
+* Find the largest application table that has no index.
+
+These types of query are relatively rare, but they certainly do exist, and they are legitimate business queries.
+
+==== Meta Data Dictionaries
+
+In the above examples the Db2 catalogue was used as the source of meta-data that describes the relationships between the tables accessed by the query. This works up to a point, but the Db2 catalogue is not really designed for this task. Thus it would probably be better to use a purpose-built meta-data dictionary. Whenever application tables were changed, the meta-data dictionary would be updated accordingly - or might in fact be the source of the change. SQL queries generated using the meta-data dictionary would automatically adjust as the table changes were implemented.
+
+[[db2.sql.functions]]
+=== Db2 SQL Functions
+
+This section describes how to join meta-data to real data in a single query. In other words, a query will begin by selecting a list of tables from the Db2 catalogue. It will then access each table in the list. Such a query cannot be written using ordinary SQL, because the set of tables to be accessed is not known to the statement. But it can be written if the query references a very simple user-defined scalar function and related stored procedure. To illustrate, the following query will select a list of tables, and for each matching table get a count of the rows in the same:
+
+.List tables, and count rows in same
+[source,sql]
+....
+SELECT CHAR(tabschema,8) AS schema
+     , CHAR(tabname,20) AS tabname
+     , return_INTEGER(
+          'SELECT COUNT(*) ' ||
+          'FROM ' || tabschema || '.' || tabname
+       ) AS #rows
+FROM syscat.tables
+WHERE tabschema = 'SYSCAT'
+AND tabname LIKE 'RO%'
+ORDER BY tabschema
+       , tabname
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|SCHEMA|TABNAME     |#ROWS
+|SYSCAT|ROUTINEAUTH |168
+|SYSCAT|ROUTINEDEP  |41
+|SYSCAT|ROUTINEPARMS|2035
+|SYSCAT|ROUTINES    |314
+|===
+
+=== Function and Stored Procedure Used
+
+The above query calls a user-defined scalar function called return_INTEGER that accepts as input any valid single-column query and returns (you guessed it) an integer value that is the first row fetched by the query. The function is actually nothing more than a stub: 
+
+.return_INTEGER function
+[source,sql]
+....
+CREATE FUNCTION return_INTEGER (in_stmt VARCHAR(4000))
+RETURNS INTEGER
+LANGUAGE SQL
+READS SQL DATA
+NO EXTERNAL ACTION
+BEGIN ATOMIC
+  DECLARE out_val INTEGER;
+  CALL return_INTEGER(in_stmt, out_val);
+  RETURN out_val;
+END
+....
+
+The real work is done by a stored procedure that is called by the function:
+
+.return_INTEGER stored procedure
+[source,sql]
+....
+CREATE PROCEDURE return_INTEGER (IN in_stmt VARCHAR(4000)
+                               , OUT out_val INTEGER)
+LANGUAGE SQL
+READS SQL DATA
+NO EXTERNAL ACTION
+BEGIN
+  DECLARE c1 CURSOR FOR s1;
+  PREPARE s1 FROM in_stmt;
+  OPEN c1;
+  FETCH c1 INTO out_val;
+  CLOSE c1;
+  RETURN;
+END
+....
+
+The combined function and stored-procedure logic goes as follow:
+
+* Main query calls function - sends query text.
+* Function calls stored-procedure - sends query text.
+* Stored-procedure prepares, opens, fetches first row, and then closes query.
+* Stored procedure returns result of first fetch back to the function
+* Function returns the result back to the main query.
+
+=== Different Data Types
+
+One needs to have a function and related stored-procedure for each column type that can be returned. Below is a DECIMAL example:
+
+.return_DECIMAL function
+[source,sql]
+....
+CREATE PROCEDURE return_DECIMAL (IN in_stmt VARCHAR(4000)
+                               , OUT out_val DECIMAL(31, 6))
+LANGUAGE SQL
+READS SQL DATA
+NO EXTERNAL ACTION
+BEGIN
+  DECLARE c1 CURSOR FOR s1;
+  PREPARE s1 FROM in_stmt;
+  OPEN c1;
+  FETCH c1 INTO out_val;
+  CLOSE c1;
+  RETURN;
+END
+....
+
+.return_DECIMAL stored procedure
+[source,sql]
+....
+CREATE FUNCTION return_DECIMAL (in_stmt VARCHAR(4000))
+RETURNS DECIMAL(31, 6)
+LANGUAGE SQL
+READS SQL DATA
+NO EXTERNAL ACTION
+BEGIN ATOMIC
+  DECLARE out_val DECIMAL(31,6);
+  CALL return_DECIMAL(in_stmt,out_val);
+  RETURN out_val;
+END
+....
+
+=== Usage Examples
+
+The query below lists those tables that have never had RUNSTATS run (i.e. the stats-time is null), and that currently have more than 1,000 rows:
+
+.List tables never had RUNSTATS
+[source,sql]
+....
+SELECT CHAR(tabschema,8) AS schema
+     , CHAR(tabname,20) AS tabname
+     , #rows
+FROM (SELECT tabschema
+           , tabname
+           , return_INTEGER(
+               ' SELECT COUNT(*)' ||
+               ' FROM ' || tabschema || '.' || tabname ||
+               ' FOR FETCH ONLY WITH UR'
+             ) AS #rows
+      FROM syscat.tables tab
+      WHERE tabschema LIKE 'SYS%'
+      AND type = 'T'
+      AND stats_time IS NULL) AS xxx
+WHERE #rows > 1000
+ORDER BY #rows DESC
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|SCHEMA|TABNAME        |#ROWS
+|SYSIBM|SYSCOLUMNS     |3518
+|SYSIBM|SYSROUTINEPARMS|2035
+|===
+
+=== Efficient Queries
+
+The query shown above would typically process lots of rows, but this need not be the case. The next example lists all tables with a department column and at least one row for the 'A00' department. Only a single matching row is fetched from each table, so as long as there is a suitable index on the department column, the query should fly:
+
+.List tables with a row for A00 department
+[source,sql]
+....
+SELECT  CHAR(tab.tabname,15) AS tabname
+      , CHAR(col.colname,10) AS colname
+      , CHAR(COALESCE(return_VARCHAR(
+                        ' SELECT ''Y''' ||
+                        ' FROM ' || tab.tabschema || '.' || tab.tabname ||
+                        ' WHERE ' || col.colname || ' = ''A00''' ||
+                        ' FETCH FIRST 1 ROWS ONLY ' ||
+                        ' OPTIMIZE FOR 1 ROW ' ||
+                        ' WITH UR'
+                     ), 'N'), 1) AS has_dept
+FROM syscat.columns col
+   , syscat.tables tab
+WHERE col.tabschema = USER
+AND col.colname IN ('DEPTNO', 'WORKDEPT')
+AND col.tabschema = tab.tabschema
+AND col.tabname = tab.tabname
+AND tab.type = 'T'
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|TABNAME   |COLNAME |HAS_DEPT
+|DEPARTMENT|DEPTNO  |Y
+|EMPLOYEE  |WORKDEPT|Y
+|PROJECT   |DEPTNO  |N
+|===
+
+The next query is the same as the previous, except that it only searches those matching tables that have a suitable index on the department field:
+
+.List suitably-indexed tables with a row for A00 department
+[source,sql]
+....
+SELECT CHAR(tab.tabname,15) AS tabname
+     , CHAR(col.colname,10) AS colname
+     , CHAR(COALESCE(return_VARCHAR(
+                        ' SELECT ''Y''' ||
+                        ' FROM ' || tab.tabschema || '.' || tab.tabname ||
+                        ' WHERE ' || col.colname || ' = ''A00''' ||
+                        ' FETCH FIRST 1 ROWS ONLY ' ||
+                        ' OPTIMIZE FOR 1 ROW ' ||
+                        ' WITH UR'
+                     ), 'N'), 1) AS has_dept
+FROM syscat.columns col
+   , syscat.tables tab
+WHERE col.tabschema = USER
+AND col.colname IN ('DEPTNO', 'WORKDEPT')
+AND col.tabschema = tab.tabschema
+AND col.tabname = tab.tabname
+AND tab.type = 'T'
+AND col.colname IN (SELECT SUBSTR(idx.colnames, 2, LENGTH(col.colname))
+                    FROM syscat.indexes idx
+                    WHERE tab.tabschema = idx.tabschema
+                    AND tab.tabname = idx.tabname)
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|TABNAME   |COLNAME|HAS_DEPT
+|DEPARTMENT|DEPTNO |Y
+|===
+
+Using logic very similar to the above, one can efficiently ask questions like: "list all tables in the application that have references to customer-number 1234 in indexed fields". Even if the query has to process hundreds of tables, each with billions of rows, it should return an answer in less than ten seconds. In the above examples we knew what columns we wanted to process, but not the tables. But for some questions we don't even need to know the column name. For example, we could scan all indexed DATE columns in an application - looking for date values that are more than five years old. Once again, such a query should run in seconds.
+
+=== Java Functions
+
+We can do the same as the above by calling a user-defined-function that invokes a java program, but we can also do much more. This section will cover the basics.
+
+==== Scalar Functions
+
+The following code creates a user-defined scalar function that sends a query to a java program, and gets back the first row/column fetched when the query is run:
+
+.CREATE FUNCTION code
+[source,sql]
+....
+CREATE FUNCTION get_Integer(VARCHAR(4000))
+RETURNS INTEGER
+LANGUAGE JAVA
+EXTERNAL NAME 'Graeme2!get_Integer'
+PARAMETER STYLE Db2GENERAL
+NO EXTERNAL ACTION
+NOT DETERMINISTIC
+READS SQL DATA
+FENCED;
+....
+
+Below is the corresponding java code:
+
+.CREATE FUNCTION java code
+[source,java]
+....
+import java.lang.*;
+import COM.ibm.db2.app.*;
+import java.sql.*;
+import java.math.*;
+import java.io.*;
+public class Graeme2 extends UDF {
+    public void get_Integer(String inStmt
+                          , int outValue) throws Exception {
+        try {
+            Connection con = DriverManager.getConnection ("jdbc:default:connection");
+            PreparedStatement stmt = con.prepareStatement(inStmt);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next() == true && rs.getString(1) != null) {
+                set(2, rs.getInt(1));
+            }
+            rs.close();
+            stmt.close();
+            con.close();
+            }
+        catch (SQLException sqle) {
+            setSQLstate("38999");
+            setSQLmessage("SQLCODE = " + sqle.getSQLState());
+            return;
+        }
+    }
+}
+....
+
+Java Logic
+
+* Establish connection.
+* Prepare the SQL statement (i.e. input string).
+* Execute the SQL statement (i.e. open cursor).
+* If a row is found, and the value (of the first column) is not null, return value.
+* Close cursor.
+* Return.
+
+==== Usage Example
+
+.Java function usage example
+[source,sql]
+....
+SELECT workdept AS dept
+     , empno
+     , salary
+     , get_Integer(
+           ' SELECT count(*)' ||
+           ' FROM employee' ||
+           ' where workdept = ''' || workdept || ''' ') AS #rows
+FROM employee
+WHERE salary < 35500
+ORDER BY workdept
+       , empno;
+....
+
+_ANSWER_ 
+|===
+|DEPT|EMPNO |SALARY  |#ROWS
+|E11 |000290|35340.00|7
+|E21 |200330|35370.00|6
+|E21 |200340|31840.00|6
+|===
+
+==== Tabular Functions
+
+So far, all we have done in this chapter is get single values from tables. Now we will retrieve sets of rows from tables. To do this we need to define a tabular function:
+
+.CREATE FUNCTION code
+[source,sql]
+....
+CREATE FUNCTION tab_Varchar (VARCHAR(4000))
+RETURNS TABLE (row_number INTEGER
+             , row_value VARCHAR(254))
+LANGUAGE JAVA
+EXTERNAL NAME 'Graeme2!tab_Varchar'
+PARAMETER STYLE DB2GENERAL
+NO EXTERNAL ACTION
+NOT DETERMINISTIC
+DISALLOW PARALLEL
+READS SQL DATA
+FINAL CALL
+FENCED;
+....
+
+Below is the corresponding java code. Observe that two columns are returned – a row-number and the value fetched:
+
+.CREATE FUNCTION java code
+[source,java]
+....
+import java.lang.*;
+import COM.ibm.db2.app.*;
+import java.sql.*;
+import java.math.*;
+import java.io.*;
+public class Graeme2 extends UDF {
+    Connection con;
+    Statement stmt;
+    ResultSet rs;
+    int rowNum;
+    public void tab_Varchar(String inStmt, int outNumber, String outValue) throws Exception {
+    switch (getCallType()) 
+    {
+        case SQLUDF_TF_FIRST:
+            break;
+        case SQLUDF_TF_OPEN:
+            rowNum = 1;
+            try {
+                con = DriverManager.getConnection("jdbc:default:connection");
+                stmt = con.createStatement();
+                rs = stmt.executeQuery(inStmt);
+                }
+            catch(SQLException sqle) {
+                setSQLstate("38999");
+                setSQLmessage("SQLCODE = " + sqle.getSQLState());
+                return;
+           }
+           break;
+        case SQLUDF_TF_FETCH:
+            if (rs.next() == true) {
+                set(2, rowNum);
+                if (rs.getString(1) != null) {
+                set(3, rs.getString(1));
+                }
+            rowNum++;
+           }
+           else {
+            setSQLstate ("02000");
+           }
+           break;
+        case SQLUDF_TF_CLOSE:
+            rs.close();
+            stmt.close();
+            con.close();
+            break;
+        case SQLUDF_TF_FINAL:
+            break;
+        }
+    }
+}
+....
+
+==== Java Logic
+
+Java programs that send data to Db2 table functions use a particular type of CASE logic to return the output data. In particular, a row is returned at the end of every FETCH process.
+
+*OPEN:*
+
+* Establish connection.
+* Prepare the SQL statement (i.e. input string).
+* Execute the SQL statement (i.e. open cursor).
+* Set row-number variable to one.
+
+*FETCH:*
+
+* If row exists, set row-number output value.
+* If value fetched is not null, set output value.
+* Increment row-number variable.
+
+*CLOSE:*
+
+* Close cursor.
+* Return.
+
+==== Usage Example
+
+The following query lists all EMPNO values that exist in more than four tables:
+
+.Use Tabular Function
+[source,sql]
+....
+WITH make_queries AS
+(SELECT tab.tabschema
+      , tab.tabname
+      , ' SELECT EMPNO ' ||
+        ' FROM ' || tab.tabschema || '.' || tab.tabname
+        AS sql_text
+FROM syscat.tables tab
+   , syscat.columns col
+WHERE tab.tabschema = USER
+AND tab.type = 'T'
+AND col.tabschema = tab.tabschema
+AND col.tabname = tab.tabname
+AND col.colname = 'EMPNO'
+AND col.typename = 'CHARACTER'
+AND col.length = 6)
+, run_queries AS 
+(SELECT qqq.*
+      , ttt.* 
+ FROM make_queries qqq,
+      TABLE(tab_Varchar(sql_text)) AS ttt) 
+SELECT CHAR(row_value,10)                   AS empno
+     , COUNT(*)                             AS #rows
+	 , COUNT(DISTINCT tabschema || tabname) AS #tabs
+	 , CHAR(MIN(tabname), 18)               AS min_tab
+	 , CHAR(MAX(tabname), 18)               AS max_tab
+FROM run_queries 
+GROUP BY row_value 
+HAVING COUNT(DISTINCT tabschema || tabname) > 3 
+ORDER BY row_value 
+FOR FETCH ONLY WITH UR;
+....
+_ANSWER_
+|===
+|EMPNO |#ROWS|#TABS|MIN_TAB  |MAX_TAB
+|000130|7    |4    |EMP_PHOTO|EMPPROJACT
+|000140|10   |4    |EMP_PHOTO|EMPPROJACT
+|000150|7    |4    |EMP_PHOTO|EMPPROJACT
+|000190|7    |4    |EMP_PHOTO|EMPPROJACT
+|===
+
+[[transpose.function]]
+==== Transpose Function
+
+Below is some pseudo-code for a really cool query:
+
+.Cool query pseudo-code
+[source,sql]
+....
+SELECT all columns
+FROM unknown tables
+WHERE any unknown columns = '%ABC%'
+....
+
+In the above query we want to retrieve an unknown number of unknown types of columns (i.e. all columns in each matching row) from an unknown set of tables where any unknown column in the row equals 'ABC'. Needless to say, the various (unknown) tables will have differing types and numbers of columns. The above query is remarkably easy to write in SQL (see <<transpose.function>>) and reasonably efficient to run, if we invoke a cute little java program that transposes columns into rows. The act of transposition means that each row/column instance retrieved becomes a separate row. So the following result:
+
+.Select rows
+[source,sql]
+....
+SELECT * FROM empprojact WHERE empno = '000150';
+....
+
+_ANSWER_
+|===
+|EMPNO |PROJNO|ACTNO|EMPTIME|EMSTDATE  |EMENDATE
+|000150|MA2112|60   |1.00   |01/01/2002|07/15/2002
+|000150|MA2112|180  |1.00   |07/15/2002|02/01/2003
+|===
+
+Becomes this result:
+
+.Select rows – then transpose
+[source,sql]
+....
+SELECT SMALLINT(row_number) AS row#
+     , col_num AS col#
+     , CHAR(col_name,13) AS col_name
+     , CHAR(col_type,10) AS col_type
+     , col_length AS col_len
+     , SMALLINT(LENGTH(col_value)) AS val_len
+     , SUBSTR(col_value,1,20) AS col_value
+FROM TABLE(tab_Transpose(
+             ' SELECT*' ||
+             ' FROM empprojact' ||
+             ' WHERE empno = ''000150''')) AS ttt
+ORDER BY 1,2;
+....
+
+_ANSWER_
+|===
+|ROW#|COL#|COL_NAME|COL_TYPE|COL_LEN|VAL_LEN|COL_VALUE
+|1   |1   |EMPNO   |CHAR    |6      |6      |000150
+|1   |2   |PROJNO  |CHAR    |6      |6      |MA2112
+|1   |3   |ACTNO   |SMALLINT|6      |2      |60
+|1   |4   |EMPTIME |DECIMAL |7      |4      |1.00
+|1   |5   |EMSTDATE|DATE    |10     |10     |2002-01-01
+|1   |6   |EMENDATE|DATE    |10     |10     |2002-07-15
+|2   |1   |EMPNO   |CHAR    |6      |6      |000150
+|2   |2   |PROJNO  |CHAR    |6      |6      |MA2112
+|2   |3   |ACTNO   |SMALLINT|6      |3      |180
+|2   |4   |EMPTIME |DECIMAL |7      |4      |1.00
+|2   |5   |EMSTDATE|DATE    |10     |10     |2002-07-15
+|2   |6   |EMENDATE|DATE    |10     |10     |2003-02-01
+|===
+
+The user-defined transpose function invoked above accepts a query as input. It executes the query then returns the query result as one row per row/column instance found. The function output table has the following columns:
+
+* ROW_NUMBER: The number of the row fetched.
+* NUM_COLS: The number of columns fetched per row.
+* COL_NUM: The column-number for the current row. This value, in combination with the prior row-number value, identifies a unique output row.
+* COL_NAME: The name of the data column - as given in the query. If there is no name, the value is the column number. 
+* COL_TYPE: The Db2 column-type for the value. 
+* COL_LENGTH: The Db2 column-length (note: not data item length) for the value.
+* COL_VALUE: The row/column instance value itself. If the data column is too long, or of an unsupported type (e.g. CLOB, DBCLOB, or XML), null is returned.
+
+The transpose function always returns the same set of columns, regardless of which table is being accessed. So we can use it to write a query where we don't know which tables we want to select from. In the next example, we select all columns from all rows in all tables where the EMPNO column has a certain value:
+
+.Select rows in any table – then transpose
+.Select rows in any table – answer
+[source,sql]
+....
+WITH make_queries AS
+(SELECT tab.tabschema
+      , tab.tabname, 
+      ' SELECT *' ||
+      ' FROM ' || tab.tabname ||
+      ' WHERE empno = ''000150'''
+           AS sql_text
+ FROM syscat.tables tab
+    , syscat.columns col
+ WHERE tab.tabschema = USER
+ AND tab.type = 'T'
+ AND col.tabschema = tab.tabschema
+ AND col.tabname = tab.tabname
+ AND col.colname = 'EMPNO'
+ AND col.typename = 'CHARACTER'
+ AND col.length = 6)
+, run_queries AS
+(SELECT qqq.*
+     , ttt.*
+FROM make_queries qqq
+  , TABLE(tab_Transpose(sql_text)) AS ttt)
+SELECT SUBSTR(tabname,1,11) AS tab_name
+     , SMALLINT(row_number) AS row#
+     , col_num AS col#
+     , CHAR(col_name,13) AS col_name
+     , CHAR(col_type,10) AS col_type
+     , col_length AS col_len
+     , SMALLINT(LENGTH(col_value)) AS val_len
+     , SUBSTR(col_value,1,20) AS col_value
+FROM run_queries
+ORDER BY 1,2,3;
+....
+
+When we run the above, we get the following answer:
+|===
+|TAB_NAME  |ROW#|COL#|COL_NAME     |COL_TYPE|COL_LEN|VAL_LEN|COL_VALUE
+|EMP_PHOTO |1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_PHOTO |1   |2   |PHOTO_FORMAT |VARCHAR |10     |6      |bitmap
+|EMP_PHOTO |1   |3   |PICTURE      |BLOB    |204800 |-      |-
+|EMP_PHOTO |1   |4   |EMP_ROWID    |CHAR    |40     |40     |
+|EMP_PHOTO |2   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_PHOTO |2   |2   |PHOTO_FORMAT |VARCHAR |10     |3      |gif
+|EMP_PHOTO |2   |3   |PICTURE      |BLOB    |204800 |-      |-
+|EMP_PHOTO |2   |4   |EMP_ROWID    |CHAR    |40     |40     |
+|EMP_RESUME|1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_RESUME|1   |2   |RESUME_FORMAT|VARCHAR |10     |5      |ascii
+|EMP_RESUME|1   |3   |RESUME       |CLOB    |5120   |-      |-
+|EMP_RESUME|1   |4   |EMP_ROWID    |CHAR    |40     |40     |
+|EMP_RESUME|2   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_RESUME|2   |2   |RESUME_FORMAT|VARCHAR |10     |4      |html|
+|EMP_RESUME|2   |3   |RESUME       |CLOB    |5120   |-      |-
+|EMP_RESUME|2   |4   |EMP_ROWID    |CHAR    |40     |40     |
+|EMPLOYEE  |1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMPLOYEE  |1   |2   |FIRSTNME     |VARCHAR |12     |5      |BRUCE
+|EMPLOYEE  |1   |3   |MIDINIT      |CHAR    |1      |1      |
+|EMPLOYEE  |1   |4   |LASTNAME     |VARCHAR |15     |7      |ADAMSON
+|EMPLOYEE  |1   |5   |WORKDEPT     |CHAR    |3      |3      |D11
+|EMPLOYEE  |1   |6   |PHONENO      |CHAR    |4      |4      |4510
+|EMPLOYEE  |1   |7   |HIREDATE     |DATE    |10     |10     |2002-02-12
+|EMPLOYEE  |1   |8   |JOB          |CHAR    |8      |8      |DESIGNER
+|EMPLOYEE  |1   |9   |EDLEVEL      |SMALLINT|6      |2      |16
+|EMPLOYEE  |1   |10  |SEX          |CHAR    |1      |1      |M
+|EMPLOYEE  |1   |11  |BIRTHDATE    |DATE    |10     |10     |1977-05-17
+|EMPLOYEE  |1   |12  |SALARY       |DECIMAL |11     |8      |55280.00
+|EMPLOYEE  |1   |13  |BONUS        |DECIMAL |11     |6      |500.00
+|EMPLOYEE  |1   |14  |COMM         |DECIMAL |11     |7      |2022.00
+|EMPPROJACT|1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMPPROJACT|1   |2   |PROJNO       |CHAR    |6      |6      |MA2112
+|EMPPROJACT|1   |3   |ACTNO        |SMALLINT|6      |2      |60
+|EMPPROJACT|1   |4   |EMPTIME      |DECIMAL |7      |4      |1.00
+|EMPPROJACT|1   |5   |EMSTDATE     |DATE    |10     |10     |2002-01-01
+|EMPPROJACT|1   |6   |EMENDATE     |DATE    |10     |10     |2002-07-15|
+|EMPPROJACT|2   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMPPROJACT|2   |2   |PROJNO       |CHAR    |6      |6      |MA2112
+|EMPPROJACT|2   |3   |ACTNO        |SMALLINT|6      |3      |180
+|EMPPROJACT|2   |4   |EMPTIME      |DECIMAL |7      |4      |1.00
+|EMPPROJACT|2   |5   |EMSTDATE     |DATE    |10     |10     |2002-07-15
+|EMPPROJACT|2   |6   |EMENDATE     |DATE    |10     |10     |2003-02-01
+|===
+
+We are obviously on a roll, so now we will write the pseudo-query that we began this chapter with (see <<transpose.function>>). We will fetch every row/column instance in all matching tables where any qualifying column in the row is a particular value. 
+
+=== Query Logic
+
+* Define the search parameters.
+* Get the list of matching tables and columns to search.
+* Recursively work through the list of columns to search (for each table), building a search query with multiple EQUAL predicates – one per searchable column.
+* Run the generated queries (i.e. the final line of generated query for each table).
+* Select the output.
+
+Now for the query:
+
+.Select rows in any table – then transpose
+[source,sql]
+....
+WITH search_values (search_type,search_length,search_value) AS
+(VALUES ('CHARACTER',6,'000150'))
+, list_columns AS
+(SELECT val.search_value
+      , tab.tabschema
+      , tab.tabname
+      , col.colname
+      , ROW_NUMBER() OVER(PARTITION BY val.search_value
+                                     , tab.tabschema
+                                     , tab.tabname
+                                     ORDER BY col.colname ASC) AS col_a
+      , ROW_NUMBER() OVER(PARTITION BY val.search_value
+                                     , tab.tabschema
+                                     , tab.tabname 
+                                     ORDER BY col.colname DESC) AS col_d
+ FROM search_values val
+    , syscat.tables tab
+    , syscat.columns col
+ WHERE tab.tabschema = USER
+ AND tab.type = 'T'
+ AND tab.tabschema = col.tabschema
+ AND tab.tabname = col.tabname
+ AND col.typename = val.search_type
+ AND col.length = val.search_length)
+, make_queries (search_value, tabschema, tabname, colname, col_a, col_d, sql_text) AS
+(SELECT tb1.*
+      , VARCHAR(' SELECT *' ||
+                ' FROM ' || tabname ||
+                ' WHERE ' || colname || ' = ''' || search_value || ''''
+          , 4000)
+ FROM list_columns tb1
+ WHERE col_a = 1
+   UNION ALL
+ SELECT tb2.*
+      , mqy.sql_text || ' OR ' || tb2.colname || ' = ''' || tb2.search_value || ''''
+ FROM list_columns tb2
+    , make_queries mqy
+ WHERE tb2.search_value = mqy.search_value
+ AND tb2.tabschema = mqy.tabschema
+ AND tb2.tabname = mqy.tabname
+ AND tb2.col_a = mqy.col_a + 1)
+, run_queries AS
+(SELECT qqq.*
+      , ttt.*
+ FROM make_queries qqq
+    , TABLE(tab_Transpose_4K(sql_text)) AS ttt
+ WHERE col_d = 1)
+SELECT SUBSTR(tabname,1,11)        AS tab_name
+     , SMALLINT(row_number)        AS row#
+     , col_num                     AS col#
+     , CHAR(col_name,13)           AS col_name
+     , CHAR(col_type,10)           AS col_type
+     , col_length                  AS col_len
+     , SMALLINT(LENGTH(col_value)) AS val_len
+     , SUBSTR(col_value,1,20)      AS col_value
+FROM run_queries
+ORDER BY 1,2,3;
+....
+
+Below is the answer (with a few values truncated to fit):
+|===
+|TAB_NAME  |ROW#|COL#|COL_NAME     |COL_TYPE|COL_LEN|VAL_LEN|COL_VALUE
+|EMP_PHOTO |1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_PHOTO |1   |2   |PHOTO_FORMAT |VARCHAR |10     |6      |bitmap
+|EMP_PHOTO |1   |3   |PICTURE      |BLOB    |204800 |-      |-
+|EMP_PHOTO |1   |4   |EMP_ROWID    |CHAR    |40     |40     | 
+|EMP_PHOTO |2   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_PHOTO |2   |2   |PHOTO_FORMAT |VARCHAR |10     |3      |gif
+|EMP_PHOTO |2   |3   |PICTURE      |BLOB    |204800 |-      |-
+|EMP_PHOTO |2   |4   |EMP_ROWID    |CHAR    |40     |40     |
+|EMP_RESUME|1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_RESUME|1   |2   |RESUME_FORMAT|VARCHAR |10     |5      |ascii
+|EMP_RESUME|1   |3   |RESUME       |CLOB    |5120   |-      |-
+|EMP_RESUME|1   |4   |EMP_ROWID    |CHAR    |40     |40     |
+|EMP_RESUME|2   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMP_RESUME|2   |2   |RESUME_FORMAT|VARCHAR |10     |4      |html
+|EMP_RESUME|2   |3   |RESUME       |CLOB    |5120   |-      |-
+|EMP_RESUME|2   |4   |EMP_ROWID    |CHAR    |40     |40     | 
+|EMPLOYEE  |1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMPLOYEE  |1   |2   |FIRSTNME     |VARCHAR |12     |5      |BRUCE 
+|EMPLOYEE  |1   |3   |MIDINIT      |CHAR    |1      |1      |
+|EMPLOYEE  |1   |4   |LASTNAME     |VARCHAR |15     |7      |ADAMSON
+|EMPLOYEE  |1   |5   |WORKDEPT     |CHAR    |3      |3      |D11 
+|EMPLOYEE  |1   |6   |PHONENO      |CHAR    |4      |4      |4510
+|EMPLOYEE  |1   |7   |HIREDATE     |DATE    |10     |10     |2002-02-12
+|EMPLOYEE  |1   |8   |JOB          |CHAR    |8      |8      |DESIGNER
+|EMPLOYEE  |1   |9   |EDLEVEL      |SMALLINT|6      |2      |16 
+|EMPLOYEE  |1   |10  |SEX          |CHAR    |1      |1      |M
+|EMPLOYEE  |1   |11  |BIRTHDATE    |DATE    |10     |10     |1977-05-17
+|EMPLOYEE  |1   |12  |SALARY       |DECIMAL |11     |8      |55280.00
+|EMPLOYEE  |1   |13  |BONUS        |DECIMAL |11     |6      |500.00
+|EMPLOYEE  |1   |14  |COMM         |DECIMAL |11     |7      |2022.00
+|EMPPROJACT|1   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMPPROJACT|1   |2   |PROJNO       |CHAR    |6      |6      |MA2112
+|EMPPROJACT|1   |3   |ACTNO        |SMALLINT|6      |2      |60
+|EMPPROJACT|1   |4   |EMPTIME      |DECIMAL |7      |4      |1.00
+|EMPPROJACT|1   |5   |EMSTDATE     |DATE    |10     |10     |2002-01-01
+|EMPPROJACT|1   |6   |EMENDATE     |DATE    |10     |10     |2002-07-15
+|EMPPROJACT|2   |1   |EMPNO        |CHAR    |6      |6      |000150
+|EMPPROJACT|2   |2   |PROJNO       |CHAR    |6      |6      |MA2112|
+|EMPPROJACT|2   |3   |ACTNO        |SMALLINT|6      |3      |180
+|EMPPROJACT|2   |4   |EMPTIME      |DECIMAL |7      |4      |1.00
+|EMPPROJACT|2   |5   |EMSTDATE     |DATE    |10     |10     |2002-07-15
+|EMPPROJACT|2   |6   |EMENDATE     |DATE    |10     |10     |2003-02-01
+|PROJECT   |1   |1   |PROJNO       |CHAR    |6      |6      |MA2112
+|PROJECT   |1   |2   |PROJNAME     |VARCHAR |24     |16     |W L ROBOT
+|PROJECT   |1   |3   |DEPTNO       |CHAR    |3      |3      |D11 
+|PROJECT   |1   |4   |RESPEMP      |CHAR    |6      |6      |000150
+|PROJECT   |1   |5   |PRSTAFF      |DECIMAL |7      |4      |3.00
+|PROJECT   |1   |6   |PRSTDATE     |DATE    |10     |10     |2002-01-01
+|PROJECT   |1   |7   |PRENDATE     |DATE    |10     |10     |1982-12-01
+|PROJECT   |1   |8   |MAJPROJ      |CHAR    |6      |6      |MA2110
+|===
+
+Below are the queries that were generated and run to get the above answer:
+
+.Queries generated above
+[source,sql]
+....
+SELECT * FROM ACT WHERE ACTKWD = '000150'
+SELECT * FROM DEPARTMENT WHERE MGRNO = '000150'
+SELECT * FROM EMP_PHOTO WHERE EMPNO = '000150'
+SELECT * FROM EMP_RESUME WHERE EMPNO = '000150'
+SELECT * FROM EMPLOYEE WHERE EMPNO = '000150'
+SELECT * FROM EXPLAIN_OPERATOR WHERE OPERATOR_TYPE = '000150'
+SELECT * FROM PROJACT WHERE PROJNO = '000150'
+SELECT * FROM EMPPROJACT WHERE EMPNO = '000150' OR PROJNO = '000150'
+SELECT * FROM PROJECT WHERE MAJPROJ = '000150' OR PROJNO = '000150' OR
+    RESPEMP = '000150'
+....
+
+==== Function Definition
+
+The Db2 user-defined tabular function that does the transposing is  defined thus:
+
+.Create transpose function
+[source,sql]
+....
+CREATE FUNCTION tab_Transpose (VARCHAR(4000))
+RETURNS TABLE (row_number INTEGER
+             , num_cols SMALLINT
+             , col_num SMALLINT
+             , col_name VARCHAR(128)
+             , col_type VARCHAR(128)
+             , col_length INTEGER
+             , col_value VARCHAR(254))
+LANGUAGE JAVA
+EXTERNAL NAME 'Graeme2!tab_Transpose'
+PARAMETER STYLE Db2GENERAL
+NO EXTERNAL ACTION
+NOT DETERMINISTIC
+DISALLOW PARALLEL
+READS SQL DATA
+FINAL CALL
+FENCED;
+....
+
+===== Java Code
+
+.CREATE FUNCTION java code
+[source,java]
+....
+import java.lang.*;
+import COM.ibm.db2.app.*;
+import java.sql.*;
+import java.math.*;
+import java.io.*;
+public class Graeme2 extends UDF {
+    Connection con;
+    Statement stmt;
+    ResultSet rs;
+    ResultSetMetaData rsmtadta;
+    int rowNum;
+    int i;
+    int outLength;
+    short colNum;
+    int colCount;
+    String[] colName = new String[1100];
+    String[] colType = new String[1100];
+    int[] colSize = new int[1100];
+    public void writeRow() throws Exception {
+        set(2, rowNum);
+        set(3, (short) colCount);
+        set(4, colNum);
+        set(5, colName[colNum]);
+        set(6, colType[colNum]);
+        set(7, colSize[colNum]);
+        if (colType[colNum].equals("XML") ||
+            colType[colNum].equals("BLOB") ||
+            colType[colNum].equals("CLOB") ||
+            colType[colNum].equals("DBLOB") ||
+            colType[colNum].equals("GRAPHIC") ||
+            colType[colNum].equals("VARGRAPHIC") ||
+            colSize[colNum] > outLength) {
+            // DON'T DISPLAY THIS VALUE
+            return;
+        }
+        else if (rs.getString(colNum) != null) {
+            // DISPLAY THIS COLUMN VALUE
+            set(8, rs.getString(colNum));
+        }
+    }
+
+    public void tab_Transpose(String inStmt
+                            , int rowNumber
+                            , short numColumns
+                            , short outColNumber
+                            , String outColName
+                            , String outColtype
+                            , int outColSize
+                            , String outColValue) throws Exception {
+        switch (getCallType()) {
+            case SQLUDF_TF_FIRST:
+                break;
+            case SQLUDF_TF_OPEN:
+                try {
+                    con = DriverManager.getConnection("jdbc:default:connection");
+                    stmt = con.createStatement();
+                    rs = stmt.executeQuery(inStmt);
+                    // GET COLUMN NAMES
+                    rsmtadta = rs.getMetaData();
+                    colCount = rsmtadta.getColumnCount();
+                    for (i=1; i <= colCount; i++) {
+                        colName[i] = rsmtadta.getColumnName(i);
+                        colType[i] = rsmtadta.getColumnTypeName(i);
+                        colSize[i] = rsmtadta.getColumnDisplaySize(i);
+                    }
+                    rowNum = 1;
+                    colNum = 1;
+                    outLength = 254;
+                }
+                catch(SQLException sqle) {
+                    setSQLstate("38999");
+                    setSQLmessage("SQLCODE = " + sqle.getSQLState());
+                    return;
+                }
+                break;
+            case SQLUDF_TF_FETCH:
+                if (colNum == 1 && rs.next() == true) {
+                    writeRow();
+                    colNum++;
+                    if (colNum > colCount) {
+                        colNum = 1;
+                        rowNum++;
+                    }
+                }
+                else if (colNum > 1 && colNum <= colCount) {
+                    writeRow();
+                    colNum++;
+                    if (colNum > colCount) {
+                        colNum = 1;
+                        rowNum++;
+                    }
+                }
+                else {
+                    setSQLstate ("02000");
+                }
+                break;
+            case SQLUDF_TF_CLOSE:
+                rs.close();
+                stmt.close();
+                con.close();
+                break;
+            case SQLUDF_TF_FINAL:
+                break;
+            }
+        }
+    }
+....
+
+=== Java Logic
+
+OPEN (run once):
+
+* Establish connection.
+* Prepare the SQL statement (i.e. input string).
+* Execute the SQL statement (i.e. open cursor).
+* Get meta-data for each column returned by query.
+* Set row-number and column-number variables to one.
+* Set the maximum output length accepted to 254.
+
+FETCH (run for each row/column instance):
+
+* If row exists and column-number is 1, fetch row.
+* For value is not null and of valid Db2 type, return row.
+* Increment row-number and column-number variables.
+
+CLOSE (run once):
+
+* Close the cursor.
+* Return.
+
+=== Update Real Data using Meta-Data
+
+Db2 does not allow one to do DML or DDL using a scalar function, but one can do something similar by calling a table function. Thus if the table function defined below is joined to in a query, the following happens: 
+
+* User query joins to table function - sends DML or DDL statement to be executed.
+* Table function calls stored procedure - sends statement to be executed.
+* Stored procedure executes statement.
+* Stored procedure returns SQLCODE of statement to the table function.
+* Table function joins back to the user query a single-row table with two columns: The SQLCODE and the original input statement.
+
+Now for the code:
+
+.Define function and stored-procedure
+[source,sql]
+....
+CREATE PROCEDURE execute_immediate (IN in_stmt VARCHAR(1000)
+                                  , OUT out_sqlcode INTEGER)
+LANGUAGE SQL
+MODIFIES SQL DATA
+BEGIN
+  DECLARE sqlcode INTEGER;
+  DECLARE EXIT HANDLER FOR sqlexception
+    SET out_sqlcode = sqlcode;
+  EXECUTE IMMEDIATE in_stmt;
+  SET out_sqlcode = sqlcode;
+  RETURN;
+END!
+
+CREATE FUNCTION execute_immediate (in_stmt VARCHAR(1000))
+RETURNS TABLE (sqltext VARCHAR(1000)
+             , sqlcode INTEGER)
+LANGUAGE SQL
+MODIFIES SQL DATA
+BEGIN ATOMIC
+  DECLARE out_sqlcode INTEGER;
+  CALL execute_immediate(in_stmt, out_sqlcode);
+  RETURN VALUES (in_stmt, out_sqlcode);
+END!
+....
+
+IMPORTANT: This example uses an "!" as the stmt delimiter.
+
+WARNING: This code is extremely dangerous! Use with care. As we shall see, it is very easy for the above code to do some quite unexpected.
+
+==== Usage Examples
+
+The following query gets a list of materialized query tables for a given table-schema that need to be refreshed, and then refreshes the table:
+
+.Refresh matching tables
+[source,sql]
+....
+WITH temp1 AS
+(SELECT tabschema
+      , tabname
+ FROM syscat.tables
+ WHERE tabschema = 'FRED'
+ AND type = 'S'
+ AND status = 'C'
+ AND tabname LIKE '%DEPT%')
+SELECT CHAR(tab.tabname, 20) AS tabname
+     , stm.sqlcode AS sqlcode
+     , CHAR(stm.sqltext,100) AS sqltext
+FROM temp1 AS tab
+   , TABLE(execute_immediate(
+         'REFRESH TABLE ' ||RTRIM(tab.tabschema) || '.' || tab.tabname))AS stm
+ORDER BY tab.tabname
+WITH UR;
+....
+
+I had two matching tables that needed to be refreshed, so I got the following answer:
+|===
+|TABNAME    |SQLCODE|SQLTEXT
+|STAFF_DEPT1|0      |REFRESH TABLE FRED.STAFF_DEPT1
+|STAFF_DEPT2|0      |REFRESH TABLE FRED.STAFF_DEPT2
+|===
+
+Observe above that the set of matching tables to be refreshed was defined in a common-tableexpression, and then joined to the table function. It is very important that one always code thus, because in an ordinary join it is possible for the table function to be called before all of the predicates have been applied. To illustrate this concept, the next query is supposed to make a copy of two matching tables. The answer indicates that it did just this. But what it actually did was make copies of many more tables - because the table function was called before all of the predicates on SYSCAT.TABLES were applied. The other tables that were created don't show up in the query output, because they were filtered out later in the query processing:
+
+.Create copies of tables - wrong
+[source,sql]
+....
+SELECT CHAR(tab.tabname, 20) AS tabname
+     , stm.sqlcode AS sqlcode
+     , CHAR(stm.sqltext,100) AS sqltext
+FROM syscat.tables AS tab
+   , TABLE(execute_immediate(
+             ' CREATE TABLE ' || RTRIM(tab.tabschema) || '.' || tab.tabname || '_C1' ||
+             ' LIKE ' || RTRIM(tab.tabschema) || '.' || tab.tabname))AS stm
+WHERE tab.tabschema = USER
+AND tab.tabname LIKE 'S%'
+ORDER BY tab.tabname
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|TABNAME|SQLCODE|SQLTEXT
+|SALES  |0      |CREATE TABLE FRED.SALES_C1 LIKE FRED.SALES
+|STAFF  |0      |CREATE TABLE FRED.STAFF_C1 LIKE FRED.STAFF
+|===
+
+The above is bad enough, but I once managed to do much worse. In a variation of the above code, the query created a copy, of a copy, of a copy, etc. The table function kept finding the table just created, and making a copy of it - until the TABNAME reached the length limit. The correct way to create a copy of a set of tables is shown below. In this query, the list of tables to be copied is identified in a common table expression before the table function is called:
+
+.Create copies of tables - right
+[source,sql]
+....
+WITH temp1 AS
+(SELECT tabschema
+      , tabname
+ FROM syscat.tables
+ WHERE tabschema = USER
+ AND tabname LIKE 'S%')
+SELECT CHAR(tab.tabname, 20) AS tabname
+     , stm.sqlcode AS sqlcode
+     , CHAR(stm.sqltext,100) AS sqltext
+FROM temp1 tab
+   , TABLE(execute_immediate(
+             ' CREATE TABLE ' ||RTRIM(tab.tabschema) || '.' || tab.tabname || '_C1' ||
+             ' LIKE ' || RTRIM(tab.tabschema) || '.' || tab.tabname))AS stm
+ORDER BY tab.tabname
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|TABNAME|SQLCODE|SQLTEXT
+|SALES  |0      |CREATE TABLE FRED.SALES_C1 LIKE FRED.SALES
+|STAFF  |0      |CREATE TABLE FRED.STAFF_C1 LIKE FRED.STAFF
+|===
+
+The next example is similar to the previous, except that it creates a copy, and then populates the new table with the contents of the original table:
+
+.Create copies of tables, then populate
+[source,sql]
+....
+WITH temp0 AS
+(SELECT RTRIM(tabschema) AS schema
+      , tabname AS old_tabname
+      , tabname || '_C2' AS new_tabname
+ FROM syscat.tables
+ WHERE tabschema = USER
+ AND tabname LIKE 'S%')
+, temp1 AS
+(SELECT tab.*
+      , stm.sqlcode AS sqlcode1
+      , CHAR(stm.sqltext,200) AS sqltext1
+ FROM temp0 AS tab
+    , TABLE(execute_immediate(
+               ' CREATE TABLE ' || schema || '.' || new_tabname ||
+               ' LIKE ' || schema || '.' || old_tabname))AS stm)
+, temp2 AS
+(SELECT tab.*
+      , stm.sqlcode AS sqlcode2
+      , CHAR(stm.sqltext,200) AS sqltext2
+ FROM temp1 AS tab
+ , TABLE(execute_immediate(
+           ' INSERT INTO ' || schema || '.' || new_tabname ||
+           ' SELECT * FROM ' || schema || '.' || old_tabname))AS stm)
+SELECT CHAR(old_tabname,20) AS tabname
+     , sqlcode1
+     , sqlcode2
+FROM temp2
+ORDER BY old_tabname
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+|===
+|TABNAME| SQLCODE1| SQLCODE2
+|SALES  | 0       | 0     
+|STAFF  | 0       | 0
+|===
+
+==== Query Processing Sequence
+
+In order to explain the above, we need to understand in what sequence the various parts of a query are executed in order to avoid semantic ambiguity:
+
+.Query Processing Sequence
+* FROM clause
+* JOIN ON clause
+* WHERE clause
+* GROUP BY and aggregate
+* HAVING clause
+* SELECT list
+* ORDER BY clause
+* FETCH FIRST
+
+Observe above that the FROM clause is resolved before any WHERE predicates are applied. This is why the query in figure 988 did the wrong thing.
+
+

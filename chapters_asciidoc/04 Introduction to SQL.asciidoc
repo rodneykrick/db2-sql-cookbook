@@ -1,0 +1,2795 @@
+== Introduction to SQL
+
+This chapter contains a basic introduction to Db2 SQL. It also has numerous examples illustrating how to use this language to answer particular business problems. However, it is not meant to be a definitive guide to the language. Please refer to the relevant IBM manuals for a more detailed description.
+
+=== Syntax Diagram
+
+The original book has lots of syntax diagrams in it. We decided not to put them here anymore. Syntax diagrams can be found in the SQL Reference of Db2 (or your prefered RDBMS). We only give you lots of examples how to use SQL. When you master this stuff, you should learn more and improve your knowledge using the “real” manuals.
+
+=== SQL Comments
+
+A comment in a SQL statement starts with two dashes and goes to the end of the line:
+
+.SQL Comment example
+[source,sql]
+....
+SELECT name
+FROM staff
+ORDER BY id;
+-- this is a comment.
+-- this is another comment.
+....
+
+
+
+Some Db2 command processors (e.g. Db2BATCH on the PC, or SPUFI on the mainframe)can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
+comment:
+
+.Set Delimiter example
+[source,sql]
+....
+--#SET DELIMITER !
+SELECT name FROM
+staff WHERE id = 10!
+--#SET DELIMITER ;
+SELECT name FROM
+staff WHERE id = 20;
+....
+
+
+When using the Db2 Command Processor (batch) script, the default statement terminator can be set using the "-tdx" option, where "x" is the value have chosen. 
+
+NOTE: See the section titled Special Character Usage on page 44 for notes on how to refer to the statement delimiter in the SQL text.
+
+=== Statement Delimiter
+
+Db2 SQL does not come with a designated statement delimiter
+(terminator), though a semicolon is often used. A semi-colon cannot be used when writing a compound SQL statement (see <<compound.sql.chapter>>) because that character is used to terminate the various subcomponents of the statement.
+
+=== SQL Components
+
+==== Db2 Objects
+
+Db2 is a relational database that supports a variety of object types. In this section we shall overview those items which one can obtain data from using SQL.
+
+===== Table
+
+A table is an organized set of columns and rows. The number, type, and relative position, of the various columns in the table is recorded in the Db2 catalogue. The number of rows in the table will fluctuate as data is inserted and deleted. The CREATE TABLE statement is used to define a table. The following example will define the EMPLOYEE table, which is found in the Db2 sample database.
+
+.Db2 sample table – EMPLOYEE
+[source,sql]
+....
+CREATE TABLE employee
+( empno     CHARACTER  (00006) NOT NULL
+, firstnme  VARCHAR    (00012) NOT NULL
+, midinit   CHARACTER  (00001) NOT NULL
+, lastname  VARCHAR    (00015) NOT NULL
+, workdept  CHARACTER  (00003)
+, phoneno   CHARACTER  (00004)
+, hiredate  DATE
+, job       CHARACTER  (00008)
+, edlevel   SMALLINT           NOT NULL
+, sex       CHARACTER  (00001) 
+, birthdate DATE 
+, salary    DECIMAL    (00009,02)
+, bonus     DECIMAL    (00009,02)
+, comm      DECIMAL    (00009,02)
+)
+DATA CAPTURE NONE;
+....
+
+[[view.definition]]
+===== View
+
+A view is another way to look at the data in one or more tables (or other views). For example, a user of the following view will only see those rows (and certain columns) in the EMPLOYEE table where the salary of a particular employee is greater than or equal to the average salary for their particular department.
+
+.Db2 sample view – EMPLOYEE_VIEW
+[source,sql]
+....
+CREATE VIEW employee_view AS
+SELECT a.empno
+     , a.firstnme
+     , a.salary
+     , a.workdept
+FROM employee a
+WHERE a.salary >=
+(SELECT AVG(b.salary)
+ FROM
+ employee b
+ WHERE a.workdept = b.workdept
+);
+....
+
+A view need not always refer to an actual table. It may instead contain a list of values:
+
+.Define a view using a VALUES clause
+[source,sql]
+....
+CREATE VIEW silly (c1, c2, c3)
+AS VALUES 
+ (11, 'AAA', SMALLINT(22))
+,(12, 'BBB', SMALLINT(33))
+,(13, 'CCC', NULL);
+....
+
+Selecting from the above view works the same as selecting from a table:
+
+.SELECT from a view that has its own data
+[source,sql]
+....
+SELECT c1, c2, c3
+FROM silly
+ORDER BY c1 aSC;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|C1 |C2 | C3
+|11 |AAA| 22
+|12| BBB| 33
+|13| CCC| -
+|===
+
+We can go one step further and define a view that begins with a single value that is then manipulated using SQL to make many other values. For example, the following view, when selected from, will return 10,000 rows. Note however that these rows are not stored anywhere in the database - they are instead created on the fly when the view is queried.
+
+.Define a view that creates data on the fly
+[source,sql]
+....
+CREATE VIEW test_data AS
+WITH temp1 (num1) AS
+(VALUES (1)
+UNION ALL
+SELECT num1 + 1
+FROM temp1
+WHERE num1 < 10000)
+SELECT *
+FROM temp1;
+....
+
+===== Alias
+
+An alias is an alternate name for a table or a view. Unlike a view, an alias can not contain any processing logic. No authorization is required to use an alias other than that needed to access to the underlying table or view.
+
+.Define three aliases, the latter on the earlier
+[source,sql]
+....
+CREATE ALIAS employee_al1 FOR employee;
+COMMIT;
+
+CREATE ALIAS employee_al2 fOR employee_al1;
+COMMIT;
+
+CREATE ALIAS employee_al3 FOR employee_al2;
+COMMIT;
+....
+
+Neither a view, nor an alias, can be linked in a recursive manner (e.g. V1 points to V2, which points back to V1). Also, both views and aliases still exist after a source object (e.g. a table) has been dropped. In such cases, a view, but not an alias, is marked invalid.
+
+===== Nickname
+
+A nickname is the name that one provides to Db2 for either a remote table, or a non-relational object that one wants to query as if it were a table.
+
+.Define a nickname
+[source,sql]
+....
+CREATE NICKNAME emp FOR unixserver.production.employee;
+....
+
+===== Tablesample
+
+Use of the optional TABLESAMPLE reference enables one to randomly select (sample) some fraction of the rows in the underlying base table:
+
+.TABLESAMPLE example
+[source,sql]
+....
+SELECT *
+FROM staff 
+TABLESAMPLE BERNOULLI(10);
+....
+
+See <<randomly.sample.data>> for information on using the TABLESAMPLE feature.
+
+==== Db2 Data Types
+
+Db2 comes with the following standard data types:
+
+* SMALLINT, INT, and BIGINT (i.e. integer numbers).
+* FLOAT, REAL, and DOUBLE (i.e. floating point numbers).
+* DECIMAL and NUMERIC (i.e. decimal numbers).
+* DECFLOAT (i.e. decimal floating-point numbers).
+* CHAR, VARCHAR, and LONG VARCHAR (i.e. character values).
+* GRAPHIC, VARGRAPHIC, and LONG VARGRAPHIC (i.e. graphical values).
+* BLOB, CLOB, and DBCLOB (i.e. binary and character long object values).
+* DATE, TIME, and TIMESTAMP (i.e. date/time values).
+* DATALINK (i.e. link to external object).
+* XML (i.e. contains well formed XML data).
+
+Below is a simple table definition that uses some of the above data types:
+
+.Sample table definition
+[source,sql]
+....
+CREATE TABLE sales_record
+(sales#         INTEGER NOT NULL
+                GENERATED ALWAYS AS IDENTITY
+                (START WITH 1
+                , INCREMENT BY 1
+                , NO MAXVALUE
+                , NO CYCLE)
+, sale_ts       TIMESTAMP NOT NULL
+, num_items     SMALLINT NOT NULL
+, payment_type  CHAR(2) NOT NULL
+, sale_value    DECIMAL(12,2) NOT NULL
+, sales_tax     DECIMAL(12,2) 
+, employee#     INTEGER NOT NULL
+,CONSTRAINT sales1 CHECK(payment_type IN ('CS','CR'))
+,CONSTRAINT sales2 CHECK(sale_value > 0)
+,CONSTRAINT sales3 CHECK(num_items > 0)
+,CONSTRAINT sales4 FOREIGN KEY(employee#)
+REFERENCES staff(id) ON DELETE RESTRICT
+,PRIMARY KEY(sales#));
+....
+
+In the above table, we have listed the relevant columns, and added various checks to ensure that the data is always correct. In particular, we have included the following:
+
+* The sales# is automatically generated (see <<identity.columns.chapter>> for details). It is also the primary key of the table, and so must always be unique.
+* The payment-type must be one of two possible values.
+* Both the sales-value and the num-items must be greater than zero.
+* The employee# must already exist in the staff table. Furthermore, once a row has been inserted into this table, any attempt to delete the related row from the staff table will fail.
+
+===== Default Lengths
+
+The following table has two columns:
+
+.Table with default column lengths
+[source,sql]
+....
+CREATE TABLE default_values
+(c1 CHAR    NOT NULL
+,d1 DECIMAL NOT NULL);
+....
+
+The length has not been provided for either of the above columns. In this case, Db2 defaults to CHAR(1) for the first column and DECIMAL(5,0) for the second column.
+
+===== Data Type Usage
+
+In general, use the standard Db2 data types as follows:
+
+* Always store monetary data in a decimal field.
+* Store non-fractional numbers in one of the integer field types.
+* Use floating-point when absolute precision is not necessary.
+
+A Db2 data type is not just a place to hold data. It also defines what rules are applied when the data in manipulated. For example, storing monetary data in a Db2 floating-point field is a no-no, in part because the data-type is not precise, but also because a floating-point number is not manipulated (e.g. during division) according to internationally accepted accounting rules.
+
+[[decfloat.arithmetic]]
+===== DECFLOAT Arithmetic
+
+DECFLOAT numbers have quite different processing characteristics from the other number types. For a start, they support more values:
+
+* Zero.
+* Negative and positive numbers (e.g. -1234.56).
+* Negative and positive infinity.
+* Negative and positive NaN (i.e. Not a Number).
+* Negative and positive sNaN (i.e. signaling Not a Number).
+
+===== NaN Usage
+
+The value NaN represents the result of an arithmetic operation that does not return a number (e.g. the square root of a negative number), but is also not infinity. For example, the expression 0/0 returns NaN, while 1/0 returns infinity.
+
+The value NaN propagates through any arithmetic expression. Thus the final result is always either positive or negative NaN, as the following query illustrates:
+
+.NaN arithmetic usage
+[source,sql]
+....
+SELECT    DECFLOAT(+1.23)        +  NaN  AS "  NaN"
+        , DECFLOAT(-1.23)        +  NaN  AS "  NaN"
+        , DECFLOAT(-1.23)        + -NaN  AS " -NaN"
+        , DECFLOAT(+infinity)    +  NaN  AS "  NaN"
+        , DECFLOAT(+sNaN)        +  NaN  AS "  NaN"
+        , DECFLOAT(-sNaN)        +  NaN  AS " -NaN"
+        , DECFLOAT(+NaN)         +  NaN  AS "  NaN"
+        , DECFLOAT(-NaN)         +  NaN  AS " -NaN"
+FROM sysibm.sysdummy1;
+....
+
+NOTE: Any reference to a signaling NaN value in a statement (as above) will result in a warning message being generated.
+
+===== Infinity Usage
+
+The value infinity works similar to NaN. Its reference in an arithmetic expression almost always returns either positive or negative infinity (assuming NaN is not also present). The one exception is division by infinity, which returns a really small, but still finite, number:
+
+.Infinity arithmetic usage
+[source,sql]
+....
+SELECT  DECFLOAT(1) / +infinity AS      " 0E-6176"
+    ,   DECFLOAT(1) * +infinity AS      " Infinity"
+    ,   DECFLOAT(1) + +infinity AS      " Infinity"
+    ,   DECFLOAT(1) - +infinity AS      "-Infinity"
+    ,   DECFLOAT(1) / -infinity AS      " -0E-6176"
+    ,   DECFLOAT(1) * -infinity AS      "-Infinity"
+    ,   DECFLOAT(1) + -infinity AS      "-Infinity"
+    ,   DECFLOAT(1) - -infinity AS      " Infinity"
+FROM sysibm.sysdummy1;
+....
+
+The next query shows some situations where either infinity or NaN is returned:
+
+.DECFLOAT arithmetic results
+[source,sql]
+....
+SELECT  DECFLOAT(+1.23) / 0            AS " Infinity"
+    ,   DECFLOAT(-1.23) / 0            AS "-Infinity"
+    ,   DECFLOAT(+1.23) + infinity     AS " Infinity"
+    ,   DECFLOAT(0)     / 0            AS "NaN"
+    ,   DECFLOAT(infinity) + -infinity AS "NaN"
+    ,   LOG(DECFLOAT(0))               AS "-Infinity"
+    ,   LOG(DECFLOAT(-123))            AS "NaN"
+    ,   SQRT(DECFLOAT(-123))           AS "NaN"
+FROM sysibm.sysdummy1;
+....
+
+===== DECFLOAT Value Order
+
+The DECFLOAT values have the following order, from low to high:
+
+.DECFLOAT value order
+....
+-NaN -sNan -infinity -1.2 -1.20 0 1.20 1.2 infinity sNaN NaN
+....
+
+Please note that the numbers 1.2 and 1.200 are "equal", but they will be stored as different values, and will have a different value order. The TOTALORDER function can be used to illustrate this. It returns one of three values:
+
+* Zero if the two values have the same order.
+* +1 if the first value has a higher order (even if it is equal).
+* -1 if the first value has a lower order (even if it is equal).
+
+.Equal values that may have different orders
+[source,sql]
+....
+WITH temp1 (d1, d2) AS 
+(VALUES (DECFLOAT(+1.0), DECFLOAT(+1.00))
+       ,(DECFLOAT(-1.0), DECFLOAT(-1.00)) 
+       ,(DECFLOAT(+0.0), DECFLOAT(+0.00))
+       ,(DECFLOAT(-0.0), DECFLOAT(-0.00))
+       ,(DECFLOAT(+0), DECFLOAT(-0)) )
+SELECT TOTALORDER(d1,d2) AS TOTALORDER 
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|TOTALORDER
+|1
+|-1
+|1
+|1
+|0
+|===
+
+The NORMALIZE_DECFLOAT scalar function can be used to strip trailing zeros from a DECFLOAT value:
+
+.Remove trailing zeros
+[source,sql]
+....
+WITH temp1 (d1) AS
+(VALUES (DECFLOAT(+0 ,16))
+       ,(DECFLOAT(+0.0 ,16))
+       ,(DECFLOAT(+0.00 ,16))
+       ,(DECFLOAT(+0.000 ,16))
+)
+SELECT d1
+     , HEX(d1)                     AS hex_d1
+     , NORMALIZE_DECFLOAT(d1)      AS d2
+     , HEX(NORMALIZE_DECFLOAT(d1)) AS hex_d2
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|D1   | HEX_D1           | D2| HEX_D2
+|0    | 0000000000003822 | 0 | 0000000000003822
+|0.0  | 0000000000003422 | 0 | 0000000000003822
+|0.00 | 0000000000003022 | 0 | 0000000000003822
+|0.000| 0000000000002C22 | 0 | 0000000000003822
+|===
+
+===== DECFLOAT Scalar Functions
+
+The following scalar functions support the DECFLOAT data type:
+
+* *COMPARE_DECFLOAT*: Compares order of two DECFLOAT values.
+* *DECFLOAT*: Converts input value to DECFLOAT.
+* *NORMALIZE_DECFLOAT*: Removes trailing blanks from DECFLOAT value.
+* *QUANTIZE*: Converts number to DECFLOAT, using mask to define precision.
+* *TOTALORDER*: Compares order of two DECFLOAT values.
+
+===== Date/Time Arithmetic
+
+Manipulating date/time values can sometimes give unexpected results.
+What follows is a brief introduction to the subject. The basic rules are:
+
+* Multiplication and division is not allowed.
+* Subtraction is allowed using date/time values, date/time durations, or labeled durations.
+* Addition is allowed using date/time durations, or labeled durations.
+
+The valid labeled durations are listed below:
+
+....
+LABELED DURATIONS                                  WORKS WITH DATE/TIME
+....
+
+.Labeled Durations and Date/Time Types
+[cols="",options="header",]
+|===
+|SINGULAR   | PLURAL      |ITEM FIXED SIZE |DATE |TIME|TIMESTAMP
+|YEAR       | YEARS       |N               |Y    |-   |Y
+|MONTH      | MONTHS      |N               |Y    |-   |Y 
+|DAY        | DAYS        |Y               |Y    |-   |Y 
+|HOUR       | HOURS       |Y               |-    |Y   |Y 
+|MINUTE     | MINUTES     |Y               |-    |Y   |Y 
+|SECOND     | SECONDS     |Y               |-    |Y   |Y
+|MICROSECOND| MICROSECONDS|Y               |-    |Y   |Y
+|===
+
+*Usage Notes*
+
+* It doesn't matter if one uses singular or plural. One can add "4 day" to a date.
+* Some months and years are longer than others. So when one adds "2 months" to a date the result is determined, in part, by the date that you began with. More on this below.
+* One cannot add "minutes" to a date, or "days" to a time, etc.
+* One cannot combine labeled durations in parenthesis: "date - (1 day + 2 months)" will fail. One should instead say: "date - 1 day - 2 months".
+* Adding too many hours, minutes or seconds to a time will cause it to wrap around. The overflow will be lost.
+* Adding 24 hours to the time '00.00.00' will get '24.00.00'. Adding 24 hours to any other time will return the original value.
+* When a decimal value is used (e.g. 4.5 days) the fractional part is discarded. So to add (to a timestamp value) 4.5 days, add 4 days and 12 hours.
+
+Now for some examples:
+
+.Example, Labeled Duration usage
+[source,sql]
+....
+SELECT     sales_date
+    ,      sales_date - 10 DAY     AS d1
+    ,      sales_date + -1 MONTH   AS d2
+    ,      sales_date + 99 YEARS   AS d3
+    ,      sales_date + 55 DAYS
+                      - 22 MONTHS  AS d4
+    ,      sales_date + (4+6) DAYS AS d5
+FROM sales
+WHERE sales_person = 'GOUNOT'
+AND  sales_date = '1995-12-31';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|sales_date|d1        |d2        |d3        |d4        |d5
+|1995-12-31|1995-12-21|1995-11-30|2094-12-31|1994-04-24|1996-01-10
+|===
+
+Adding or subtracting months or years can give somewhat odd results when the month of the beginning date is longer than the month of the ending date. For example, adding 1 month to '2004-01-31' gives '2004-02-29', which is not the same as adding 31 days, and is not the same result that one will get in 2005. Likewise, adding 1 month, and then a second 1 month to '2004-01-31' gives '2004-03-29', which is not the same as adding 2 months. Below are some examples of this issue:
+
+.Adding Months - Varying Results
+[source,sql]
+....
+SELECT sales_date
+     , sales_date + 2 MONTH           AS d1
+     , sales_date + 3 MONTHS          AS d2
+     , sales_date + 2 MONTH + 1 MONTH AS d3
+     , sales_date + (2+1) MONTHS         AS d4
+FROM sales
+WHERE sales_person = 'GOUNOT'
+AND sales_date = '1995-12-31';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|sales_date|d1        |d2        |d3        |d4
+|1995-12-31|1996-02-29|1996-03-31|1996-03-29|1996-03-31
+|===
+
+===== Date/Time Duration Usage
+
+When one date/time value is subtracted from another date/time value the result is a date, time,or timestamp duration. This decimal value expresses the difference thus:
+
+.Date/Time Durations
+[cols="",options="header",]
+|===
+|DURATION-TYPE|FORMAT       |NUMBER-REPRESENTS    |USE-WITH-D-TYPE 
+|DATE         |DECIMAL(8,0) |yyyymmdd             |TIMESTAMP, DATE
+|TIME         |DECIMAL(6,0) |hhmmss               |TIMESTAMP, TIME
+|TIMESTAMP    |DECIMAL(20,6)|yyyymmddhhmmss.zzzzzz|TIMESTAMP
+|===
+
+Below is an example of date duration generation:
+
+.Date Duration Generation
+[source,sql]
+....
+SELECT empno
+     , hiredate
+     , birthdate
+     , hiredate - birthdate
+FROM employee
+WHERE workdept = 'D11'
+AND lastname < 'L'
+ORDER BY empno;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|EMPNO  |HIREDATE  | BIRTHDATE | - 
+|000150 |1972-02-12| 1947-05-17| 240826
+|000200 |1966-03-03| 1941-05-29| 240905
+|000210 |1979-04-11| 1953-02-23| 260116
+|===
+
+A date/time duration can be added to or subtracted from a date/time value, but it does not make for very pretty code:
+
+.Subtracting a Date Duration
+[source,sql]
+....
+SELECT hiredate
+     , hiredate - 12345678
+     , hiredate - 1234 years
+                - 56 months
+                - 78 days
+FROM employee 
+WHERE empno = '000150';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|HIREDATE  |-         |-
+|1972-02-12|0733-03-26|0733-03-26
+|===
+
+===== Date/Time Subtraction
+
+One date/time can be subtracted (only) from another valid date/time value. The result is a date/time duration value. Figure 37 above has an example.
+
+===== Db2 Special Registers
+
+A special register is a Db2 variable that contains information about the state of the system. The complete list follows:
+
+.Db2 Special Registers
+[cols="60%,10%,30%",options="header",]
+|===
+|Special Register                               |Update? | Data type 
+|CURRENT CLIENT_ACCTNG                          |no      |VARCHAR(255) 
+|CURRENT CLIENT_APPLNAME                        |no      |VARCHAR(255)
+|CURRENT CLIENT_USERID                          |no      |VARCHAR(255) 
+|CURRENT CLIENT_WRKSTNNAME                      |no      |VARCHAR(255) 
+|CURRENT DATE                                   |no      |DATE 
+|CURRENT DBPARTITIONNUM                         |no      |INTEGER 
+|CURRENT DECFLOAT ROUNDING MODE                 |no      |VARCHAR(128) 
+|CURRENT DEFAULT TRANSFORM GROUP                |yes     |VARCHAR(18)
+|CURRENT DEGREE                                 |yes     |CHAR(5) 
+|CURRENT EXPLAIN MODE                           |yes     |VARCHAR(254)
+|CURRENT EXPLAIN SNAPSHOT                       |yes     |CHAR(8) 
+|CURRENT FEDERATED ASYNCHRONY                   |yes     |INTEGER 
+|CURRENT IMPLICIT XMLPARSE OPTION               |yes     |VARCHAR(19)
+|CURRENT ISOLATION                              |yes     |CHAR(2) 
+|CURRENT LOCK TIMEOUT                           |yes     |INTEGER
+|CURRENT MAINTAINED TABLE TYPES FOR OPTIMIZATION|yes     |VARCHAR(254)
+|CURRENT MDC ROLLOUT MODE                       |yes     |VARCHAR(9) 
+|CURRENT OPTIMIZATION PROFILE                   |yes     |VARCHAR(261) 
+|CURRENT PACKAGE PATH                           |yes     |VARCHAR(4096)
+|CURRENT PATH                                   |yes     |VARCHAR(2048) 
+|CURRENT QUERY OPTIMIZATION                     |yes     |INTEGER
+|CURRENT REFRESH AGE                            |yes     |DECIMAL(20,6) 
+|CURRENT SCHEMA                                 |yes     |VARCHAR(128)
+|CURRENT SERVER                                 |no      |VARCHAR(128) 
+|CURRENT TIME                                   |no      |TIME 
+|CURRENT TIMESTAMP                              |no      |TIMESTAMP 
+|CURRENT TIMEZONE                               |no      |DECIMAL(6,0) 
+|CURRENT USER                                   |no      |VARCHAR(128) 
+|SESSION_USER                                   |yes     |VARCHAR(128)
+|SYSTEM_USER                                    |no      |VARCHAR(128) 
+|USER                                           |yes     |VARCHAR(128)
+|===
+
+*Usage Notes*
+
+* Some special registers can be referenced using an underscore instead of a blank in the name - as in: CURRENT_DATE.
+* Some special registers can be updated using the SET command (see list above).
+* All special registers can be queried using the SET command. They can also be referenced in ordinary SQL statements.
+* Those special registers that automatically change over time (e.g. current timestamp) are always the same for the duration of a given SQL statement. So if one inserts a thousand rows in a single insert, all will get the same current timestamp.
+* One can reference the current timestamp in an insert or update, to record in the target table when the row was changed. To see the value assigned, query the DML statement. See <<select.dml.changes>> for details.
+
+Refer to the Db2 SQL Reference Volume 1 for a detailed description of each register.
+
+===== Sample SQL
+
+.Using Special Registers
+[source,sql]
+....
+SET CURRENT ISOLATION = RR;
+SET CURRENT SCHEMA = 'ABC';
+SELECT CURRENT TIME      AS cur_TIME
+     , CURRENT ISOLATION AS cur_ISO
+     , CURRENT SCHEMA    AS cur_ID
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+
+|===
+|CUR_TIME |CUR_ISO |CUR_ID
+|12:15:16 |RR      |ABC
+|===
+
+[[distinct.types]]
+===== Distinct Types
+
+A distinct data type is a field type that is derived from one of the base Db2 field types. It is used when one wants to prevent users from combining two separate columns that should never be manipulated together (e.g. adding US dollars to Japanese Yen).
+
+NOTE: The following source types do not support distinct types: LOB, LONG VARCHAR, LONG VARGRAPHIC and DATALINK.
+
+The creation of a distinct type, under the covers, results in the creation two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, < =, >, and > =` ) is also provided. Below is a typical create and drop statement:
+
+.Create and drop distinct type
+[source,sql]
+....
+CREATE DISTINCT TYPE JAP_YEN AS DECIMAL(15,2) WITH COMPARISONS;
+DROP DISTINCT TYPE JAP_YEN;
+....
+
+NOTE: A distinct type cannot be dropped if it is currently being used in a table.
+
+*Usage Example*
+
+Imagine that we had the following customer table:
+
+.Sample table, without distinct types
+[source,sql]
+....
+CREATE TABLE customer
+( id             INTEGER
+, fname          VARCHAR(00010) NOT NULL
+, lname          VARCHAR(00015) NOT NULL WITH DEFAULT ''
+, date_of_birth  DATE
+, citizenship    CHAR(03) NOT NULL WITH DEFAULT ''
+, usa_sales      DECIMAL(9,2)
+, eur_sales      DECIMAL(9,2)
+, sales_office#  SMALLINT
+, last_updated   TIMESTAMP
+, PRIMARY KEY(id));
+....
+
+One problem with the above table is that the user can add the American and European sales values, which if they are expressed in dollars and euros respectively, is silly:
+
+.Silly query, but works
+[source,sql]
+....
+SELECT id
+     , usa_sales + eur_sales AS tot_sales
+FROM customer;
+....
+
+To prevent the above, we can create two distinct types:
+
+.Create Distinct Type examples
+[source,sql]
+....
+CREATE DISTINCT TYPE USA_DOLLARS AS DECIMAL(9,2) WITH COMPARISONS;
+CREATE DISTINCT TYPE EUROS       AS DECIMAL(9,2) WITH COMPARISONS;
+....
+
+Now we can define the customer table thus:
+
+.Sample table, with distinct types
+[source,sql]
+....
+CREATE TABLE customer
+( id            INTEGER NOT NULL
+, fname         VARCHAR(00010) NOT NULL WITH DEFAULT '' 
+, lname         VARCHAR(00015) NOT NULL WITH DEFAULT ''
+, date_of_birth DATE
+, citizenship   CHAR(03)
+, usa_sales     USA_DOLLARS
+, eur_sales     EUROS
+, sales_office# SMALLINT
+, last_updated  TIMESTAMP
+, PRIMARY KEY(id));
+....
+
+Now, when we attempt to run the following, it will fail:
+
+.Silly query, now fails
+[source,sql]
+....
+SELECT id 
+     , usa_sales + eur_sales AS tot_sales
+FROM customer;
+....
+
+The creation of a distinct type, under the covers, results in the creation two implied functions that can be used to convert data to and from the source type and the distinct type. In the next example, the two monetary values are converted to their common decimal source type, and then added together:
+
+.Silly query, works again
+[source,sql]
+....
+SELECT id 
+    , DECIMAL(usa_sales) + DECIMAL(eur_sales) AS tot_sales
+FROM customer;
+....
+
+[[fullselect-subselect--common-table-expression]]
+===== Fullselect, Subselect, & Common Table Expression
+
+It is not the purpose of this book to give you detailed description of SQL terminology, but there are a few words that you should know. For example, the following diagram illustrates the various components of a query:
+
+[source,sql]
+....
+WITH get_matching_rows AS
+     (SELECT id
+           , name
+           , salary
+      FROM staff
+      WHERE id < 50
+      UNION ALL
+      SELECT id
+           , name
+           , salary
+      FROM staff
+      WHERE id = 100
+     )
+     SELECT *
+     FROM get_matching_rows
+     ORDER BY id
+     FETCH FIRST 10 ROWS ONLY
+     FOR FETCH ONLY
+     WITH UR;
+....
+
+.Query components
+* The structure from WITH until the last parenthesis is a COMMON TABLE EXPRESSION
+* Each select block is called a SUBSELECT
+* The block inside the WITH with two SUBSELECTS is a FULLSELECT
+
+==== Query Components
+
+* *SUBSELECT*: A query that selects zero or more rows from one or more tables.
+* *FULLSELECT*: One or more subselects or VALUES clauses, connected using a UNION, INTERSECT, or EXCEPT, all enclosed in parenthesis.
+* *COMMON TABLE EXPRESSION*: A named fullselect that can be referenced one more times in another subselect. See <<common.table.expression>> for a more complete definition.
+
+=== SELECT Statement
+
+A SELECT statement is used to query the database. It has the following components, not all of which need be used in any particular query:
+
+* *SELECT* clause. One of these is required, and it must return at least one item, be it a column, a literal, the result of a function, or something else. One must also access at least one table, be that a true table, a temporary table, a view, or an alias.
+* *WITH* clause. This clause is optional. Use this phrase to include independent SELECT statements that are subsequently accessed in a final SELECT (see <<common.table.expression>>).
+* *ORDER BY* clause. Optionally, order the final output (see <<order.by.chapter>>).
+* *FETCH FIRST* clause. Optionally, stop the query after "n" rows (see <<fetch.first.clause>>). If an optimize-for value is also provided, both values are used independently by the optimizer.
+* *READ-ONLY* clause. Optionally, state that the query is read-only.Some queries are inherently read-only, in which case this option has no effect.
+* *FOR UPDATE* clause. Optionally, state that the query will be used to update certain columns that are returned during fetch processing.
+* *OPTIMIZE FOR n ROWS* clause. Optionally, tell the optimizer to tune the query assuming that not all of the matching rows will be retrieved. If a first-fetch value is also provided, both values are used independently by the optimizer.
+
+Refer to the IBM manuals for a complete description of all of the above.
+Some of the more interesting options are described below.
+
+*SELECT Clause*
+
+Every query must have at least one SELECT statement, and it must return at least one item, and access at least one object.
+
+==== SELECT Items
+
+* *Column*: A column in one of the table being selected from.
+* *Literal*: A literal value (e.g. "ABC"). Use the AS expression to name the literal.
+* *Special Register*: A special register (e.g. CURRENT TIME).
+* *Expression*: An expression result (e.g. MAX(COL1*10)).
+* *Full Select*: An embedded SELECT statement that returns a single row.
+
+==== FROM Objects
+
+* *Table*: Either a permanent or temporary Db2 table.
+* *View*: A standard Db2 view.
+* *Alias*: A Db2 alias that points to a table, view, or another alias.
+* *Full Select*: An embedded SELECT statement that returns a set of rows.
+
+*Sample SQL*
+
+.Sample SELECT statement
+[source,sql]
+....
+SELECT deptno
+     , admrdept
+     , 'ABC' AS abc
+FROM department
+WHERE deptname LIKE '%ING%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|DEPTNO| ADMRDEPT |ABC 
+|B01   | A00      |ABC 
+|D11   | D01      | ABC
+|===
+
+To select all of the columns in a table (or tables) one can use the "*" notation:
+
+.Use "_" to select all columns in table
+[source,sql]
+....
+SELECT *
+FROM department 
+WHERE deptname LIKE '%ING%'
+ORDER BY 1;
+....
+
+ANSWER (part of)
+
+|===
+|DEPTNO |etc... 
+|B01 |PLANNING
+|D11| MANUFACTU
+|===
+
+To select both individual columns, and all of the columns (using the "\_" notation), in a single SELECT statement, one can still use the "_", but it must fully-qualified using either the object name, or a correlation name:
+
+.Select an individual column, and all columns
+[source,sql]
+....
+SELECT deptno
+     , department.*
+FROM department
+WHERE deptname LIKE '%ING%'
+ORDER BY 1;
+....
+
+ANSWER (part of)
+
+|===
+|DEPTNO |DEPTNO | etc... 
+|B01    | B01   | PLANNING 
+|D11    | D11   | MANUFACTU
+|===
+
+Use the following notation to select all the fields in a table twice:
+
+.Select all columns twice
+[source,sql]
+....
+SELECT department.*
+     , department.*
+FROM department
+WHERE eptname LIKE '%NING%'
+ORDER BY 1;
+....
+
+|===
+|DEPTNO | etc...   |...|DEPTNO |etc...   |...
+|B01    | PLANNING |...|B01    |PLANNING |... 
+|D11    | MANUFACTU|...|D11    |MANUFACTU|...
+|===
+
+[[fetch.first.clause]]
+==== FETCH FIRST Clause
+
+The fetch first clause limits the cursor to retrieving "n" rows. If the clause is specified and no number is provided, the query will stop after the first fetch.
+If this clause is used, and there is no ORDER BY, then the query will simply return a random set of matching rows, where the randomness is a function of the access path used and/or the physical location of the rows in the table:
+
+.FETCH FIRST without ORDER BY, gets random rows
+[source,sql]
+....
+SELECT years
+     , name
+     , id
+FROM staff
+FETCH FIRST 3 ROWS ONLY;
+....
+
+_ANSWER_
+
+|===
+|YEARS| NAME   |ID 
+|7    |Sanders |10 
+|8    |Pernal  |20 
+|5    |Marenghi|30
+|===
+
+WARNING: Using the FETCH FIRST clause to get the first "n" rows can sometimes return
+an answer that is not what the user really intended. See below for details.
+
+If an ORDER BY is provided, then the FETCH FIRST clause can be used to stop the query after a certain number of what are, perhaps, the most desirable rows have been returned. However, the phrase should only be used in this manner when the related ORDER BY uniquely identifies each row returned. To illustrate what can go wrong, imagine that we wanted to query the STAFF table in order to get the names of those three employees that have worked for the firm the longest - in order to give them a little reward (or possibly to fire them). The following query could be run:
+
+.FETCH FIRST with ORDER BY, gets wrong answer
+[source,sql]
+....
+SELECT years
+     , name
+     , id
+FROM staff
+WHERE years IS NOT NULL
+ORDER BY years DESC
+FETCH FIRST 3 ROWS ONLY;
+....
+
+_ANSWER_
+
+|===
+|YEARS|NAME  |ID 
+|13   |Graham|310 
+|12   |Jones |260 
+|10   |Hanes |50
+|===
+
+The above query answers the question correctly, but the question was wrong, and so the answer is wrong. The problem is that there are two employees that have worked for the firm for ten years, but only one of them shows, and the one that does show was picked at random by the query processor. This is almost certainly not what the business user intended.
+The next query is similar to the previous, but now the ORDER ID uniquely identifies each row returned (presumably as per the end-user's instructions):
+
+.FETCH FIRST with ORDER BY, gets right answer
+[source,sql]
+....
+SELECT years
+     , name
+     , id
+FROM staff
+WHERE years IS NOT NULL
+ORDER BY years DESC
+       , id DESC
+FETCH FIRST 3 ROWS ONLY;
+....
+
+_ANSWER_
+
+|===
+|YEARS|NAME  |ID 
+|13   |Graham|310 
+|12   |Jones |260 
+|10   |Quill |290
+|===
+
+WARNING: Getting the first "n" rows from a query is actually quite a complicated problem. Refer to page 114 for a more complete discussion.
+
+*Correlation Name*
+
+The correlation name is defined in the FROM clause and relates to the preceding object name. In some cases, it is used to provide a short form of the related object name. In other situations, it is required in order to uniquely identify logical tables when a single physical table is referred to twice in the same query. Some sample SQL follows:
+
+.Correlation Name usage example
+[source,sql]
+....
+SELECT a.empno
+     , a.lastname
+, (SELECT MAX(empno)AS empno
+   FROM employee) AS b
+FROM employee a
+WHERE a.empno = b.empno;
+....
+
+_ANSWER_
+
+|===
+|EMPNO |LASTNAME
+|000340|GOUNOT
+|===
+
+.Correlation name usage example_
+[source,sql]
+....
+SELECT a.empno
+     , a.lastname
+     , b.deptno AS dept
+FROM employee   a
+   , department b
+WHERE a.workdept = b.deptno
+AND a.job <> 'SALESREP'
+AND b.deptname = 'OPERATIONS'
+AND a.sex IN ('M','F')
+AND b.location IS NULL
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|EMPNO |LASTNAME |DEPT 
+|000090|HENDERSON|E11
+|000280|SCHNEIDER|E11
+|000290|PARKER   |E11
+|000300|SMITH    |E11
+|000310|SETRIGHT |E11
+|===
+
+*Renaming Fields*
+
+The AS phrase can be used in a SELECT list to give a field a different name. If the new name is an invalid field name (e.g. contains embedded blanks), then place the name in quotes:
+
+.Renaming fields using AS
+[source,sql]
+....
+SELECT empno    AS e_num
+     , midinit  AS "m int"
+     , phoneno  AS "..."
+FROM employee
+WHERE empno < '000030'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|E_NUM |M INT|...
+|000010|I    |3978
+|000020|L    |3476
+|===
+
+The new field name must not be qualified (e.g. A.C1), but need not be unique. Subsequent usage of the new name is limited as follows:
+
+* It can be used in an order by clause.
+* It cannot be used in other part of the select (where-clause, group-by, or having).
+* It cannot be used in an update clause.
+* It is known outside of the fullselect of nested table expressions, common table expressions, and in a view definition.
+
+.View field names defined using AS
+[source,sql]
+....
+CREATE view emp2 
+AS SELECT empno AS e_num
+        , midinit AS "m int" 
+        , phoneno AS "..." 
+FROM employee;
+
+SELECT * FROM emp2 WHERE "..." = '3978';
+....
+
+_ANSWER_
+
+|===
+|E_NUM| M INT |...
+|000010 |I |3978
+|===
+
+*Working with Nulls*
+
+In SQL something can be true, false, or null. This three-way logic has to always be considered when accessing data. To illustrate, if we first select all the rows in the STAFF table where the SALARY is < $10,000, then all the rows where the SALARY is >= $10,000, we have not necessarily found all the rows in the table because we have yet to select those rows where the SALARY is null. The presence of null values in a table can also impact the various column functions. For example, the AVG function ignores null values when calculating the average of a
+set of rows. This means that a user-calculated average may give a different result from a Db2 calculated equivalent:
+
+.AVG of data containing null values
+[source,sql]
+....
+SELECT AVG(comm)            AS a1
+     , SUM(comm) / COUNT(*) AS a2
+FROM staff
+WHERE id < 100;
+....
+
+_ANSWER_
+
+|===
+|A1      |A2
+|796.025 |530.68
+|===
+
+Null values can also pop in columns that are defined as NOT NULL. This happens when a field is processed using a column function and there are no rows that match the search criteria:
+
+.Getting a NULL value from a field defined NOT NULL
+[source,sql]
+....
+SELECT COUNT(*)      AS num
+     , MAX(lastname) AS max
+FROM employee
+WHERE firstnme = 'FRED';
+....
+
+ANSWER
+
+|===
+|NUM|MAX 
+|0  |-
+|===
+
+*Why Nulls Exist*
+
+Null values can represent two kinds of data. In first case, the value is unknown (e.g. we do not know the name of the person's spouse).
+Alternatively, the value is not relevant to the situation (e.g. the person does not have a spouse). Many people prefer not to have to bother with nulls, so they use instead a special value when necessary (e.g. an unknown employee name is blank). This trick works OK with character data, but it can lead to problems when used on numeric values (e.g. an unknown salary is set to zero). 
+
+*Locating Null Values*
+
+One can not use an equal predicate to locate those values that are null because a null value does not actually equal anything, not even null, it is simply null. The IS NULL or IS NOT NULL phrases are used instead. The following example gets the average commission of only those rows that are not null. Note that the second result differs from the first due to rounding loss.
+
+.AVG of those rows that are not null
+[source,sql]
+....
+SELECT AVG(comm)            AS a1
+     , SUM(comm) / COUNT(*) AS a2
+FROM staff
+WHERE id < 100
+AND comm IS NOT NULL;
+....
+
+_ANSWER_
+
+|===
+|A1     | A2
+|796.025| 796.02
+|===
+
+_Quotes and Double-quotes_
+
+To write a string, put it in quotes. If the string contains quotes, each quote is represented by a pair of quotes:
+
+.Quote usage
+[source,sql]
+....
+SELECT 'JOHN'        AS J1
+     , 'JOHN''S'     AS J2
+     , '''JOHN''S''' AS J3
+     , '"JOHN''S"'   AS J4
+FROM staff
+WHERE id = 10;
+....
+
+_ANSWER_
+
+|===
+|J1   | J2    | J3      | J4
+|JOHN |JOHN'S |'JOHN'S' |"JOHN'S"
+|===
+
+Double quotes can be used to give a name to an output field that would otherwise not be valid. To put a double quote in the name, use a pair of quotes:
+
+.Double-quote usage
+[source,sql]
+....
+SELECT id    AS "USER ID"
+     , dept  AS "D#"
+     , years AS "#Y"
+     , 'ABC' AS "'TXT'"
+     , '"'   AS """quote"" fld"
+FROM staff s
+WHERE id < 40
+ORDER BY "USER ID";
+....
+
+_ANSWER_
+
+|===
+|USER ID|D# |#Y|'TXT'|"quote" fld 
+|10     |20 |7 |ABC  |" 
+|20     |20 |8 |ABC  |" 
+|30     |38 |5 |ABC  |"
+|===
+
+=== SQL Predicates
+
+A predicate is used in either the WHERE or HAVING clauses of a SQL statement. It specifies a condition that true, false, or unknown about a row or a group.
+
+==== Predicate Precedence
+
+As a rule, a query will return the same result regardless of the sequence in which the various predicates are specified. However, note the following:
+
+* Predicates separated by an OR may need parenthesis - see <<and.or.precedence>>.
+* Checks specified in a CASE statement are done in the order written - see <<case.expression>>.
+
+===== Basic Predicate
+
+A basic predicate compares two values. If either value is null, the result is unknown. Otherwise the result is either true or false.
+
+.Basic Predicate examples
+[source,sql]
+....
+SELECT id, job, dept 
+FROM staff
+WHERE job = 'Mgr'
+AND NOT job <> 'Mgr'
+AND NOT job = 'Sales'
+AND id <> 100
+AND id >= 0
+AND id <= 150
+AND NOT dept = 50
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID |JOB| DEPT
+|10 |Mgr| 20
+|30 |Mgr| 38
+|50 |Mgr| 15
+|140|Mgr| 51
+|===
+
+A variation of this predicate type can be used to compare sets of columns/values. Everything on both sides must equal in order for the expressions to match:
+
+.Basic Predicate example, multi-value check
+[source,sql]
+....
+SELECT id, dept, job
+FROM staff
+WHERE (id,dept) = (30,28)
+OR (id,years) = (90, 7)
+OR (dept,job) = (38,'Mgr')
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|ID| DEPT |JOB
+|30| 38   | Mgr
+|===
+
+Below is the same query written the old fashioned way:
+
+.Same query as prior, using individual predicates
+[source,sql]
+....
+SELECT id, dept, job
+FROM staff
+WHERE (id   = 30 AND dept = 28)
+OR    (id   = 90 AND years = 7)
+OR    (dept = 38 AND job = 'Mgr')
+ORDER BY 1;
+....
+
+ANSWER
+
+|===
+|ID| DEPT |JOB
+|30| 38   | Mgr
+|===
+
+==== Quantified Predicate
+
+A quantified predicate compares one or more values with a collection of values.
+
+.Quantified Predicate example, two single-value sub-queries
+[source,sql]
+....
+SELECT id, job
+FROM staff
+WHERE job = ANY (SELECT job FROM staff)
+AND id <= ALL (SELECT id FROM staff)
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| JOB
+|10| Mgr
+|===
+
+.Quantified Predicate example, multi-value sub-query
+[source,sql]
+....
+SELECT id, dept, job
+FROM staff 
+WHERE (id,dept) = ANY
+(SELECT dept, id
+ FROM staff
+)
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|ID| DEPT| JOB
+|20| 20  | Sales
+|===
+
+See the sub-query chapter on page 245 for more data on this predicate type.
+
+==== BETWEEN Predicate
+
+The BETWEEN predicate compares a value within a range of values.
+
+The between check always assumes that the first value in the expression is the low value and the second value is the high value. For example, BETWEEN 10 AND 12 may find data, but BETWEEN 12 AND 10 never will.
+
+.BETWEEN Predicate examples
+[source,sql]
+....
+SELECT id, job
+FROM staff
+WHERE   id     BETWEEN 10 AND 30
+AND     id NOT BETWEEN 30 AND 10
+AND NOT id NOT BETWEEN 10 AND 30
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| JOB
+|10| Mgr
+|20| Sales
+|30| Mgr
+|===
+
+==== EXISTS Predicate
+
+An EXISTS predicate tests for the existence of matching rows.
+
+.EXISTS Predicate example
+[source,sql]
+....
+SELECT id, job
+FROM staff a
+WHERE EXISTS
+(SELECT *
+ FROM staff b
+ WHERE b.id = a.id
+ AND b.id < 50
+)
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| JOB
+|10| Mgr
+|20| Sales
+|30| Mgr
+|40| Sales
+|===
+
+....
+NOTE: See the sub-query chapter on page 245 for more data on this predicate type.
+....
+
+==== IN Predicate
+
+The IN predicate compares one or more values with a list of values.
+
+The list of values being compared in the IN statement can either be a set of in-line expressions (e.g. ID in (10,20,30)), or a set rows returned from a sub-query. Either way, Db2 simply goes through the list until it finds a match.
+
+.IN Predicate examples, single values
+[source,sql]
+....
+SELECT id, job
+FROM staff a
+WHERE id IN (10,20,30)
+AND id IN 
+    (SELECT id
+     FROM staff
+    )
+AND id NOT IN 99
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| JOB
+|10| Mgr
+|20| Sales
+|30| Mgr
+|===
+
+The IN statement can also be used to compare multiple fields against a set of rows returned from a sub-query. A match exists when all fields equal. This type of statement is especially useful when doing a search against a table with a multi-columns key. 
+
+WARNING: Be careful when using the NOT IN expression against a sub-query result. If any one row in the sub-query returns null, the result will be no match. See <<subquery.chapter>> for more details.
+
+.IN Predicate example, multi-value
+[source,sql]
+....
+SELECT empno, lastname
+FROM employee
+WHERE (empno, 'AD3113') IN
+    (SELECT empno, projno
+     FROM emp_act
+     WHERE emptime > 0.5
+    )
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|EMPNO | LASTNAME
+|000260| JOHNSON
+|000270| PEREZ
+|===
+
+NOTE: See the sub-query chapter on page 245 for more data on this statement type.
+
+==== LIKE Predicate
+
+The LIKE predicate does partial checks on character strings.
+
+The percent and underscore characters have special meanings. The first means skip a string of any length (including zero) and the second means skip one byte. For example:
+
+* LIKE 'AB_D%' Finds 'ABCD' and 'ABCDE', but not 'ABD', nor 'ABCCD'.
+* LIKE '_X' Finds 'XX' and 'DX', but not 'X', nor 'ABX', nor 'AXB'.
+* LIKE '%X' Finds 'AX', 'X', and 'AAX', but not 'XA'.
+
+.LIKE Predicate examples
+[source,sql]
+....
+SELECT id
+     , name 
+FROM staff 
+WHERE name LIKE 'S%n' 
+   OR name LIKE '_a_a%' 
+   OR name LIKE '%r_%a' 
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID | NAME
+|130| Yamaguchi
+|200| Scoutten
+|===
+
+===== The ESCAPE Phrase
+
+The escape character in a LIKE statement enables one to check for percent signs and/or underscores in the search string. When used, it precedes the '%' or '_' in the search string indicating that it is the actual value and not the special character which is to be checked for.
+When processing the LIKE pattern, Db2 works thus: Any pair of escape characters is treated as the literal value (e.g. "++" means the string "+"). Any single occurrence of an escape character followed by either a "%" or a "_" means the literal "%" or "_" (e.g. "+%" means the string
+"%"). Any other "%" or "_" is used as in a normal LIKE pattern.
+
+.LIKE and ESCAPE examples
+|===
+|LIKE STATEMENT TEXT       |WHAT VALUES MATCH 
+|LIKE 'AB%'                |Finds AB, any string 
+|LIKE 'AB%' ESCAPE '+'     | Finds AB, any string 
+|LIKE 'AB+%' ESCAPE '+'    | Finds AB% 
+|LIKE 'AB++' ESCAPE '+'    |Finds AB+ 
+|LIKE 'AB+%%' ESCAPE '+'   |Finds AB%, any string 
+|LIKE 'AB++%' ESCAPE '+'   |Finds AB+, any string
+|LIKE 'AB+++%' ESCAPE '+'  |Finds AB+% 
+|LIKE 'AB+++%%' ESCAPE '+' |Finds AB+%, any string 
+|LIKE 'AB+%+%%' ESCAPE '+' |Finds AB%%, any string 
+|LIKE 'AB++++' ESCAPE '+'  |Finds AB++ 
+|LIKE 'AB+++++%' ESCAPE '+'|Finds AB++%
+|LIKE 'AB++++%' ESCAPE '+' |Finds AB++, any string 
+|LIKE 'AB+%++%' ESCAPE '+' |Finds AB%+, any string
+|===
+
+Now for sample SQL:
+
+.LIKE and ESCAPE examples
+[source,sql]
+....
+SELECT id
+FROM staff
+WHERE id = 10
+AND 'ABC' LIKE 'AB%'
+AND 'A%C' LIKE 'A/%C' ESCAPE '/'
+AND 'A_C' LIKE 'A\_C' ESCAPE '\'
+AND 'A_$' LIKE 'A$_$$' ESCAPE '$';
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|ID
+|10
+|===
+
+==== LIKE_COLUMN Function
+
+The LIKE predicate cannot be used to compare one column against another.
+One may need to do this when joining structured to unstructured data.
+For example, imagine that one had a list of SQL statements (in a table) and a list of view names in a second table. One might want to scan the SQL text (using a LIKE predicate) to find those statements that referenced the views. The LOCATE function can be used to do a simple equality check. The LIKE predicate allows a more sophisticated search.
+The following code creates a scalar function and dependent procedure that can compare one column against another (by converting both column values into input variables). The function is just a stub. It passes the two input values down to the procedure where they are compared using a LIKE predicate. If there is a match, the function returns one, else zero.
+
+[source,sql]
+....
+--#SET DELIMITER !
+CREATE PROCEDURE LIKE_COLUMN 
+ ( IN instr1 VARCHAR(4000)
+ , IN instr2 VARCHAR(4000)
+ , OUT outval SMALLINT)
+LANGUAGE SQL
+CONTAINS SQL
+DETERMINISTIC
+NO EXTERNAL ACTION
+BEGIN
+    SET outval = 
+        CASE
+            WHEN instr1 LIKE instr2
+                THEN 1
+            ELSE 0
+        END;
+    RETURN;
+END!
+....
+
+NOTE: This example uses an "!" as the stmt delimiter.
+
+.Create LIKE_COLUMN function
+[source,sql]
+....
+CREATE FUNCTION LIKE_COLUMN 
+( instr1 VARCHAR(4000)
+, instr2 VARCHAR(4000))
+RETURNS SMALLINT
+LANGUAGE SQL
+CONTAINS SQL
+DETERMINISTIC
+NO EXTERNAL ACTION
+BEGIN ATOMIC
+    DECLARE outval SMALLINT;
+    CALL LIKE_COLUMN(instr1,instr2,outval);
+    RETURN outval;
+END!
+....
+
+Below is an example of the above function being used to compare to the contents of one column against another:
+
+.Use LIKE_COLUMN function
+[source,sql]
+....
+WITH temp1 (jtest) AS
+(VALUES ('_gr%')
+      , ('S_le%')
+)
+SELECT
+  s.id
+, s.name
+, s.job
+, t.jtest
+FROM staff s
+   , temp1 t
+WHERE LIKE_COLUMN(s.job , t.jtest) = 1
+AND s.id < 70
+ORDER BY s.id;
+....
+
+_ANSWER_
+
+|===
+|ID| NAME    | JOB  | JTEST
+|10| Sanders | Mgr  | _gr%
+|20| Pernal  | Sales| S_le%
+|30| Marenghi| Mgr  | _gr%
+|40| O'Brien | Sales| S_le%
+|50| Hanes   | Mgr  | _gr%
+|60| Quigley | Sales| S_le%
+|===
+
+==== NULL Predicate
+
+The NULL predicate checks for null values. The result of this predicate cannot be unknown. If the value of the expression is null, the result is true. If the value of the expression is not null, the result is false.
+
+.NULL predicate examples
+[source,sql]
+....
+SELECT id, comm
+FROM staff
+WHERE id < 100
+AND id IS NOT NULL
+AND comm IS NULL
+AND NOT comm IS NOT NULL
+ORDER BY id;
+....
+
+ANSWER
+
+|===
+|ID| COMM
+|10| - 
+|30| - 
+|50| -
+|===
+
+NOTE: Use the COALESCE function to convert null values into something else.
+
+==== Special Character Usage
+
+To refer to a special character in a predicate, or anywhere else in a SQL statement, use the "X" notation to substitute with the ASCII hex value. For example, the following query will list all names in the STAFF table that have an "a" followed by a semicolon:
+
+.Refer to semi-colon in SQL text
+[source,sql]
+....
+SELECT id
+     , name
+FROM staff
+WHERE name LIKE '%a' || X'3B' || '%'
+ORDER BY id;
+....
+
+==== Precedence Rules
+
+Expressions within parentheses are done first, then prefix operators (e.g. -1), then multiplication and division, then addition and subtraction. When two operations of equal precedence are together (e.g. 1 * 5 / 4) they are done from left to right.
+
+
+.Precedence rules example
+....
+Example:
+
+555 +      -22  /    (12 - 3) * 66
+    ^      ^    ^        ^    ^
+    5th   2nd  3rd      1st  4th 
+
+ANSWER: 423
+....
+
+Be aware that the result that you get depends very much on whether you are doing integer or decimal arithmetic. Below is the above done using integer numbers:
+
+.Precedence rules, integer example
+[source,sql]
+....
+SELECT               (12 - 3)      AS int1
+       ,       -22 / (12 - 3)      AS int2
+       ,       -22 / (12 - 3) * 66 AS int3
+       , 555 + -22 / (12 - 3) * 66 AS int4 
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+
+|===
+|INT1| INT2| INT3| INT4
+|9   | -2  | -132| 423
+|===
+
+NOTE: Db2 truncates, not rounds, when doing integer arithmetic.
+
+Here is the same done using decimal numbers:
+
+.Precedence rules, decimal example
+[source,sql]
+....
+SELECT               (12.0 - 3)      AS dec1
+       ,       -22 / (12.0 - 3)      AS dec2
+       ,       -22 / (12.0 - 3) * 66 AS dec3
+       , 555 + -22 / (12.0 - 3) * 66 AS dec4 
+FROM sysibm.sysdummy1;
+....
+
+_ANSWER_
+
+|===
+|DEC1| DEC2| DEC3  | DEC4
+|9.0 | -2.4| -161.3| 393.6
+|===
+
+[[and.or.precedence]]
+==== AND/OR Precedence
+
+AND operations are done before OR operations. This means that one side of an OR is fully processed before the other side is begun. To illustrate:
+
+*TABLE1*
+|===
+|col1|col2
+|A   |AA
+|B   |BB
+|C   |CC|
+|===
+
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE col1 =  'C'
+AND   col1 >= 'A'
+OR    col2 >= 'AA'
+ORDER BY col1;
+....
+
+_ANSWER_
+|===
+|COL1|COL2
+|A   |AA
+|B   |BB
+|C   |CC
+|===
+
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE (col1 = 'C'
+AND    col1 >= 'A')
+OR     col2 >= 'AA'
+ORDER BY col1;
+....
+
+_ANSWER_
+|===
+|COL1|COL2
+|A   |AA 
+|B   |BB
+|C   |CC
+|===
+
+.Use of OR and parenthesis
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE col1 = 'C'
+AND  (col1 >= 'A'
+OR    col2 >= 'AA')
+ORDER BY col1;
+....
+
+_ANSWER_
+
+|===
+|COL1| COL2
+|C   | CC
+|===
+
+WARNING: The omission of necessary parenthesis surrounding OR operators is a very common mistake. The result is usually the wrong answer. One symptom of this problem is that many more rows are returned (or updated) than anticipated.
+
+==== Processing Sequence
+
+The various parts of a SQL statement are always executed in a specific sequence in order to avoid semantic ambiguity: FROM clause JOIN ON clause WHERE clause GROUP BY and aggregate HAVING clause SELECT list ORDER BY clause FETCH FIRST.
+
+Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join (see figure 633). Likewise, a function that is referenced in the SELECT section of a query (e.g. row-number) is applied after the set of matching rows has been identified, but before the data has been ordered.
+
+=== CAST Expression
+
+The CAST is expression is used to convert one data type to another. It is similar to the various field-type functions (e.g. CHAR, SMALLINT) except that it can also handle null values and host-variable parameter markers.
+
+[[input-vs-output-rules]]
+==== Input vs. Output Rules
+
+* *EXPRESSION*: If the input is neither null, nor a parameter marker, the input data-type is converted to the output data-type. Truncation and/or padding with blanks occur as required. An error is generated if the conversion is illegal.
+* *NULL*: If the input is null, the output is a null value of the specified type.
+* *PARAMETER MAKER*: This option is only used in programs and need not concern us here. See the Db2 SQL Reference for details.
+
+*Examples*
+
+Use the CAST expression to convert the SALARY field from decimal to integer:
+
+.Use CAST expression to convert Decimal to Integer
+[source,sql]
+....
+SELECT id
+     , salary
+     , CAST(salary AS INTEGER) AS sal2
+FROM staff
+WHERE id < 30
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| SALARY  | SAL2
+|10| 98357.50| 98357
+|20| 78171.25| 78171
+|===
+
+Use the CAST expression to truncate the JOB field. A warning message will be generated for the second line of output because non-blank truncation is being done.
+
+.Use CAST expression to truncate Char field
+[source,sql]
+....
+SELECT id
+     , job
+     , CAST(job AS CHAR(3)) AS job2
+FROM staff
+WHERE id < 30
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| JOB   |JOB2
+|10| Mgr   |Mgr
+|20| Sales |Sal
+|===
+
+Use the CAST expression to make a derived field called JUNK of type SMALLINT where all of the values are null.
+
+.Use CAST expression to define SMALLINT field with null values
+[source,sql]
+....
+SELECT id
+     , CAST(NULL AS SMALLINT) AS junk
+FROM staff
+WHERE id < 30
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID| JUNK
+|10| -
+|20| -
+|===
+
+The CAST expression can also be used in a join, where the field types being matched differ:
+
+.CAST expression in join
+[source,sql]
+....
+SELECT stf.id
+     , emp.empno
+FROM staff stf
+LEFT OUTER JOIN employee emp
+ON stf.id = CAST(emp.empno AS INTEGER)
+AND emp.job = 'MANAGER'
+WHERE stf.id < 60
+ORDER BY stf.id;
+....
+
+_ANSWER_
+
+|===
+|ID| EMPNO
+|10| - 
+|20| 000020
+|30| 000030
+|40| - 
+|50| 000050
+|===
+
+Of course, the same join can be written using the raw function:
+
+.Function usage in join
+[source,sql]
+....
+SELECT stf.id
+     , emp.empno 
+FROM staff stf 
+LEFT OUTER JOIN employee emp 
+ON stf.id = INTEGER(emp.empno) 
+AND emp.job = 'MANAGER' 
+WHERE stf.id < 60 
+ORDER BY stf.id;
+....
+_ANSWER_
+
+|===
+|ID| EMPNO
+|10| - 
+|20| 000020
+|30| 000030
+|40| - 
+|50| 000050
+|===
+
+=== VALUES Statement
+
+The VALUES clause is used to define a set of rows and columns with explicit values. The clause is commonly used in temporary tables, but can also be used in view definitions. Once defined in a table or view, the output of the VALUES clause can be grouped by, joined to, and otherwise used as if it is an ordinary table - except that it can not be updated.
+
+Each column defined is separated from the next using a comma. Multiple rows (which may also contain multiple columns) are separated from each other using parenthesis and a comma. When multiple rows are specified, all must share a common data type. Some examples follow:
+
+.VALUES usage examples
+....
+VALUES 6                        <== 1 row, 1 column
+VALUES(6)                       <== 1 row, 1 column
+VALUES 6, 7, 8                  <== 1 row, 3 columns
+VALUES (6), (7), (8)            <== 3 rows, 1 column
+VALUES (6,66), (7,77), (8,NULL) <== 3 rows, 2 column
+....
+
+*Sample SQL*
+
+The VALUES clause can be used by itself as a very primitive substitute for the SELECT statement. One key difference is that output columns cannot be named. But they can be ordered, and fetched, and even named externally, as the next example illustrates:
+
+==== PLAIN VALUES
+
+.Logically equivalent VALUES statements
+[source,sql]
+....
+VALUES
+  (1,2)
+, (2,3)
+, (3,4)
+ORDER BY 2 DESC;
+....
+
+[[values--with]]
+==== VALUES + WITH
+
+[source,sql]
+....
+WITH temp (c1,c2) AS
+( VALUES (1,2)
+       , (2,3)
+       , (3,4)
+)
+SELECT  *
+FROM temp
+ORDER BY 2 DESC;
+....
+
+[[values--select]]
+==== VALUES + SELECT
+
+[source,sql]
+....
+SELECT *
+FROM (VALUES (1,2)
+           , (2,3)
+           , (3,4)
+) temp (c1,c2)
+ORDER BY 2 DESC;
+....
+
+_ANSWER_
+
+|===
+|1| 2
+|3| 4
+|2| 3
+|1| 2
+|===
+
+The VALUES clause can encapsulate several independent queries:
+
+.VALUES running selects
+[source,sql]
+....
+VALUES 
+(
+  (SELECT COUNT(*) FROM employee)
+, (SELECT AVG(salary) FROM staff)
+, (SELECT MAX(deptno) FROM department)
+)
+FOR FETCH ONLY
+WITH UR;
+....
+
+_ANSWER_
+
+|===
+|1 | 2       | 3
+|42| 67932.78| J22
+|===
+
+The next statement defines a temporary table containing two columns and three rows. The first column defaults to type integer and the second to type varchar.
+
+.Use VALUES to define a temporary table (1 of 4)
+[source,sql]
+....
+WITH temp1 (col1, col2) AS
+(VALUES
+  (0, 'AA')
+, (1, 'BB')
+, (2, NULL)
+)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+|===
+|COL1| COL2
+|0   | AA
+|1   | BB
+|2   | -
+|===
+
+If we wish to explicitly control the output field types we can define them using the appropriate function. This trick does not work if even a single value in the target column is null.
+
+.Use VALUES to define a temporary table (2 of 4)
+[source,sql]
+....
+WITH temp1 (col1, col2) AS
+(VALUES
+  (DECIMAL(0 ,3, 1), 'AA')
+, (DECIMAL(1 ,3, 1), 'BB')
+, (DECIMAL(2 ,3, 1), NULL)
+)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+|===
+|COL1| COL2
+|0.0 | AA
+|1.0 | BB
+|2.0 | -
+|===
+
+If any one of the values in the column that we wish to explicitly define has a null value, we have to use the CAST expression to set the output field type:
+
+.Use VALUES to define a temporary table (3 of 4)
+[source,sql]
+....
+WITH temp1 (col1,col2) AS
+(VALUES
+  (0, CAST('AA' AS CHAR(1)))
+, (1, CAST('BB' AS CHAR(1)))
+, (2, CAST(NULL AS CHAR(1)))
+)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+|===
+|COL1| COL2
+|0   | A
+|1   | B
+|2   | -
+|===
+
+Alternatively, we can set the output type for all of the not-null rows in the column. Db2 will then use these rows as a guide for defining the whole column:
+
+.Use VALUES to define a temporary table (4 of 4)
+[source,sql]
+....
+WITH temp1 (col1,col2) AS
+(VALUES
+  (0, CHAR('AA', 1))
+, (1, CHAR('BB', 1))
+, (2, NULL)
+)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+|===
+|COL1| COL2
+|0   | A
+|1   | B
+|2   | -
+|===
+
+*More Sample SQL*
+
+Temporary tables, or (permanent) views, defined using the VALUES expression can be used much like a Db2 table. They can be joined, unioned, and selected from. They can not, however, be updated, or have indexes defined on them. Temporary tables can not be used in a sub-query.
+
+.Derive one temporary table from another
+[source,sql]
+....
+WITH temp1 (col1, col2,col3) AS
+(VALUES
+  (0, 'AA', 0.00)
+, (1, 'BB', 1.11)
+, (2, 'CC', 2.22)
+)
+, temp2 (col1b, colx) AS
+(SELECT col1
+      , col1 + col3
+FROM temp1
+)
+SELECT *
+FROM temp2;
+....
+
+_ANSWER_
+
+|===
+|COL1B| COLX
+|0| 0.00
+|1| 2.11
+|2| 4.22
+|===
+
+
+.Define a view using a VALUES clause
+[source,sql]
+....
+CREATE VIEW silly (c1, c2, c3)
+AS VALUES 
+  (11, 'AAA', SMALLINT(22))
+, (12, 'BBB', SMALLINT(33))
+, (13, 'CCC', NULL);
+COMMIT;
+....
+
+.Use VALUES defined data to seed a recursive SQL statement
+[source,sql]
+....
+WITH temp1 (col1) AS
+(VALUES 0
+ UNION ALL
+ SELECT col1 + 1
+ FROM temp1
+ WHERE col1 + 1 < 100
+)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|COL1
+|0
+|1
+|2
+|3
+|etc
+|===
+
+All of the above examples have matched a VALUES statement up with a prior WITH expression, so as to name the generated columns. One doesn't have to use the latter, but if you don't, you get a table with unnamed columns, which is pretty useless:
+
+.Generate table with unnamed columns
+[source,sql]
+....
+SELECT *
+FROM 
+(VALUES 
+       (123, 'ABC')
+     , (234, 'DEF')
+) AS ttt
+ORDER BY 1 DESC;
+....
+
+_ANSWER_
+
+|===
+|   | 
+|234| DEF
+|123| ABC
+|===
+
+==== Combine Columns
+
+The VALUES statement can be used inside a TABLE function to combine separate columns into one. In the following example, three columns in the STAFF table are combined into a single column – with one row per item:
+
+.Combine columns example
+[source,sql]
+....
+SELECT id
+, salary AS sal
+, comm   AS com
+, combo 
+, typ
+FROM staff
+, TABLE( VALUES(salary , 'SAL')
+             , (comm   , 'COM')
+ ) AS tab(combo, typ)
+WHERE id < 40
+ORDER BY id
+       , typ;
+....
+
+_ANSWER_
+
+|===
+|ID| SAL     |COM   |COMBO   | TYP
+|10| 98357.50|-     |        | COM
+|10| 98357.50|-     |98357.50| SAL
+|20| 78171.25|612.45|612.45  | COM
+|20| 78171.25|612.45|78171.25| SAL
+|30| 77506.75|-     |        | COM
+|30|77506.75 |-     |77506.75| SAL
+|===
+
+The above query works as follows:
+
+* The set of matching rows are obtained from the STAFF table.
+* For each matching row, the TABLE function creates two rows, the first with the salary value, and the second with the commission.
+* Each new row as gets a second literal column – indicating the data source.
+* Finally, the "AS" expression assigns a correlation name to the table output, and also defines two column names.
+
+The TABLE function is resolved row-by-row, with the result being joined to the current row in the STAFF table. This explains why we do not get a Cartesian product, even though no join criteria are provided. 
+
+NOTE: The keyword LATERAL can be used instead of TABLE in the above query.
+
+[[case.expression]]
+=== CASE Expression
+
+CASE expressions enable one to do if-then-else type processing inside of SQL statements. 
+
+WARNING: The sequence of the CASE conditions can affect
+the answer. The first WHEN check that matches is the one used.
+
+==== CASE Syntax Styles
+
+There are two general flavors of the CASE expression. In the first kind, each WHEN statement does its own independent check. In the second kind, all of the WHEN conditions do similar "equal" checks against a common
+reference expression.
+
+.Use CASE (1st type) to expand a value
+[source,sql]
+....
+SELECT Lastname
+, sex AS sx
+, CASE sex
+   WHEN 'F' THEN 'FEMALE'
+   WHEN 'M' THEN 'MALE'
+   ELSE NULL
+  END AS sexx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|LASTNAME | SX| SEXX
+|JEFFERSON| M | MALE
+|JOHN     | F | FEMALE
+|JOHNSON  | F | FEMALE
+|JONES    | M | MALE
+|===
+
+.Use CASE (2nd type) to expand a value
+[source,sql]
+....
+SELECT lastname
+     , sex AS sx
+     , CASE WHEN sex = 'F' THEN 'FEMALE'
+            WHEN sex = 'M' THEN 'MALE'
+            ELSE NULL
+       END AS sexx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|LASTNAME | SX| SEXX
+|JEFFERSON| M | MALE
+|JOHN     | F | FEMALE
+|JOHNSON  | F | FEMALE
+|JONES    | M | MALE
+|===
+
+*Notes & Restrictions*
+
+* If more than one WHEN condition is true, the first one processed that matches is used.
+* If no WHEN matches, the value in the ELSE clause applies. If no WHEN matches and there is no ELSE clause, the result is NULL.
+* There must be at least one non-null result in a CASE statement. Failing that, one of the NULL results must be inside of a CAST expression.
+* All result values must be of the same type.
+* Functions that have an external action (e.g. RAND) can not be used in the expression part of a CASE statement.
+
+*Sample SQL*
+
+.Use CASE to display the higher of two values
+[source,sql]
+....
+SELECT lastname
+     , midinit AS mi
+     , sex AS sx
+     , CASE WHEN midinit > SEX THEN midinit
+            ELSE sex
+       END AS mx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|LASTNAME | MI| SX| MX
+|JEFFERSON| J | M | M
+|JOHN     | K | K | K
+|JOHNSON  | P | F | P
+|JONES    | T | M | T
+|===
+
+.Use CASE to get multiple counts in one pass
+[source,sql]
+....
+SELECT COUNT(*) AS tot
+     , SUM(CASE sex WHEN 'F' THEN 1 ELSE 0 END) AS #f
+     , SUM(CASE sex WHEN 'M' THEN 1 ELSE 0 END) AS #m 
+FROM employee
+WHERE lastname LIKE 'J%';
+....
+
+_ANSWER_
+
+|===
+|TOT|#F|#M
+|4  |2 |2
+|===
+
+.Use CASE inside a function
+[source,sql]
+....
+SELECT lastname
+     , LENGTH(RTRIM(lastname)) AS len
+     , SUBSTR(lastname , 1 , 
+                CASE WHEN LENGTH(RTRIM(lastname)) > 6 THEN 6
+                ELSE LENGTH(RTRIM(lastname))
+                END 
+             ) AS lastnm
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|LASTNAME | LEN| LASTNM
+|JEFFERSON| 9  | JEFFER
+|JOHN     | 4  | JOHN
+|JOHNSON  | 7  | JOHNSO
+|JONES    | 5  | JONES
+|===
+
+The CASE expression can also be used in an UPDATE statement to do any one of several alternative updates to a particular field in a single pass of the data:
+
+.UPDATE statement with nested CASE expressions
+[source,sql]
+....
+UPDATE staff
+SET comm = 
+CASE dept
+    WHEN 15 THEN comm * 1.1
+    WHEN 20 THEN comm * 1.2
+    WHEN 38 THEN
+        CASE
+            WHEN years < 5 THEN comm * 1.3
+            WHEN years >= 5 THEN comm * 1.4
+            ELSE NULL
+        END
+    ELSE comm
+END
+WHERE comm IS NOT NULL
+AND dept < 50;
+....
+
+In the next example a CASE expression is used to avoid a divide-by-zero error:
+
+.Use CASE to avoid divide by zero
+[source,sql]
+....
+WITH temp1 (c1, c2) AS
+(VALUES
+(88, 9),(44, 3),(22, 0),(0, 1))
+SELECT c1
+     , c2
+     , CASE c2
+         WHEN 0 THEN NULL
+         ELSE c1/c2
+       END AS c3
+FROM temp1;
+....
+
+_ANSWER_
+
+|===
+|C1| C2| C3
+|88| 9 | 9
+|44| 3 | 14
+|22| 0 | 0
+|1 | 0 | -
+|===
+
+At least one of the results in a CASE expression must be a value (i.e. not null). This is so that Db2 will know what output type to make the result.
+
+==== Problematic CASE Statements
+
+The case WHEN checks are always processed in the order that they are found. The first one that matches is the one used. This means that the answer returned by the query can be affected by the sequence on the WHEN checks. To illustrate this, the next statement uses the SEX field (which is always either "F" or "M") to create a new field called SXX. In this particular example, the SQL works as intended.
+
+.Use CASE to derive a value (correct)
+[source,sql]
+....
+SELECT lastname
+     , sex
+     , CASE
+        WHEN sex >= 'M' THEN 'MAL'
+        WHEN sex >= 'F' THEN 'FEM'
+       END AS sxx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|LASTNAME | SX| SXX
+|JEFFERSON| M | MAL
+|JOHN     | F | FEM
+|JOHNSON  | F | FEM
+|JONES    | M | MAL
+|===
+
+In the example below all of the values in SXX field are "FEM". This is not the same as what happened above, yet the only difference is in the order of the CASE checks.
+
+.Use CASE to derive a value (incorrect)
+[source,sql]
+....
+SELECT lastname
+     , sex
+     , CASE
+        WHEN sex >= 'F' THEN 'FEM'
+        WHEN sex >= 'M' THEN 'MAL'
+       END AS sxx
+FROM employee
+WHERE lastname LIKE 'J%'
+ORDER BY 1;
+....
+
+_ANSWER_
+
+|===
+|LASTNAME | SX| SXX
+|JEFFERSON| M | FEM
+|JOHN     | F | FEM
+|JOHNSON  | F | FEM
+|JONES    | M | FEM
+|===
+
+In the prior statement the two WHEN checks overlap each other in terms of the values that they include. Because the first check includes all values that also match the second, the latter never gets invoked. Note that this problem can not occur when all of the WHEN expressions are equality checks.
+
+==== CASE in Predicate
+
+The result of a CASE expression can be referenced in a predicate:
+
+.Use CASE in a predicate
+[source,sql]
+....
+SELECT id
+     , dept
+     , salary
+     , comm
+FROM staff
+WHERE CASE
+        WHEN comm < 70                      THEN 'A'
+        WHEN name LIKE 'W%'                 THEN 'B' 
+        WHEN salary < 11000                 THEN 'C' 
+        WHEN salary < 18500 AND dept <> 33  THEN 'D'
+        WHEN salary < 19000                 THEN 'E'
+END IN ('A','C','E')
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID | DEPT| SALARY  | COMM
+|130| 42  | 10505.90| 75.60
+|270| 66  | 18555.50| 
+|330| 66  | 10988.00| 55.50
+|===
+
+The above query is arguably more complex than it seems at first glance, because unlike in an ordinary query, the CASE checks are applied in the sequence they are defined. So a row will only match "B" if it has not already matched "A". In order to rewrite the above query using standard AND/OR predicates, we have to reproduce the CASE processing sequence. To this end, the three predicates in the next example that look for matching rows also apply any predicates that preceded them in the CASE statement:
+
+.Same stmt as prior, without CASE predicate
+[source,sql]
+....
+SELECT id
+     , name
+     , salary
+     , comm
+FROM staff
+WHERE (comm < 70)
+OR (salary < 11000 AND NOT name LIKE 'W%')
+OR (salary < 19000 
+    AND NOT 
+    (name LIKE 'W%' 
+     OR 
+     (salary < 18500 AND dept <> 33)
+    )
+   )
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID | DEPT| SALARY  | COMM
+|130| 42  | 10505.90| 75.60
+|270| 66  | 18555.50| 
+|330| 66  | 10988.00| 55.50
+|===
+
+=== Miscellaneous SQL Statements
+
+This section will briefly discuss several miscellaneous SQL statements. See the Db2 manuals for more details.
+
+==== Cursor
+
+A cursor is used in an application program to retrieve and process individual rows from a result set. To use a cursor, one has to do the following:
+
+* *DECLARE* the cursor. The declare statement has the SQL text that the cursor will run. If the cursor is declared "with hold", it will remain open after a commit, otherwise it will be closed at commit time. 
+
+NOTE: The declare cursor statement is not actually executed when the program is run. It simply defines the query that will be run.
+
+* *OPEN* the cursor. This is when the contents of on any host variables
+referenced by the cursor (in the predicate part of the query) are transferred to Db2.
+* *FETCH* rows from the cursor. One does as many fetches as is needed. If no row is found, the SQLCODE from the fetch will be 100.
+* *CLOSE* the cursor.
+
+*Syntax Notes*
+
+* The cursor-name must be unique with the application program.
+* The WITH HOLD phrase indicates that the cursor will remain open if the unit of work ends with a commit. The cursor will be closed if a rollback occurs.
+* The WITH RETURN phrase is used when the cursor will generate the result set returned by a stored procedure. If the cursor is open when the stored procedure ends the result set will be return either to the calling procedure, or directly to the client application.
+* The FOR phrase can either refer to a select statement, the text for which will follow, or to the name of a statement has been previously prepared.
+
+*Usage notes*
+
+* Cursors that require a sort (e.g. to order the output) will obtain the set of matching rows at open time, and then store them in an internal temporary table. Subsequent fetches will be from the temporary table.
+* Cursors that do not require a sort are resolved as each row is fetched from the data table.
+* All references to the current date, time, and timestamp will return the same value (i.e. as of when the cursor was opened) for all fetches in a given cursor invocation.
+* One does not have to close a cursor, but one cannot reopen it until it is closed. All open cursors are automatically closed when the thread terminates, or when a rollback occurs, or when a commit is done - except
+if the cursor is defined "with hold".
+* One can both update and delete "where current of cursor". In both cases, the row most recently fetched is updated or deleted. An update can only be used when the cursor being referenced is declared "for update of".
+
+*Examples*
+
+.Sample cursor
+[source,sql]
+....
+DECLARE fred CURSOR FOR
+WITH RETURN TO CALLER
+SELECT id
+     , name
+     , salary
+     , comm
+FROM staff
+WHERE id < :id-var
+AND   salary > 1000
+ORDER BY id ASC
+FETCH FIRST 10 ROWS ONLY
+OPTIMIZE FOR 10 ROWS
+FOR FETCH ONLY
+WITH UR
+....
+
+.Use cursor in program
+[source,sql]
+....
+DECLARE fred CURSOR WITH HOLD FOR
+SELECT name
+     , salary
+FROM staff
+WHERE id > :id-var
+FOR UPDDATE OF salary, comm
+
+OPEN fred
+
+DO UNTIL SQLCODE = 100
+    FETCH fred INTO :name-var
+                  , :salary-var
+    IF salary < 1000 THEN 
+    DO
+        UPDATE staff
+        SET salary = :new-salary-var
+        WHERE CURRENT OF fred
+    END-IF
+END-DO
+
+CLOSE fred
+....
+
+==== Select Into
+
+A SELECT-INTO statement is used in an application program to retrieve a single row. If more than one row matches, an error is returned. The statement text is the same as any ordinary query, except that there is an INTO section (listing the output variables) between the SELECT list
+and the FROM section.
+
+*Example*
+
+.Singleton select
+[source,sql]
+....
+SELECT name
+     , salary
+INTO :name-var
+   , :salary-var
+FROM staff
+WHERE id = :id-var
+....
+
+==== Prepare
+
+The PREPARE statement is used in an application program to dynamically prepare a SQL statement for subsequent execution.
+
+*Syntax Notes*
+
+* The statement name names the statement. If the name is already in use, it is overridden.
+* The OUTPUT descriptor will contain information about the output parameter markers.
+* The DESCRIBE statement may be used instead of this clause.
+* The INPUT descriptor will contain information about the input parameter markers.
+* The FROM phrase points to the host-variable which contains the SQL statement text.
+
+Prepared statement can be used by the following:
+
+.What statements can use prepared statement
+|===
+|STATEMENT CAN BE USED BY| STATEMENT TYPE 
+|DESCRIBE                | Any statement
+|DECLARE CURSOR          | Must be SELECT 
+|EXECUTE                 | Must not be SELECT
+|===
+
+==== Describe
+
+The DESCRIBE statement is typically used in an application program to get information about a prepared statement. It can also be used in the Db2 command processor (but not in Db2BATCH) to get a description of a table, or the output columns in a SQL statement:
+
+Below are some examples of using the statement:
+
+.DESCRIBE the output columns in a select statement
+....
+DESCRIBE OUTPUT SELECT * FROM staff
+SQLDA Information
+sqldaid : SQLDA sqldabc: 896  sqln: 20 sqld: 7
+Column Information
+
+
+
+sqltype           sqllen sqlname.data              sqlname.length
+----------------- -----  ------------------------- -------------
+500 SMALLINT      2      ID                        2
+449 VARCHAR       9      NAME                      4
+501 SMALLINT      2      DEPT                      4
+453 CHARACTER     5      JOB                       3
+501 SMALLINT      2      YEARS                     5
+485 DECIMAL       7, 2   SALARY                    6
+485 DECIMAL       7, 2   COMM                      4
+....
+
+.DESCRIBE the columns in a table
+....
+DESCRIBE TABLE staff
+
+Column name             Type schema Type name    Length Scale Nulls
+----------------------  -------     -----------  ------ ----  ----
+ID                      SYSIBM      SMALLINT     2      0     No
+NAME                    SYSIBM      VARCHAR      9      0     Yes
+DEPT                    SYSIBM      SMALLINT     2      0     Yes
+JOB                     SYSIBM      CHARACTER    5      0     Yes
+YEARS                   SYSIBM      SMALLINT     2      0     Yes
+SALARY                  SYSIBM      DECIMAL      7      2     Yes
+COMM                    SYSIBM      DECIMAL      7      2     Yes
+....
+
+==== Execute
+
+The EXECUTE statement is used in an application program to execute a prepared statement. The statement can not be a select.
+
+==== Execute Immediate
+
+The EXECUTE IMMEDIATE statement is used in an application program to prepare and execute a statement. Only certain kinds of statement (e.g. insert, update, delete, commit) can be run this way. The statement can not be a select.
+
+==== Set Variable
+
+The SET statement is used in an application program to set one or more program variables to values that are returned by Db2.
+
+*Examples*
+
+.SET single host-variable
+[source,sql]
+....
+SET :host-var = CURRENT TIMESTAMP
+....
+
+.SET multiple host-variables
+[source,sql]
+....
+SET :host-v1 = CURRENT TIME
+  , :host-v2 = CURRENT DEGREE
+  , :host-v3 = NULL
+....
+
+The SET statement can also be used to get the result of a select, as long as the select only returns a single row:
+
+.SET using row-fullselect
+[source,sql]
+....
+SET
+( :hv1
+, :hv2
+, :hv3) =
+(SELECT id
+      , name
+      , salary
+FROM staff
+WHERE   id = :id-var)
+....
+
+==== Set Db2 Control Structures
+
+In addition to setting a host-variable, one can also set various Db2 control structures: 
+
+.Other SET statements
+....
+SET CONNECTION 
+SET CURRENT DEFAULT TRANSFORM GROUP
+SET CURRENT DEGREE 
+SET CURRENT EXPLAIN MODE 
+SET CURRENT EXPLAIN SNAPSHOT
+SET CURRENT ISOLATION 
+SET CURRENT LOCK TIMEOUT 
+SET CURRENT MAINTAINED TABLE TYPES FOR OPTIMIZATION 
+SET CURRENT PACKAGE PATH 
+SET CURRENT PACKAGESET 
+SET CURRENT QUERY OPTIMIZATION 
+SET CURRENT REFRESH AGE 
+SET ENCRYPTION PASSWORD 
+SET EVENT MONITOR STATE 
+SET INTEGRITY SET PASSTHRU
+SET PATH 
+SET SCHEMA 
+SET SERVER OPTION 
+SET SESSION AUTHORIZATION
+....
+
+=== Unit-of-Work Processing
+
+No changes that you make are deemed to be permanent until they are committed. This section briefly lists the commands one can use to commit or rollback changes.
+
+==== Commit
+
+The COMMIT statement is used to commit whatever changes have been made.
+Locks that were taken as a result of those changes are freed. If no commit is specified, an implicit one is done when the thread terminates.
+
+==== Savepoint
+
+The SAVEPOINT statement is used in an application program to set a savepoint within a unit of work. Subsequently, the program can be rolled back to the savepoint, as opposed to rolling back to the start of the unit of work.
+
+*Notes*
+
+* If the savepoint name is the same as a savepoint that already exists within the same level, it overrides the prior savepoint - unless the latter was defined a being unique, in which case an error is returned.
+* The RETAIN CURSORS phrase tells Db2 to, if possible, keep open any active cursors.
+* The RETAIN LOCKS phrase tells Db2 to retain any locks that were obtained subsequent to the savepoint. In other words, the changes are rolled back, but the locks that came with those changes remain.
+
+===== Savepoint Levels
+
+Savepoints exist within a particular savepoint level, which can be nested within another level. A new level is created whenever one of the following occurs:
+
+* A new unit of work starts.
+* A procedure defined with NEW SAVEPOINT LEVEL is called.
+* An atomic compound SQL statement starts.
+
+A savepoint level ends when the process that caused its creation finishes. When a savepoint level ends, all of the savepoints created within it are released. The following rules apply to savepoint usage:
+
+* Savepoints can only be referenced from within the savepoint level in which they were created. Active savepoints in prior levels are not accessible.
+* The uniqueness of savepoint names is only enforced within a given savepoint level. The same name can exist in multiple active savepoint levels.
+
+*Example*
+
+Savepoints are especially useful when one has multiple SQL statements that one wants to run or rollback as a whole, without affecting other statements in the same transaction. For example, imagine that one is transferring customer funds from one account to another. Two updates will be required - and if one should fail, both should fail:
+
+.Example of savepoint usage
+[source,sql]
+....
+INSERT INTO transaction_audit_table;
+SAVEPOINT before_updates ON ROLLBACK RETAIN CURSORS;
+UPDATE savings_account
+    SET balance = balance - 100
+    WHERE cust# = 1234;
+IF SQLCODE <> 0 THEN
+    ROLLBACK TO SAVEPOINT before_updates;
+ELSE
+    UPDATE checking_account
+        SET balance = balance + 100
+        WHERE cust# = 1234;
+    IF SQLCODE <> 0 THEN
+        ROLLBACK TO SAVEPOINT before_updates;
+    END
+END
+COMMIT;
+....
+
+In the above example, if either of the update statements fail, the transaction is rolled back to the predefined savepoint. And regardless of what happens, there will still be a row inserted into the transaction-audit table.
+
+[[savepoints-vs-commits]]
+==== Savepoints vs. Commits
+
+Savepoints differ from commits in the following respects:
+
+* One cannot rollback changes that have been committed.
+* Only a commit guarantees that the changes are stored in the database.
+If the program subsequently fails, the data will still be there.
+* Once a commit is done, other users can see the changed data. After a savepoint, the data is still not visible to other users.
+
+==== Release Savepoint
+
+The RELEASE SAVEPOINT statement will remove the named savepoint. Any savepoints nested within the named savepoint are also released. Once run, the application can no longer rollback to any of the released savepoints.
+
+==== Rollback
+
+The ROLLBACK statement is used to rollback any database changes since the beginning of the unit of work, or since the named savepoint - if one is specified.
+
+

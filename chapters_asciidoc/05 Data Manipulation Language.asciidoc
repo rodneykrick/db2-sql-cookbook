@@ -1,0 +1,1205 @@
+== Data Manipulation Language
+
+The chapter has a very basic introduction to the DML (Data Manipulation Language) statements. See the Db2 manuals for more details.
+
+=== Insert
+
+The INSERT statement is used to insert rows into a table, view, or fullselect. To illustrate how it is used, this section will use a copy of the EMP_ACT sample table:
+
+.EMP_ACT_COPY sample table - DDL
+[source,sql]
+....
+CREATE TABLE emp_act_copy
+( empno    CHARACTER (00006) NOT NULL
+, projno   CHARACTER (00006) NOT NULL
+, actno    SMALLINT          NOT NULL
+, emptime  DECIMAL (05,02)
+, emstdate DATE
+, emendate DATE);
+....
+
+==== Target Objects
+
+One can insert into a table, view, nickname, or SQL expression. For views and SQL expressions, the following rules apply:
+
+* The list of columns selected cannot include a column function (e.g. MIN).
+* There must be no GROUP BY or HAVING acting on the select list.
+* The list of columns selected must include all those needed to insert a new row.
+* The list of columns selected cannot include one defined from a constant, expression, or a scalar function.
+* Sub-queries, and other predicates, are fine, but are ignored (see figure 153).
+* The query cannot be a join, nor (plain) union.
+* A "union all" is permitted - as long as the underlying tables on either side of the union have check constraints such that a row being inserted is valid for one, and only one, of the tables in the union.
+
+All bets are off if the insert is going to a table that has an INSTEAD OF trigger defined.
+
+*Usage Notes*
+
+* One has to provide a list of the columns (to be inserted) if the set of values provided does not equal the complete set of columns in the target table, or are not in the same order as the columns are defined in the target table.
+* The columns in the INCLUDE list are not inserted. They are intended to be referenced in a SELECT statement that encompasses the INSERT (see <<select.dml.changes>>).
+* The input data can either be explicitly defined using the VALUES statement, or retrieved from some other table using a fullselect.
+
+==== Direct Insert
+
+To insert a single row, where all of the columns are populated, one lists the input the values in the same order as the columns are defined in the table:
+
+.Single row insert
+[source,sql]
+....
+INSERT INTO emp_act_copy VALUES
+('100000' ,'ABC' ,10 ,1.4 ,'2003-10-22', '2003-11-24');
+....
+
+To insert multiple rows in one statement, separate the row values using a comma:
+
+.Multi row insert
+[source,sql]
+....
+INSERT INTO emp_act_copy VALUES
+    ('200000' ,'ABC' ,10 ,1.4 ,'2003-10-22', '2003-11-24')
+,   ('200000' ,'DEF' ,10 ,1.4 ,'2003-10-22', '2003-11-24')
+,   ('200000' ,'IJK' ,10 ,1.4 ,'2003-10-22', '2003-11-24');
+....
+
+NOTE: If multiple rows are inserted in one statement, and one of them violates a unique index check, all of the rows are rejected.
+
+
+The NULL and DEFAULT keywords can be used to assign these values to columns. One can also refer to special registers, like the current date and current time:
+
+.Using null and default values
+[source,sql]
+....
+INSERT INTO emp_act_copy VALUES
+('400000' ,'ABC' ,10 ,NULL ,DEFAULT, CURRENT DATE);
+....
+
+To leave some columns out of the insert statement, one has to explicitly list the columns that are included. When this is done, one can refer to the columns used in any order:
+
+.Explicitly listing columns being populated during insert
+[source,sql]
+....
+INSERT INTO emp_act_copy (projno, emendate, actno, empno) 
+VALUES
+('ABC' ,DATE(CURRENT TIMESTAMP) ,123 ,'500000');
+....
+
+==== Insert into Full-Select
+
+The next statement inserts a row into a fullselect that just happens to have a predicate which, if used in a subsequent query, would not find the row inserted. The predicate has no impact on the insert itself:
+
+.Insert into a fullselect
+[source,sql]
+....
+INSERT INTO
+(SELECT *
+ FROM emp_act_copy
+ WHERE empno < '1'
+)
+VALUES 
+('510000' ,'ABC' ,10 ,1.4 ,'2003-10-22', '2003-11-24');
+....
+
+NOTE: One can insert rows into a view (with predicates in the definition) that are outside the bounds of the predicates. To prevent this, define the view WITH CHECK OPTION.
+
+==== Insert from Select
+
+One can insert a set of rows that is the result of a query using the following notation:
+
+.Insert result of select statement
+[source,sql]
+....
+INSERT INTO emp_act_copy
+SELECT LTRIM(CHAR(id + 600000))
+     , SUBSTR(UCASE(name),1,6)
+     , salary / 229
+     , 123
+     , CURRENT DATE
+     , '2003-11-11'
+FROM staff
+WHERE id < 50;
+....
+
+NOTE: In the above example, the fractional part of the SALARY value is eliminated when the data is inserted into the ACTNO field, which only supports integer values.
+
+If only some columns are inserted using the query, they need to be explicitly listed:
+
+.Insert result of select - specified columns only
+[source,sql]
+....
+INSERT INTO emp_act_copy (empno, actno, projno)
+SELECT LTRIM(CHAR(id + 700000))
+     , MINUTE(CURRENT TIME)
+     , 'DEF'
+FROM staff
+WHERE id < 40;
+....
+
+One reason why tables should always have unique indexes is to stop stupid SQL statements like the following, which will double the number of rows in the table:
+
+.Stupid - insert - doubles rows
+[source,sql]
+....
+INSERT INTO emp_act_copy
+SELECT * 
+FROM emp_act_copy;
+....
+
+The select statement using the insert can be as complex as one likes. In the next example, it contains the union of two queries:
+
+.Inserting result of union
+[source,sql]
+....
+INSERT INTO emp_act_copy (empno, actno, projno)
+SELECT LTRIM(CHAR(id + 800000))
+     , 77
+     , 'XYZ'
+FROM staff
+WHERE id < 40
+UNION
+SELECT LTRIM(CHAR(id + 900000))
+     , SALARY / 100
+     , 'DEF'
+FROM staff
+WHERE id < 50;
+....
+
+The select can also refer to a common table expression. In the following example, six values are first generated, each in a separate row. These rows are then selected during the insert:
+
+.Insert from common table expression
+[source,sql]
+....
+INSERT INTO emp_act_copy (empno, actno, projno, emptime)
+WITH temp1 (col1) AS
+( VALUES (1),(2),(3),(4),(5),(6))
+SELECT LTRIM(CHAR(col1 + 910000))
+     , col1
+     , CHAR(col1)
+     , col1 / 2
+FROM temp1;
+....
+
+The next example inserts multiple rows - all with an EMPNO beginning "92". Three rows are found in the STAFF table, and all three are inserted, even though the sub-query should get upset once the first row has been inserted. This doesn't happen because all of the matching rows in the STAFF table are retrieved and placed in a work-file before the first insert is done:
+
+.Insert with irrelevant sub-query
+[source,sql]
+....
+INSERT INTO emp_act_copy (empno, actno, projno)
+SELECT LTRIM(CHAR(id + 920000))
+     , id
+     , 'ABC'
+FROM staff
+WHERE id < 40
+AND NOT EXISTS
+( SELECT *
+ FROM emp_act_copy
+ WHERE empno LIKE '92%'
+);
+....
+
+==== Insert into Multiple Tables
+
+Below are two tables that hold data for US and international customers respectively:
+
+.Customer tables - for insert usage
+[source,sql]
+....
+CREATE TABLE us_customer
+( cust#     INTEGER     NOT NULL
+, cname     CHAR(10)    NOT NULL
+, country   CHAR(03)    NOT NULL
+, CHECK (country = 'USA')
+, PRIMARY KEY (cust#));
+
+CREATE TABLE intl_customer
+( cust#     INTEGER  NOT NULL
+, cname     CHAR(10) NOT NULL
+, country   CHAR(03) NOT NULL
+, CHECK (country <> 'USA')
+, PRIMARY KEY (cust#));
+....
+
+One can use a single insert statement to insert into both of the above tables because they have mutually exclusive check constraints. This means that a new row will go to one table or the other, but not both, and not neither. To do so one must refer to the two tables using a "union all" phrase - either in a view, or a query, as is shown below:
+
+.Insert into multiple tables
+[source,sql]
+....
+INSERT INTO
+(SELECT *
+ FROM us_customer
+ UNION ALL
+ SELECT *
+ FROM intl_customer
+)
+VALUES 
+ (111,'Fred','USA')
+,(222,'Dave','USA')
+,(333,'Juan','MEX');
+....
+
+The above statement will insert two rows into the table for US customers, and one row into the table for international customers.
+
+=== Update
+
+The UPDATE statement is used to change one or more columns/rows in a table, view, or fullselect. Each column that is to be updated has to specified. Here is an example:
+
+.Single row update
+[source,sql]
+....
+UPDATE emp_act_copy
+SET emptime  = NULL
+  , emendate = DEFAULT
+  , emstdate = CURRENT DATE + 2 DAYS
+  , actno    = ACTNO / 2
+  , projno   = 'ABC'
+WHERE empno = '100000';
+....
+
+*Usage Notes*
+
+* One can update rows in a table, view, or fullselect. If the object is not a table, then it must be updateable (i.e. refer to a single table, not have any column functions, etc).
+* The correlation name is optional, and is only needed if there is an expression or predicate that references another table.
+* The columns in the INCLUDE list are not updated. They are intended to be referenced in a SELECT statement that encompasses the UPDATE (see <<select.dml.changes>>).
+* The SET statement lists the columns to be updated, and the new values they will get.
+* Predicates are optional. If none are provided, all rows in the table are updated.
+* Usually, all matching rows are updated. To update some fraction of the matching rows, use a fullselect (see <<use.full.select>>).
+
+*Update Examples*
+
+To update all rows in a table, leave off all predicates:
+
+.Mass update
+[source,sql]
+....
+UPDATE emp_act_copy
+SET actno = actno / 2;
+....
+
+In the next example, both target columns get the same values. This happens because the result for both columns is calculated before the first column is updated:
+
+.Two columns get same value
+[source,sql]
+....
+UPDATE emp_act_copy ac1
+SET actno   = actno * 2
+  , emptime = actno * 2
+WHERE empno LIKE '910%';
+....
+
+One can also have an update refer to the output of a select statement - as long as the result of the select is a single row:
+
+.Update using select
+[source,sql]
+....
+UPDATE emp_act_copy
+SET actno = 
+    ( SELECT MAX(salary) / 10
+      FROM staff)
+WHERE empno = '200000';
+....
+
+The following notation lets one update multiple columns using a single select:
+
+.Multi-row update using select
+[source,sql]
+....
+UPDATE emp_act_copy
+SET (actno, emstdate, projno) = 
+    ( SELECT MAX(salary) / 10
+    , CURRENT DATE + 2 DAYS
+    , MIN(CHAR(id))
+    FROM staff
+    WHERE id <> 33 
+    )
+WHERE empno LIKE '600%';
+....
+
+Multiple rows can be updated using multiple different values, as long as there is a one-to-one relationship between the result of the select, and each row to be updated.
+
+.Multi-row update using correlated select
+[source,sql]
+....
+UPDATE emp_act_copy ac1
+SET (actno, emptime) = 
+    (SELECT ac2.actno + 1
+           , ac1.emptime / 2
+      FROM emp_act_copy ac2
+      WHERE ac2.empno LIKE '60%'
+      AND SUBSTR(ac2.empno,3) = SUBSTR(ac1.empno,3)
+     )
+WHERE EMPNO LIKE '700%';
+....
+[[use.full.select]]
+==== Use Full-Select
+
+An update statement can be run against a table, a view, or a fullselect.
+In the next example, the table is referred to directly:
+
+.Direct update of table
+[source,sql]
+....
+UPDATE emp_act_copy
+SET   emptime = 10
+WHERE empno   = '000010'
+AND   projno  = 'MA2100';
+....
+
+Below is a logically equivalent update that pushes the predicates up into a fullselect:
+
+.Update of fullselect
+[source,sql]
+....
+UPDATE
+(SELECT *
+ FROM  emp_act_copy
+ WHERE empno  = '000010'
+ AND   projno = 'MA2100'
+) AS ea
+SET emptime = 20;
+....
+
+==== Update First "n" Rows
+
+An update normally changes all matching rows. To update only the first "n" matching rows do the following:
+
+* In a fullselect, retrieve the first "n" rows that you want to update.
+* Update all rows returned by the fullselect.
+
+In the next example, the first five staff with the highest salary get a nice fat commission:
+
+.Update first "n" rows
+[source,sql]
+....
+UPDATE
+(SELECT *
+ FROM staff
+ ORDER BY salary DESC
+ FETCH FIRST 5 ROWS ONLY
+) AS xxx
+SET comm = 10000;
+....
+
+WARNING: The above statement may update five random rows – if there is more than one row with the ordering value. To prevent this, ensure that the list of columns provided in the ORDER BY identify each matching row uniquely.
+
+==== Use OLAP Function
+
+Imagine that we want to set the employee-time for a particular row in the EMP_ACT table to the MAX time for that employee. Below is one way to do it:
+
+.Set employee-time in row to MAX - for given employee
+[source,sql]
+....
+UPDATE emp_act_copy ea1
+SET emptime = 
+    (SELECT MAX(emptime)
+     FROM emp_act_copy ea2
+     WHERE ea1.empno = ea2.empno
+    )
+WHERE empno  = '000010'
+AND   projno = 'MA2100';
+....
+
+The same result can be achieved by calling an OLAP function in a fullselect, and then updating the result. In next example, the MAX employee-time per employee is calculated (for each row), and placed in a new column. This column is then used to do the final update:
+
+.Use OLAP function to get max-time, then apply (correct)
+[source,sql]
+....
+UPDATE
+    (SELECT ea1.*
+          , MAX(emptime) OVER(PARTITION BY empno) AS maxtime
+     FROM emp_act_copy ea1
+    ) AS ea2
+SET   emptime = maxtime
+WHERE empno   = '000010'
+AND   projno  = 'MA2100';
+....
+
+The above statement has the advantage of only accessing the EMP_ACT table once. If there were many rows per employee, and no suitable index (i.e. on EMPNO and EMPTIME), it would be much faster than the prior update. The next update is similar to the prior - but it does the wrong update! In this case, the scope of the OLAP function is constrained by
+the predicate on PROJNO, so it no longer gets the MAX time for the employee:
+
+.Use OLAP function to get max-time, then apply (wrong)
+[source,sql]
+....
+UPDATE emp_act_copy
+SET    emptime = MAX(emptime) OVER(PARTITION BY empno)
+WHERE  empno   = '000010'
+AND    projno  = 'MA2100';
+....
+
+==== Correlated and Uncorrelated Update
+
+In the next example, regardless of the number of rows updated, the ACTNO will always come out as one. This is because the sub-query that calculates the row-number is correlated, which means that it is resolved again for each row to be updated in the "AC1" table. At most, one "AC2"
+row will match, so the row-number must always equal one:
+
+.Update with correlated query
+[source,sql]
+....
+UPDATE emp_act_copy ac1
+SET (actno, emptime) 
+    = (SELECT ROW_NUMBER() OVER()
+            , ac1.emptime / 2
+       FROM emp_act_copy ac2
+       WHERE ac2.empno LIKE '60%'
+       AND SUBSTR(ac2.empno,3) = SUBSTR(ac1.empno,3)
+      )
+WHERE EMPNO LIKE '800%';
+....
+
+In the next example, the ACTNO will be updated to be values 1, 2, 3, etc, in order that the rows are updated. In this example, the sub-query that calculates the row-number is uncorrelated, so all of the matching rows are first resolved, and then referred to in the next, correlated,
+step:
+
+.Update with uncorrelated query
+[source,sql]
+....
+UPDATE emp_act_copy ac1
+SET (actno, emptime) = 
+    (SELECT c1
+          , c2
+     FROM (SELECT ROW_NUMBER() OVER() AS c1
+                , actno / 100         AS c2
+                , empno
+           FROM emp_act_copy
+           WHERE empno LIKE '60%'
+          ) AS ac2
+     WHERE SUBSTR(ac2.empno,3) = SUBSTR(ac1.empno,3)
+    )
+WHERE empno LIKE '900%';
+....
+
+=== Delete
+
+The DELETE statement is used to remove rows from a table, view, or fullselect. The set of rows deleted depends on the scope of the predicates used. The following example would delete a single row from the EMP_ACT sample table:
+
+.Single-row delete
+[source,sql]
+....
+DELETE
+FROM emp_act_copy
+WHERE empno  = '000010'
+AND   projno = 'MA2100'
+AND   actno  = 10;
+....
+
+*Usage Notes*
+
+* One can delete rows from a table, view, or fullselect. If the object is not a table, then it must be deletable (i.e. refer to a single table, not have any column functions, etc).
+* The correlation name is optional, and is only needed if there is a predicate that references another table.
+* The columns in the INCLUDE list are not updated. They are intended to be referenced in a SELECT statement that encompasses the DELETE (see <<select.dml.changes>>).
+* Predicates are optional. If none are provided, all rows are deleted.
+* Usually, all matching rows are deleted. To delete some fraction of the matching rows, use a fullselect (see <<use.full.select>>).
+
+==== Basic Delete
+
+This statement would delete all rows in the EMP_ACT table:
+
+.Mass delete
+[source,sql]
+....
+DELETE
+FROM emp_act_copy;
+....
+
+This statement would delete all the matching rows in the EMP_ACT:
+
+.Selective delete
+[source,sql]
+....
+DELETE
+FROM emp_act_copy
+WHERE empno  LIKE '00%'
+AND   projno >=   'MA';
+....
+
+==== Correlated Delete
+
+The next example deletes all the rows in the STAFF table - except those that have the highest ID in their respective department:
+
+.Correlated delete (1 of 2)
+[source,sql]
+....
+DELETE
+FROM staff s1
+WHERE id NOT IN
+    (SELECT MAX(id)
+     FROM staff s2
+     WHERE s1.dept = s2.dept
+    );
+....
+
+Here is another way to write the same:
+
+.Correlated delete (2 of 2)
+[source,sql]
+....
+DELETE
+FROM staff s1
+WHERE EXISTS
+    (SELECT *
+     FROM staff s2
+     WHERE s2.dept = s1.dept
+     AND   s2.id > s1.id
+    );
+....
+
+The next query is logically equivalent to the prior two, but it works quite differently. It uses a fullselect and an OLAP function to get, for each row, the ID, and also the highest ID value in the current department. All rows where these two values do not match are then deleted:
+
+.Delete using fullselect and OLAP function
+[source,sql]
+....
+DELETE 
+FROM 
+    (SELECT id
+          , MAX(id) OVER(PARTITION BY dept) AS max_id
+     FROM staff
+    ) AS ss
+WHERE id <> max_id;
+....
+
+==== Delete First "n" Rows
+
+A delete removes all encompassing rows. Sometimes this is not desirable - usually because an unknown, and possibly undesirably large, number rows is deleted. One can write a delete that stops after "n" rows using the following logic:
+
+* In a fullselect, retrieve the first "n" rows that you want to delete.
+* Delete all rows returned by the fullselect.
+
+In the following example, those five employees with the highest salary are deleted:
+
+.Delete first "n" rows
+[source,sql]
+....
+DELETE
+FROM
+    (SELECT *
+     FROM staff
+     ORDER BY salary DESC
+     FETCH FIRST 5 ROWS ONLY
+) AS xxx;
+....
+
+WARNING: The above statement may delete five random rows – if there is more than one row with the same salary. To prevent this, ensure that the list of columns provided in the ORDER BY identify each matching row uniquely.
+
+[[select.dml.changes]]
+=== Select DML Changes
+
+A special kind of SELECT statement (see <<select.dml.changes>>) can encompass an INSERT, UPDATE, or DELETE statement to get the before or after image of whatever rows were changed (e.g. select the list of rows deleted). This kind of SELECT can be very useful when the DML statement is internally generating a value that one needs to know (e.g. an INSERT automatically creates a new invoice number using a sequence column), or get the set of rows that were removed by a delete. All of this can be done by coding a special kind of select.
+
+==== Table Types
+
+* *OLD*: Returns the state of the data prior to the statement being run.
+This is allowed for an update and a delete.
+* *NEW*: Returns the state of the data prior to the application of any AFTER triggers or referential constraints. Data in the table will not equal what is returned if it is subsequently changed by AFTER triggers
+or R.I. This is allowed for an insert and an update.
+* *FINAL*: Returns the final state of the data. If there AFTER triggers that alter the target table after running of the statement, an error is returned. Ditto for a view that is defined with an INSTEAD OF trigger.
+This is allowed for an insert and an update.
+
+*Usage Notes*
+
+* Only one of the above tables can be listed in the FROM statement.
+* The table listed in the FROM statement cannot be given a correlation name.
+* No other table can be listed (i.e. joined to) in the FROM statement.
+One can reference another table in the SELECT list (see example page 73), or by using a sub-query in the predicate section of the statement.
+* The SELECT statement cannot be embedded in a nested-table expression.
+* The SELECT statement cannot be embedded in an insert statement.
+* To retrieve (generated) columns that are not in the target table, list them in an INCLUDE phrase in the DML statement. This technique can be used to, for example, assign row numbers to the set of rows entered during an insert.
+* Predicates (on the select) are optional. They have no impact on the underlying DML.
+* The INPUT SEQUENCE phrase can be used in the ORDER BY to retrieve the rows in the same sequence as they were inserted. It is not valid in an update or delete.
+* The usual scalar functions, OLAP functions, and column functions, plus the GROUP BY phrase, can be applied to the output - as desired.
+
+[[insert.examples]]
+==== Insert Examples
+
+The example below selects from the final result of the insert:
+
+.Select rows inserted
+[source,sql]
+....
+SELECT empno
+, projno AS prj
+, actno  AS act
+FROM FINAL TABLE
+(INSERT INTO emp_act_copy
+ VALUES 
+  ('200000', 'ABC', 10, 1, '2003-10-22', '2003-11-24')
+, ('200000', 'DEF', 10, 1, '2003-10-22', '2003-11-24')
+)
+ORDER BY 1,2,3;
+....
+
+_ANSWER_
+|===
+|EMPNO | PRJ| ACT
+|200000| ABC| 10
+|200000| DEF| 10
+|===
+One way to retrieve the new rows in the order that they were inserted is to include a column in the insert statement that is a sequence number:
+
+.Include column to get insert sequence
+[source,sql]
+....
+SELECT empno
+, projno AS prj
+, actno AS act
+, row#
+AS r#
+FROM FINAL TABLE
+    (INSERT INTO emp_act_copy (empno, projno, actno)
+    INCLUDE (row# SMALLINT)
+    VALUES 
+     ('300000','ZZZ',999,1)
+    ,('300000','VVV',111,2)
+   )
+ORDER BY row#;
+....
+
+_ANSWER_
+|===
+|EMPNO | PRJ| ACT| R#
+|300000| ZZZ| 999| 1
+|300000| VVV| 111| 2
+|===
+The next example uses the INPUT SEQUENCE phrase to select the new rows in the order that they were inserted. Row numbers are assigned to the output:
+
+.Select rows in insert order
+[source,sql]
+....
+SELECT empno
+     , projno AS prj
+     , actno AS act
+     , ROW_NUMBER() OVER() AS r#
+FROM FINAL TABLE
+    (INSERT INTO emp_act_copy (empno, projno, actno)
+     VALUES 
+       ('400000','ZZZ',999)
+     , ('400000','VVV',111)
+    )
+ORDER BY INPUT SEQUENCE;
+....
+
+_ANSWER_
+|===
+|EMPNO | PRJ| ACT| R#
+|400000| ZZZ| 999| 1
+|400000| VVV| 111| 2
+|===
+
+NOTE: The INPUT SEQUENCE phrase only works in an insert statement. It can be listed in the ORDER BY part of the statement, but not in the SELECT part. The only way to display the row number of each row inserted is to explicitly assign row numbers.
+
+In the next example, the only way to know for sure what the insert has done is to select from the result. This is because the select statement (in the insert) has the following unknowns:
+
+* We do not, or may not, know what ID values were selected, and thus inserted.
+* The project-number is derived from the current-time special register.
+* The action-number is generated using the RAND function.
+
+Now for the insert:
+
+.Select from an insert that has unknown values
+[source,sql]
+....
+SELECT empno
+,projno AS prj
+,actno AS act
+,ROW_NUMBER() OVER() AS r#
+FROM NEW TABLE
+    (INSERT INTO emp_act_copy (empno, actno, projno)
+        SELECT LTRIM(CHAR(id + 600000))
+             , SECOND(CURRENT TIME)
+             , CHAR(SMALLINT(RAND(1) * 1000))
+        FROM staff
+        WHERE id < 40
+    )
+ORDER BY INPUT SEQUENCE;
+....
+
+_ANSWER_
+
+|===
+|EMPNO | PRJ| ACT| R#
+|600010| 1  | 59 | 1
+|600020| 563| 59 | 2
+|600030| 193| 59 | 3
+|===
+
+==== Update Examples
+
+The statement below updates the matching rows by a fixed amount. The select statement gets the old EMPTIME values:
+
+.Select values - from before update
+[source,sql]
+....
+SELECT empno
+     , projno  AS prj
+     , emptime AS etime
+FROM OLD TABLE
+    (UPDATE emp_act_copy
+     SET emptime = emptime * 2
+     WHERE empno = '200000')
+ORDER BY projno;
+....
+
+_ANSWER_
+|===
+|EMPNO | PRJ| ETIME
+|200000| ABC| 1.00
+|200000| DEF| 1.00
+|===
+
+The next statement updates the matching EMPTIME values by random amount.
+To find out exactly what the update did, we need to get both the old and new values. The new values are obtained by selecting from the NEW table, while the old values are obtained by including a column in the update which is set to them, and then subsequently selected:
+
+.Select values - before and after update
+[source,sql]
+....
+SELECT projno  AS prj
+     , old_t   AS old_t
+     , emptime AS new_t
+FROM NEW TABLE
+    (UPDATE emp_act_copy
+     INCLUDE (old_t DECIMAL(5,2))
+     SET    emptime = emptime * RAND(1) * 10
+          , old_t   = emptime
+     WHERE empno    = '200000'
+    )
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|PRJ| OLD_T| NEW_T
+|ABC| 2.00 | 0.02
+|DEF| 2.00 | 11.27
+|===
+
+==== Delete Examples
+
+The following example lists the rows that were deleted:
+
+.List deleted rows
+[source,sql]
+....
+SELECT projno AS prj
+     , actno  AS act
+FROM OLD TABLE
+    (DELETE
+    FROM emp_act_copy
+    WHERE empno = '300000'
+   )
+ORDER BY 1,2;
+....
+
+_ANSWER_
+
+|===
+|PRJ| ACT
+|VVV| 111
+|ZZZ| 999
+|===
+
+The next query deletes a set of rows, and assigns row-numbers (to the included field) as the rows are deleted. The subsequent query selects every second row:
+
+.Assign row numbers to deleted rows
+[source,sql]
+....
+SELECT empno
+     , projno
+     , actno AS act
+     , row#  AS r#
+FROM OLD TABLE
+    (DELETE
+     FROM emp_act_copy
+     INCLUDE (row# SMALLINT)
+     SET    row# = ROW_NUMBER() OVER()
+     WHERE empno = '000260'
+    )
+WHERE row# = row# / 2 * 2
+ORDER BY 1, 2, 3;
+....
+
+_ANSWER_
+|===
+|EMPNO | PROJNO| ACT| R#
+|000260| AD3113| 70 | 2
+|000260| AD3113| 80 | 4
+|000260| AD3113| 180| 6
+|===
+
+NOTE: Predicates (in the select result phrase) have no impact on the range of rows changed by the underlying DML, which is determined by its own predicates.
+
+One cannot join the table generated by a DML statement to another table, nor include it in a nested table expression, but one can join in the SELECT phrase. The following delete illustrates this concept by joining to the EMPLOYEE table:
+
+.Join result to another table
+[source,sql]
+....
+SELECT empno
+    , (SELECT lastname
+       FROM
+        (SELECT empno AS e#
+              , lastname
+         FROM employee
+        ) AS xxx
+       WHERE empno = e#)
+    , projno AS projno
+    , actno AS act
+FROM OLD TABLE
+    (DELETE
+     FROM emp_act_copy
+     WHERE empno < '0001')
+ORDER BY 1, 2, 3
+FETCH FIRST 5 ROWS ONLY;
+....
+
+_ANSWER_
+|===
+|EMPNO | LASTNAME| PROJNO| ACT
+|000010| HAAS    | AD3100| 10
+|000010| HAAS    | MA2100| 10
+|000010| HAAS    | MA2110| 10
+|000020| THOMPSON| PL2100| 30
+|000030| KWAN    | IF1000| 10
+|===
+Observe above that the EMPNO field in the EMPLOYEE table was be renamed (before doing the join) using a nested table expression. This was necessary because one cannot join on two fields that have the same name, without using correlation names. A correlation name cannot be used on the OLD TABLE, so we had to rename the field to get around this problem.
+
+=== Merge
+
+The MERGE statement is a combination insert and update, or delete, statement on steroids. It can be used to take the data from a source table, and combine it with the data in a target table.
+
+The qualifying rows in the source and target tables are first matched by unique key value, and then evaluated:
+
+* If the source row is already in the target, the latter can be either updated or deleted.
+* If the source row is not in the target, it can be inserted.
+* If desired, a SQL error can also be generated.
+
+*Usage Rules*
+
+The following rules apply to the merge statement:
+
+* Correlation names are optional, but are required if the field names are not unique.
+* If the target of the merge is a fullselect or a view, it must allow updates, inserts, and deletes - as if it were an ordinary table.
+* At least one ON condition must be provided.
+* The ON conditions must uniquely identify the matching rows in the target table.
+* Each individual WHEN check can only invoke a single modification statement.
+* When a MATCHED search condition is true, the matching target row can be updated, deleted, or an error can be flagged.
+* When a NOT MATCHED search condition is true, the source row can be inserted into the target table, or an error can be flagged.
+* When more than one MATCHED or NOT MATCHED search condition is true, the first one that matches (for each type) is applied. This prevents any target row from being updated or deleted more than once. Ditto for any source row being inserted.
+* The ELSE IGNORE phrase specifies that no action be taken if no WHEN check evaluates to true.
+* If an error is encountered, all changes are rolled back.
+* Row-level triggers are activated for each row merged, depending on the type of modification that is made. So if the merge initiates an insert, all insert triggers are invoked. If the same input initiates an update, all update triggers are invoked.
+* Statement-level triggers are activated, even if no rows are processed.
+So if a merge does either an insert, or an update, both types of statement triggers are invoked, even if all of the input is inserted.
+
+==== Sample Tables
+
+To illustrate the merge statement, the following test tables were created and populated:
+
+.Sample tables for merge
+[source,sql]
+....
+CREATE TABLE old_staff AS
+(SELECT id
+      , job
+      , salary
+ FROM staff
+)
+WITH NO DATA;
+
+CREATE TABLE new_staff AS
+(SELECT id
+      , salary
+ FROM staff
+)
+WITH NO DATA;
+
+INSERT INTO old_staff
+    SELECT id
+         , job
+         , salary
+    FROM staff
+    WHERE id BETWEEN 20 and 40;
+....
+
+*OLD_STAFF*
+
+[cols=",,",options="header",]
+|===
+|ID|JOB   |SALARY
+|20|Sales |78171.25
+|30|Mgr   |77506.75
+|40|Sales |78006.00
+|===
+
+[source,sql]
+....
+INSERT INTO new_staff
+SELECT id, salary / 10
+FROM staff
+WHERE id BETWEEN 30 and 50;
+....
+
+*NEW_STAFF*
+
+[cols=",",options="header",]
+|===
+|ID|SALARY
+|30|7750.67
+|40|7800.60
+|50|8065.98
+|===
+
+==== Update or Insert Merge
+
+The next statement merges the new staff table into the old, using the following rules:
+
+* The two tables are matched on common ID columns.
+* If a row matches, the salary is updated with the new value.
+* If there is no matching row, a new row is inserted.
+
+Now for the code:
+
+.Merge - do update or insert
+[source,sql]
+....
+MERGE INTO old_staff oo
+USING new_staff nn
+ON oo.id = nn.id
+WHEN MATCHED THEN
+    UPDATE
+    SET oo.salary = nn.salary
+WHEN NOT MATCHED THEN
+    INSERT
+    VALUES (nn.id,'?',nn.salary);
+....
+
+*OLD_STAFF*
+
+[cols=",,",options="header",]
+|===
+|ID |JOB   |SALARY
+|20 |Sales |78171.25
+|30 |Mgr   |77506.75
+|40 |Sales |78006.00
+|===
+
+*NEW_STAFF*
+
+[cols=",",options="header",]
+|===
+|ID |SALARY
+|30 |7750.67
+|40 |7800.60
+|50 |8065.98
+|===
+
+*AFTER-MERGE*
+|===
+|ID| JOB  | SALARY
+|20| Sales| 78171.25
+|30| Mgr  | 7750.67
+|40| Sales| 7800.60
+|50| ?    | 8065.98
+|===
+
+==== Delete-only Merge
+
+The next statement deletes all matching rows:
+
+.Merge - delete if match
+[source,sql]
+....
+MERGE INTO old_staff oo
+USING new_staff nn
+ON oo.id = nn.id
+WHEN MATCHED THEN
+    DELETE;
+....
+
+*AFTER-MERGE*
+|===
+|ID| JOB| SALARY
+|20| Sales| 78171.25
+|===
+
+==== Complex Merge
+
+The next statement has the following options:
+
+* The two tables are matched on common ID columns.
+* If a row matches, and the old salary is < 18,000, it is updated.
+* If a row matches, and the old salary is > 18,000, it is deleted.
+* If no row matches, and the new ID is > 10, the new row is inserted.
+* If no row matches, and (by implication) the new ID is <= 10, an error is flagged.
+
+Now for the code:
+
+.Merge with multiple options
+[source,sql]
+....
+MERGE INTO old_staff oo
+USING      new_staff nn
+ON oo.id = nn.id
+WHEN MATCHED
+AND oo.salary < 78000 THEN
+    UPDATE
+    SET oo.salary = nn.salary
+WHEN MATCHED
+AND oo.salary > 78000 THEN
+    DELETE
+WHEN NOT MATCHED
+AND nn.id > 10 THEN
+    INSERT
+    VALUES (nn.id,'?',nn.salary)
+WHEN NOT MATCHED THEN
+    SIGNAL SQLSTATE '70001' 
+    SET MESSAGE_TEXT = 'New ID <= 10';
+....
+
+*OLD_STAFF*
+|===
+|ID|JOB  |SALARY 
+|20|Sales|78171.25
+|30|Mgr  |77506.75
+|40|Sales|78006.00 
+|===
+
+*NEW_STAFF*
+
+|===
+|ID|SALARY 
+|30|7750.67
+|40|7800.60
+|50|8065.98
+|===
+ 
+*AFTER-MERGE*
+
+|===
+|ID|JOB  |SALARY
+|20|Sales|78171.25
+|30|Mgr  |7750.67
+|50|?    |8065.98
+|===
+
+The merge statement is like the case statement (see <<case.expression>>) in that the sequence in which one writes the WHEN checks determines the processing logic. In the above example, if the last check was written before the prior, any non-match would generate an error.
+
+==== Using a Fullselect
+
+The following merge generates an input table (i.e. fullselect) that has a single row containing the MAX value of every field in the relevant table. This row is then inserted into the table:
+
+.Merge MAX row into table
+[source,sql]
+....
+MERGE INTO old_staff
+USING
+    (SELECT MAX(id) + 1 AS max_id
+          , MAX(job)    AS max_job
+          , MAX(salary) AS max_sal
+     FROM old_staff
+    ) AS mx
+ON id = max_id
+WHEN NOT MATCHED THEN
+    INSERT
+    VALUES (max_id, max_job, max_sal);
+....
+
+*AFTER-MERGE*
+|===
+|ID| JOB  | SALARY
+|20| Sales| 78171.25
+|30| Mgr  | 77506.75
+|40| Sales| 78006.00
+|41| Sales| 78171.25
+|===
+
+Here is the same thing written as a plain on insert:
+
+.Merge logic - done using insert
+[source,sql]
+....
+INSERT INTO old_staff
+SELECT MAX(id) + 1 AS max_id
+     , MAX(job)    AS max_job
+     , MAX(salary) AS max_sal
+FROM old_staff;
+....
+
+Use a fullselect on the target and/or source table to limit the set of rows that are processed during the merge:
+
+.Merge using two fullselects
+[source,sql]
+....
+MERGE INTO
+    (SELECT *
+     FROM old_staff
+     WHERE id < 40
+    ) AS oo
+USING
+    (SELECT *
+     FROM new_staff
+     WHERE id < 50
+    ) AS nn
+ON oo.id = nn.id
+WHEN MATCHED THEN
+    DELETE
+WHEN NOT MATCHED THEN
+    INSERT
+    VALUES (nn.id,'?',nn.salary);
+....
+
+*OLD_STAFF*
+
+[cols=",,",options="header",]
+|===
+|ID |JOB   |SALARY
+|20 |Sales |78171.25
+|30 |Mgr   |77506.75
+|40 |Sales |78006.00
+|===
+
+*NEW_STAFF*
+
+[cols=",",options="header",]
+|===
+|ID |SALARY
+|30 |7750.67
+|40 |7800.60
+|50 |8065.98
+|===
+
+*AFTER-MERGE*
+|===
+|ID| JOB  | SALARY
+|20| Sales| 78171.25
+|40| ?    | 7800.60
+|40| Sales| 78006.00
+|===
+
+Observe that the above merge did the following:
+
+* The target row with an ID of 30 was deleted - because it matched.
+* The target row with an ID of 40 was not deleted, because it was excluded in the fullselect that was done before the merge.
+* The source row with an ID of 40 was inserted, because it was not found in the target fullselect. This is why the base table now has two rows with an ID of 40.
+* The source row with an ID of 50 was not inserted, because it was excluded in the fullselect that was done before the merge.
+
+==== Listing Columns
+
+The next example explicitly lists the target fields in the insert statement - so they correspond to those listed in the following values phrase:
+
+.Listing columns and values in insert
+[source,sql]
+....
+MERGE INTO old_staff oo
+USING new_staff nn
+ON oo.id = nn.id
+WHEN MATCHED THEN
+    UPDATE
+    SET (salary, job) = (1234, '?')
+WHEN NOT MATCHED THEN
+    INSERT (id,salary,job)
+    VALUES (id,5678.9,'?');
+....
+
+*AFTER-MERGE*
+|===
+|ID| JOB  | SALARY
+|20| Sales| 78171.25
+|30| ?    | 1234.00
+|40| ?    | 1234.00
+|50| ?    | 5678.90
+|===
+
+

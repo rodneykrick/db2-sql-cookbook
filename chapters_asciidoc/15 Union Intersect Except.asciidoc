@@ -1,0 +1,361 @@
+[[union.chapter]]
+== Union, Intersect, and Except
+
+A UNION, EXCEPT, or INTERCEPT expression combines sets of columns into new sets of columns. An illustration of what each operation does with a given set of data is shown below:
+
+.Examples of Union, Except, and Intersect
+....
+        R1      R1      R1          R1          R1      R1      R1
+        UNION   UNION   INTERSECT   INTERSECT   EXCEPT  EXCEPT  MINUS
+        R2      ALL     R2          ALL         R2      ALL     R2
+R1 R2           R2                  R2                  R2
+-- --   -----   -----   ---------   -----       ------  ------  -----
+A  A    A       A       A           A           E       A       E
+A  A    B       A       B           A                   C
+A  B    C       A       C           B                   C
+B  B    D       A                   B                   E
+B  B    E       A                   C
+C  C            B
+C  D            B
+C               B
+E               B
+                B
+                C
+                C
+                C
+                C
+                D
+                E
+....
+
+WARNING: Unlike the UNION and INTERSECT operations, the EXCEPT statement is not commutative. This means that "A EXCEPT B" is not the same as "B EXCEPT A".
+
+_Sample Views_
+
+.Query sample views
+[source,sql]
+....
+CREATE VIEW R1 (R1)
+AS VALUES ('A'), ('A'), ('A'), ('B'), ('B'), ('C'), ('C'), ('C'), ('E');
+
+CREATE VIEW R2 (R2)
+AS VALUES ('A'), ('A'), ('B'), ('B'), ('B'), ('C'), ('D');
+
+
+SELECT R1
+FROM R1
+ORDER BY R1;
+
+SELECT R2
+FROM R2
+ORDER BY R2;
+....
+
+_ANSWER_
+|===
+|R1|R2
+|A |A
+|A |A
+|A |B
+|B |B
+|B |B
+|C |C
+|C |D
+|C |
+|E |
+|===
+
+*Usage Notes*
+
+[[union--union-all]]
+=== Union & Union All
+
+A UNION operation combines two sets of columns and removes duplicates. The UNION ALL expression does the same but does not remove the duplicates.
+-Union and Union All SQL
+[source,sql]
+....
+SELECT R1 
+FROM R1 
+  UNION 
+SELECT R2 
+FROM R2 
+ORDER BY 1;
+
+SELECT R1 
+FROM R1 
+  UNION ALL 
+SELECT R2 
+FROM R2 
+ORDER BY 1;
+....
+|===
+|R1|R2|UNION|UNION ALL
+|A |A |A    |A
+|A |A |B    |A
+|A |B |C    |A
+|B |B |D    |A
+|B |B |E    |A
+|C |C |     |B
+|C |D |     |B
+|C |  |     |B
+|E |  |     |B
+|  |  |     |B
+|  |  |     |C 
+|  |  |     |C
+|  |  |     |C
+|  |  |     |C
+|  |  |     |D
+|  |  |     |E
+|===
+
+NOTE: Recursive SQL requires that there be a UNION ALL phrase between the two main parts of the statement. The UNION ALL, unlike the UNION, allows for duplicate output rows which is what often comes out of recursive processing.
+
+===Intersect & Intersect All
+
+An INTERSECT operation retrieves the matching set of distinct values (not rows) from two columns. The INTERSECT ALL returns the set of matching individual rows.
+
+.Intersect and Intersect All SQL
+[source,sql]
+....
+SELECT R1
+FROM R1
+ INTERSECT
+SELECT R2
+FROM R2
+ORDER BY 1;
+
+SELECT R1
+FROM R1
+ INTERSECT ALL
+SELECT R2
+FROM R2
+ORDER BY 1;
+....
+|===
+|R1|R2|INTERSECT|INTERSECT ALL
+|A |A |A        |A   
+|A |A |B        |A  
+|A |B |C        |B  
+|B |B |         |B  
+|B |B |         |C  
+|C |C |         |     
+|C |D |         |   
+|C |  |         |   
+|E |  |         |   
+|===
+
+An INTERSECT and/or EXCEPT operation is done by matching ALL of the columns in the top and bottom result-sets. In other words, these are row, not column, operations. It is not possible to only match on the keys, yet at the same time, also fetch non-key columns. To do this, one needs to use a sub-query.
+
+[[except-except-all--minus]]
+=== Except, Except All & Minus
+
+An EXCEPT operation retrieves the set of distinct data values (not rows) that exist in the first the table but not in the second. The EXCEPT ALL returns the set of individual rows that exist only in the first table. The word MINUS is a synonym for EXCEPT.
+
+.Except and Except All SQL (R1 on top)
+[source,sql]
+....
+SELECT R1
+FROM R1
+ EXCEPT
+SELECT R2
+FROM R2
+ORDER BY 1;
+
+SELECT R1
+FROM R1
+ EXCEPT ALL
+SELECT R2
+FROM R2
+ORDER BY 1;
+....
+|===
+|R1|R2|R1 EXCEPT R2|R1 EXCEPT ALL R2
+|A |A |E           |A
+|A |A |            |C
+|A |B |            |C
+|B |B |            |E
+|B |B |            |
+|C |C |            |
+|C |D |            |
+|C |  |            |
+|E |  |            |
+|===
+
+Because the EXCEPT/MINUS operation is not commutative, using it in the reverse direction (i.e. R2 to R1 instead of R1 to R2) will give a different result:
+
+.Except and Except All SQL (R2 on top)
+[source,sql]
+....
+SELECT R2
+FROM R2
+ EXCEPT
+SELECT R1
+FROM R1
+ORDER BY 1;
+
+SELECT R2
+FROM R2
+ EXCEPT ALL
+SELECT R1
+FROM R1
+ORDER BY 1;
+....
+|===
+|R1|R2|R2 EXCEPT R1|R2 EXCEPT ALL R1
+|A |A |D           |B
+|A |A |            |D
+|A |B |            | 
+|B |B |            | 
+|B |B |            | 
+|C |C |            | 
+|C |D |            | 
+|C |  |            |
+|E |  |            |
+|===
+
+NOTE: Only the EXCEPT/MINUS operation is not commutative. Both the UNION and the INTERSECT operations work the same regardless of which table is on top or on bottom.
+
+==== Precedence Rules
+
+When multiple operations are done in the same SQL statement, there are precedence rules:
+
+* Operations in parenthesis are done first.
+* INTERSECT operations are done before either UNION or EXCEPT.
+* Operations of equal worth are done from top to bottom.
+
+The next example illustrates how parenthesis can be used change the processing order:
+
+[source,sql]
+....
+SELECT R1
+FROM R1
+ UNION
+SELECT R2
+FROM R2
+ EXCEPT
+SELECT R2
+FROM R2
+ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols="",]
+|===
+|E
+|===
+
+.Use of parenthesis in Union
+[source,sql]
+....
+(SELECT R1
+ FROM R1
+  UNION
+ SELECT R2
+ FROM R2
+ )
+  EXCEPT
+ SELECT R2
+ FROM R2
+ ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols="",]
+|===
+|E
+|===
+
+.Use of parenthesis in Union
+[source,sql]
+....
+SELECT R1
+FROM R1
+ UNION
+(SELECT R2
+ FROM R2
+  EXCEPT
+ SELECT R2
+ FROM R2
+)
+ORDER BY 1;
+....
+
+_ANSWER_
+
+[cols="",]
+|===
+|A
+|B
+|C
+|E
+|===
+
+==== Unions and Views
+
+Imagine that one has a series of tables that track sales data, with one table for each year. One can define a view that is the UNION ALL of these tables, so that a user would see them as a single object. Such a view can support inserts, updates, and deletes, as long as each table in the view has a constraint that distinguishes it from all the others. Below is an example:
+
+.Define view to combine yearly tables
+[source,sql]
+....
+CREATE TABLE sales_data_2002
+( sales_date   DATE       NOT NULL
+, daily_seq#   INTEGER    NOT NULL
+, cust_id      INTEGER    NOT NULL
+, amount       DEC(10, 2) NOT NULL
+, invoice#     INTEGER    NOT NULL
+, sales_rep    CHAR(10)   NOT NULL
+, CONSTRAINT C CHECK (YEAR(sales_date) = 2002)
+, PRIMARY KEY (sales_date, daily_seq#)
+);
+
+CREATE TABLE sales_data_2003
+( sales_date   DATE      NOT NULL
+, daily_seq#   INTEGER   NOT NULL
+, cust_id      INTEGER   NOT NULL
+, amount       DEC(10,2) NOT NULL
+, invoice#     INTEGER   NOT NULL
+, sales_rep    CHAR(10)  NOT NULL
+, CONSTRAINT C CHECK (YEAR(sales_date) = 2003)
+, PRIMARY KEY (sales_date, daily_seq#));
+
+CREATE VIEW sales_data AS
+SELECT *
+FROM sales_data_2002
+ UNION ALL
+SELECT *
+FROM sales_data_2003;
+....
+
+Below is some SQL that changes the contents of the above view:
+
+.Insert, update, and delete using view
+[source,sql]
+....
+INSERT INTO sales_data VALUES
+  ('2002-11-22',1,123,100.10,996,'SUE')
+, ('2002-11-22',2,123,100.10,997,'JOHN')
+, ('2003-01-01',1,123,100.10,998,'FRED')
+, ('2003-01-01',2,123,100.10,999,'FRED');
+
+UPDATE sales_data
+SET amount = amount / 2
+WHERE sales_rep = 'JOHN';
+
+DELETE
+FROM sales_data
+WHERE sales_date = '2003-01-01'
+AND daily_seq# = 2;
+....
+
+Below is the view contents, after the above is run:
+.View contents after insert, update, delete
+|===
+|SALES_DATE|DAILY_SEQ#|CUST_ID|AMOUNT|INVOICE#|SALES_REP
+|01/01/2003|1         |123    |100.10|998     |FRED
+|11/22/2002|1         |123    |100.10|996     |SUE
+|11/22/2002|2         |123    |50.05 |997     |JOHN
+|===
+
+

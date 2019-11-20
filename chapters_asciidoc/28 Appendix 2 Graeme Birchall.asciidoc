@@ -1,0 +1,188 @@
+== Thank you, Graeme Birchall!
+
+This chapter contains the last introduction, history and comments from Graeme Birchall in his "Db2 SQL Cookbook". It is a kind of tribute to him and his work.
+
+Db2 LUW V9.7 SQL Cookbook 
+Graeme Birchall 
+16-Aug-2011
+
+===  Preface Important!
+
+If you didn't get this document directly from my personal website, you may have got an older edition. The book is changed very frequently, so if you want the latest, go to the source. Also, the latest edition is usually the best book to have, as the examples are often much better.
+This is true even if you are using an older version of Db2. This Cookbook is written for Db2 for LUW (i.e. Linux, Unix, Windows). It is not suitable for Db2 for z/OS unless you are running Db2 8 in new-function-mode, or (even better) Db2 9.
+
+===  Acknowledgments 
+
+I did not come up with all of the ideas presented in this book. Many of the best examples were provided by readers, friends, and/or coworkers too numerous to list. Thanks also to the many people at IBM for their (strictly unofficial) assistance.
+
+===  Disclaimer & Copyright 
+
+DISCLAIMER: This document is a best effort on my part. However, I screw up all the time, so it would be extremely unwise to trust the contents in its entirety. I certainly don't. And if you do something silly based on what I say, life is tough. COPYRIGHT: You can make as many copies of this book as you wish. And I encourage you to give it to others. But you cannot charge for it (other than to recover reproduction costs), nor claim the material as your own, nor replace my name with another. You are also encouraged to use the related class notes for teaching. In this case, you can charge for your time and materials - and your expertise. But you cannot charge any licensing fee, nor claim an exclusive right of use. In other words, you can pretty well do anything you want. And if you find the above too restrictive, just let me know. TRADEMARKS: Lots of words in this document, like "Db2", are registered trademarks of the IBM Corporation. Lots of other words, like "Windows", are registered trademarks of the Microsoft Corporation.
+Acrobat is a registered trademark of the Adobe Corporation.
+
+===  Tools Used 
+
+This book was written on a Dell PC that came with oodles of RAM. All testing was done in Db2 V9.7 Express-C for Windows. Word for Windows was used to write the document. Adobe Acrobat was used to make the PDF file. 
+
+===  Book Binding
+
+This book looks best when printed on a doubled sided laser printer and then suitably bound. To this end, I did some experiments a few years ago to figure out how to bind books cheaply using commonly available materials. I came up with what I consider to be a very satisfactory solution that is fully documented on page 461.
+
+===  Author / Book 
+
+Author: Email: Graeme_Birchall@verizon.net
+Web: http://mysite.verizon.net/Graeme_Birchall/[http://mysite.verizon.net/Graeme_Birchall/]
+Title: Db2 9.7 SQL Cookbook 
+© Date: 16-Aug-2011
+
+===  Preface 
+
+====  Author 
+
+===== Notes Book History 
+
+This book originally began a series of notes for my own use. After a while, friends began to ask for copies, and enemies started to steal it, so I decided to tidy everything up and give it away. Over the years, new chapters have been added as Db2 has evolved, and as I have found new ways to solve problems. Hopefully, this process will continue for the foreseeable future. 
+
+[[why.free]]
+====  Why Free 
+
+This book is free because I want people to use it. The more people that use it, and the more that it helps them, the more inclined I am to keep it up to date. For these reasons, if you find this book to be useful, please share it with others. This book is free, rather than formally published, because I want to deliver the best product that I can. If I had a publisher, I would have the services of an editor and a graphic designer, but I would not be able to get to market so quickly, and when a product changes as quickly as Db2 does, timeliness is important. Also, giving it away means that I am under no pressure to make the book marketable. I simply include whatever I think might be useful. 
+
+====  Other Free Documents 
+
+The following documents are also available for free from my web site: SAMPLE SQL: The complete text of the SQL statements in this Cookbook is available in an HTML file. Only the first and last few lines of the file have HTML tags, the rest is raw text, so it can easily be cut and paste into other files. 
+CLASS OVERHEADS: Selected SQL examples from this book have been rewritten as class overheads. This enables one to use this material to teach Db2 SQL to others. Use this cookbook as the student notes. 
+OLDER EDITIONS: This book is rewritten, and usually much improved, with each new version of Db2. Some of the older editions are available from my website. The others can be emailed upon request. However, the latest edition is the best, so you should probably use it, regardless of the version of Db2 that you have. 
+
+====  Answering Questions
+
+As a rule, I do not answer technical questions because I need to have a life. But I'm interested in hearing about interesting SQL problems, and also about any bugs in this book. However you may not get a prompt response, or any response. And if you are obviously an idiot, don't be surprised if I point out (for free, remember) that you are an idiot.
+
+====  Software Whines
+
+This book is written using Microsoft Word for Windows. I've been using this software for many years, and it has generally been a bunch of bug-ridden junk. I do confess that it has been mildly more reliable in recent years. However, I could have written more than twice as much that was twice as good in half the time - if it weren't for all of the bugs in Word. 
+
+Graeme
+
+[[graeme.birchall.book.editions]]
+====  Graeme Birchall Book Editions Upload Dates
+
+[cols=",",options="header",]
+|===
+|Date Published (Version) | Content 
+|1996-05-08| First edition of the Db2 V2.1.1 SQL Cookbook was posted to my web site. This version was in Postscript Print File format. 
+|1998-02-26| The Db2 V2.1.1 SQL Cookbook was converted to an Adobe Acrobat file and posted to my web site. Some minor cosmetic changes were made. 
+|1998-08-19| First edition of Db2 UDB V5 SQL Cookbook posted. Every SQL statement was checked for V5, and there were new chapters on OUTER JOIN and GROUP BY. 
+|1998-08-26| About 20 minor cosmetic defects were corrected in the V5 Cookbook.
+|1998-09-03| Another 30 or so minor defects were corrected in the V5 ookbook. 
+|1998-10-24| The Cookbook was updated for Db2 UDB V5.2.
+|1998-10-25| About twenty minor typos and sundry cosmetic defects were fixed. 
+|1998-12-03| This book was based on the second edition of the V5.2 upgrade. 
+|1999-01-25| A chapter on Summary Tables (new in the Dec/98 fixpack) was added and all the SQL was checked for changes.
+|1999-01-28| Some more SQL was added to the new chapter on Summary Tables. 
+|1999-02-15| The section of stopping recursive SQL statements was completely rewritten, and a new section was added on denormalizing hierarchical data structures. 
+|1999-02-16| Minor editorial changes were made. 
+|1999-03-16| Some bright spark at IBM pointed out that my new and improved section on stopping recursive SQL was all wrong. Damn. I undid everything. 
+|1999-05-12| Minor editorial changes were made, and one new example (on getting multiple counts from one value) was added. |1999-09-16| Db2 V6.1 edition. All SQL was rechecked, and there were some minor additions - especially to summary tables, plus a chapter on "Db2 Dislikes". 
+|1999-09-23| Some minor layout changes were made. 
+|1999-10-06| Some bugs fixed, plus new section on index usage in summary tables. 
+|2000-04-12| Some typos fixed, and a couple of new SQL tricks were added. 
+|2000-09-19| Db2 V7.1 edition. All SQL was rechecked. The new areas covered are: OLAP functions (whole chapter), ISO functions, and identity columns. 
+|2000-09-25| Some minor layout changes were made.
+|2000-10-26| More minor layout changes. 
+|2001-01-03| Minor layout changes (to match class notes). 
+|2001-02-06| Minor changes, mostly involving the RAND function. 
+|2001-04-11| Document new features in latest fixpack. Also add a new chapter on Identity Columns and completely rewrite sub-query chapter. 
+|2001-10-24| Db2 V7.2 fixpack 4 edition. Tested all SQL and added more examples, plus a new section on the aggregation function. 
+|2002-03-11| Minor changes, mostly to section on precedence rules. 
+|2002-08-20| Db2 V8.1 (beta) edition. A few new functions are added. New section on temporary tables. Identity Column and Join chapters rewritten. Whine chapter removed. 
+|2003-01-02| Db2 V8.1 (post-Beta) edition. SQL rechecked. More examples added. 
+|2003-07-11| New sections added on DML, temporary tables, compound SQL, and user defined functions. Halting recursion section changed to use ser-defined function. 
+|2003-09-04| New sections on complex joins and history tables. 
+|2003-10-02| Minor changes. Some more user-defined functions. 
+|2003-11-20| Added "quick find" chapter. 
+|2003-12-31| Tidied up the SQL in the Recursion chapter, and added a section on the merge statement. Completely rewrote the chapter on materialized query tables. 
+|2004-02-04| Added select-from-DML section, and tidied up some code. Also managed to waste three whole days due to bugs in Microsoft Word. 
+|2004-07-23| Rewrote chapter of identity column and sequences. Made DML separate chapter. Added chapters on protecting data and XML functions. Other minor changes. 
+|2004-11-03| Upgraded to V8.2. Retested all SQL. Documented new SQL features. Some major hacking done on the GROUP BY chapter. 
+|2005-04-15| Added short section on cursors, and a chapter on using SQL to make SQL. 
+|2005-06-01| Added a chapter on triggers. 
+|2005-11-11| Updated MQT table chapter and added bibliography. Other minor changes. 
+|2005-12-01| Applied fixpack 10. Changed my website name.
+|2005-12-16| Added notes on isolation levels, data-type functions, transforming data. 
+|2006-01-26| Fixed dumb bugs generated by WORD. What stupid software. Also wrote an awesome new section on joining meta-data to real data. 
+|2006-02-17| Touched up the section on joining meta-data to real data. Other minor fixes. 
+|2006-02-27| Added precedence rules for SQL statement processing, and a description of a simplified nested table expression.
+|2006-03-23| Added better solution to avoid fetching the same row twice. 
+|2006-04-26| Added trigger that can convert HEX value to number. 
+|2006-09-08| Upgraded to V9.1. Retested SQL. Removed the XML chapter as it is now obsolete. I'm still cogitating about XQuery. Looks hard. Added some awesome java code. 
+|2006-09-13| Fixed some minor problems in the initial V9.1 book. 
+|2006-10-17| Fixed a few cosmetic problems that were bugging me. 
+|2006-11-06| Found out that IBM had removed the "UDB" from the Db2 product name, so I did the same. It is now just plain "Db2 V9". 
+|2006-11-29| I goofed. Turns out Db2 is now called "Db2 9". I relabeled accordingly. 
+|2006-12-15| Improved code to update or delete first "n" rows. 
+|2007-02-22| Get unique timestamp values during multi-row insert. Other minor changes. 
+|2007-11-20| Finished the Db2 V9.5 edition. Lots of changes! 
+|2008-09-20| Fixed some minor problems. 
+|2008-11-28| Fixed some minor problems. 
+|2009-01-18| Fixed some minor problems, plus lots of bugs in Microsoft WORD! 
+|2009-03-12| Converted to a new version of Adobe Acrobat, plus minor fixes. 
+|2010-10-12| Finished initial V9.7 edition. Only minor changes. More to come. 
+|2010-11-05| First batch of cute/deranged V9.7 SQL examples added. 
+|2010-11-14| Fixed some minor typos. 
+|2011-01-11| Added LIKE_COLUMN function. Removed bibliography.  
+|2011-01-14| Added HASH function. Other minor edits. 
+|2011-08-16| Fixed some minor problems.
+|===
+
+===  Book Binding
+
+Below is a quick-and-dirty technique for making a book out of this book. The object of the exercise is to have a manual that will last a long time, and that will also lie flat when opened up. All suggested actions are done at your own risk.
+
+==== Tools Required
+
+* Printer, to print the book.
+* KNIFE, to trim the tape used to bind the book.
+* BINDER CLIPS, (1" size), to hold the pages together while gluing. To bind larger books, or to do multiple books in one go, use two or more cheap screw clamps.
+* CARDBOARD: Two pieces of thick card, to also help hold things together while gluing.
+
+==== Consumables
+
+Ignoring the capital costs mentioned above, the cost of making a bound book should work out to about $4.00 per item, almost all of which is spent on the paper and toner. To bind an already printed copy should cost less than fifty cents.
+
+* PAPER and TONER, to print the book.
+* CARD STOCK, for the front and back covers.
+* GLUE, to bind the book. Cheap rubber cement will do the job The glue must come with an applicator brush in the bottle. Sears hardware stores sell a more potent flavor called Duro Contact Cement that is quite a bit better. This is toxic stuff, so be careful.
+* CLOTH TAPE, (2" wide) to bind the spine. Pearl tape, available from Pearl stores, is fine. Wider tape will be required if you are not printing double-sided.
+* TIME: With practice, this process takes less than five minutes work per book.
+
+==== Before you Start
+
+* Make that sure you have a well-ventilated space before gluing.
+* Practice binding on some old scraps of paper.
+* Kick all kiddies out off the room.
+
+==== Instructions
+
+* Print the book - double-sided if you can. If you want, print the first and last pages on card stock to make suitable protective covers.
+* Jog the pages, so that they are all lined up along the inside spine. Make sure that every page is perfectly aligned, otherwise some pages won't bind. Put a piece of thick cardboard on either side of the set of pages to be bound. These will hold the pages tight during the gluing process.
+* Place binder clips on the top and bottom edges of the book (near the spine), to hold everything in place while you glue. One can also put a couple on the outside edge to stop the pages from splaying out in the next step. If the pages tend to spread out in the middle of the spine, put one in the centre of the spine, then work around it when gluing. Make sure there are no gaps between leafs, where the glue might soak in. 
+* Place the book spine upwards. The objective here is to have a flat surface to apply the glue on. Lean the book against something if it does not stand up freely. 
+* Put on gobs of glue. Let it soak into the paper for a bit, then put on some more. 
+* Let the glue dry for at least half an hour. A couple of hours should be plenty. 
+* Remove the binder clips that are holding the book together. Be careful because the glue does not have much structural strength. 
+* Separate the cardboard that was put on either side of the book pages. To do this, carefully open the cardboard pages up (as if reading their inside covers), then run the knife down the glue between each board and the rest of the book. 
+* Lay the book flat with the front side facing up. Be careful here because the rubber cement is not very strong. 
+* Cut the tape to a length that is a little longer that the height of the book.
+* Put the tape on the book, lining it up so that about one quarter of an inch (of the tape width) is on the front side of the book. Press the tape down firmly (on the front side only) so that it is properly attached to the cover. Make sure that a little bit of tape sticks out of both the bottom and top ends of the spine. 
+* Turn the book over (gently) and, from the rear side, wrap the cloth tape around the spine of the book. Pull the tape around so that it puts the spine under compression. 
+* Trim excess tape at either end of the spine using a knife or pair of scissors. 
+* Tap down the tape so that it is firmly attached to the book.
+* Let the book dry for a day. Then do the old "hold by a single leaf" test. Pick any page, and gently pull the page up into the air. The book should follow without separating from the page. 
+
+==== More Information
+
+The binding technique that I have described above is fast and easy, but rather crude. It would not be suitable if one was printing books for sale. There are plenty of other binding methods that take a little more skill and better gear that can be used to make "store-quality" books. Search the web for more information.
+
+
+

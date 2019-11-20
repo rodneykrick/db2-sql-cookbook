@@ -1,0 +1,335 @@
+== Triggers
+
+A trigger initiates an action whenever a row, or set of rows, is changed. The change can be either an insert, update or delete. 
+
+NOTE: The Db2 Application Development Guide: Programming Server Applications is an excellent source of information on using triggers. The SQL Reference has all the basics.
+
+=== Trigger Types
+
+* A *BEFORE* trigger is run before the row is changed. It is typically used to change the values being entered (e.g. set a field to the current date), or to flag an error. It cannot be used to initiate changes in other tables.
+* An *AFTER* trigger is run after the row is changed. It can do everything a before trigger can do, plus modify data in other tables or systems (e.g. it can insert a row into an audit table after an update).
+* An *INSTEAD OF* trigger is used in a view to do something instead of the action that the user intended (e.g. do an insert instead of an update). There can be only one instead of trigger per possible DML type on a given view.
+
+NOTE: See the chapter titled "Retaining a Record" on page 351 for a sample application that uses INSTEAD OF triggers to record all changes to the data in a set of tables.
+
+=== Action Type
+
+Each trigger applies to a single kind of DML action (i.e. insert, update, or delete). With the exception of instead of triggers, there can be as many triggers per action and per table as desired. An update trigger can be limited to changes to certain columns.
+
+*Object Type*
+
+* A table can have both BEFORE and AFTER triggers. The former have to be defined FOR EACH ROW.
+* A view can have INSTEAD OF triggers (up to three - one per DML type). 
+
+*Referencing*
+
+In the body of the trigger the object being changed can be referenced using a set of optional correlation names:
+
+* *OLD* refers to each individual row before the change (does not apply to an insert).
+* *NEW* refers to each individual row after the change (does not apply to a delete).
+* *OLD_TABLE* refers to the set of rows before the change (does not apply to an insert).
+* *NEW_TABLE* refers to the set of rows after the change (does to apply to a delete).
+
+*Application Scope*
+
+* A trigger defined FOR EACH STATEMENT is invoked once per statement.
+* A trigger defined FOR EACH ROW is invoked once per individual row changed. 
+
+NOTE: If one defines two FOR EACH ROW triggers, the first is applied for all rows before the second is run. To do two separate actions per row, one at a time, one has to define a single trigger that includes the two actions in a single compound SQL statement.
+
+*When Check*
+
+One can optionally include some predicates so that the body of the trigger is only invoked when certain conditions are true.
+
+*Trigger Usage*
+
+A trigger can be invoked whenever one of the following occurs:
+
+* A row in a table is inserted, updated, or deleted.
+* An (implied) row in a view is inserted, updated, or deleted.
+* A referential integrity rule on a related table causes a cascading change (i.e. delete or set null) to the triggered table. 
+* A trigger on an unrelated table or view is invoked - and that trigger changes rows in the triggered table.
+
+If no rows are changed, a trigger defined FOR EACH ROW is not run, while a trigger defined FOR EACH STATEMENT is still run. To prevent the latter from doing anything when this happens, add a suitable WHEN check.
+
+[[trigger.examples]]
+=== Trigger Examples
+
+This section uses a set of simple sample tables to illustrate general trigger usage.
+
+==== Sample Tables
+
+.Sample Tables
+[source,sql]
+....
+CREATE TABLE cust_balance
+( cust# INTEGER NOT NULL
+                GENERATED ALWAYS AS IDENTITY
+, status CHAR(2) NOT NULL
+, balance DECIMAL(18,2) NOT NULL
+, num_trans INTEGER NOT NULL
+, cur_ts TIMESTAMP NOT NULL
+, PRIMARY KEY (cust#));
+
+-- Every state of a row in the balance table will be recorded in the history table.
+CREATE TABLE cust_history
+( cust# INTEGER NOT NULL
+, trans# INTEGER NOT NULL
+, balance DECIMAL(18,2) NOT NULL
+, bgn_ts TIMESTAMP NOT NULL
+, end_ts TIMESTAMP NOT NULL
+, PRIMARY KEY (cust#, bgn_ts));
+
+-- Every valid change to the balance table will be recorded in the transaction table.
+CREATE TABLE cust_trans
+( min_cust# INTEGER
+, max_cust# INTEGER
+, rows_tot INTEGER NOT NULL
+, change_val DECIMAL(18,2)
+, change_type CHAR(1) NOT NULL
+, cur_ts TIMESTAMP NOT NULL
+, PRIMARY KEY (cur_ts));
+....
+
+=== Before Row Triggers - Set Values
+
+The first trigger below overrides whatever the user enters during the insert, and before the row is inserted, sets both the cur-ts and number-of-trans columns to their correct values:
+
+.Before insert trigger - set values
+[source,sql]
+....
+CREATE TRIGGER cust_bal_ins1
+NO CASCADE BEFORE INSERT
+ON cust_balance
+REFERENCING NEW AS nnn
+FOR EACH ROW
+MODE Db2SQL
+SET nnn.cur_ts = CURRENT TIMESTAMP
+  , nnn.num_trans = 1;
+....
+
+The following trigger does the same before an update:
+
+.Before update trigger - set values
+[source,sql]
+....
+CREATE TRIGGER cust_bal_upd1
+NO CASCADE BEFORE UPDATE
+ON cust_balance
+REFERENCING NEW AS nnn
+            OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+SET nnn.cur_ts = CURRENT TIMESTAMP
+  , nnn.num_trans = ooo.num_trans + 1;
+....
+
+=== Before Row Trigger - Signal Error
+
+The next trigger will flag an error (and thus fail the update) if the customer balance is reduced by too large a value:
+
+.Before Trigger - flag error
+[source,sql]
+....
+CREATE TRIGGER cust_bal_upd2
+NO CASCADE BEFORE UPDATE OF balance
+ON cust_balance
+REFERENCING NEW AS nnn
+            OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+WHEN (ooo.balance - nnn.balance > 1000)
+   SIGNAL SQLSTATE VALUE '71001'
+   SET MESSAGE_TEXT = 'Cannot withdraw > 1000';
+....
+
+=== After Row Triggers - Record Data States
+
+The three triggers in this section record the state of the data in the customer table. The first is invoked after each insert. It records the new data in the customer-history table:
+
+.After Trigger - record insert
+[source,sql]
+....
+CREATE TRIGGER cust_his_ins1
+AFTER INSERT ON cust_balance
+REFERENCING NEW AS nnn
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO cust_history 
+VALUES (nnn.cust#
+      , nnn.num_trans
+      , nnn.balance
+      , nnn.cur_ts
+      , '9999-12-31-24.00.00');
+....
+
+The next trigger is invoked after every update of a row in the customer table. It first runs an update (of the old history row), and then does an insert. Because this trigger uses a compound SQL statement, it cannot use the semi-colon as the statement delimiter:
+
+.After Trigger - record update
+[source,sql]
+....
+CREATE TRIGGER cust_his_upd1
+AFTER UPDATE ON cust_balance
+REFERENCING OLD AS ooo
+            NEW AS nnn
+FOR EACH ROW
+MODE Db2SQL
+BEGIN ATOMIC
+  UPDATE cust_history
+  SET end_ts = CURRENT TIMESTAMP
+  WHERE cust# = ooo.cust#
+  AND bgn_ts = ooo.cur_ts;
+  INSERT INTO cust_history 
+  VALUES (nnn.cust#
+        , nnn.num_trans
+        , nnn.balance
+        , nnn.cur_ts
+        , '9999-12-31-24.00.00');
+END
+....
+
+*Notes*
+
+* The above trigger relies on the fact that the customer-number cannot change (note: it is generated always) to link the two rows in the history table together. In other words, the old row will always have the same customer-number as the new row.
+* The above also trigger relies on the presence of the cust_bal_upd1 before trigger (see <<trigger.examples>>) to set the nnn.cur_ts value to the current timestamp.
+
+The final trigger records a delete by doing an update to the history table:
+
+.After Trigger - record delete
+[source,sql]
+....
+CREATE TRIGGER cust_his_del1
+AFTER DELETE ON cust_balance
+REFERENCING OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+UPDATE cust_history
+SET end_ts = CURRENT TIMESTAMP
+WHERE cust# = ooo.cust#
+AND bgn_ts = ooo.cur_ts;
+....
+
+=== After Statement Triggers - Record Changes
+
+The following three triggers record every type of change (i.e. insert, update, or delete) to any row, or set of rows (including an empty set) in the customer table. They all run an insert that records the type and number of rows changed:
+
+.After Trigger - record insert
+[source,sql]
+....
+CREATE TRIGGER trans_his_ins1
+AFTER INSERT ON cust_balance
+REFERENCING NEW_TABLE AS newtab
+FOR EACH STATEMENT
+MODE Db2SQL
+INSERT INTO cust_trans
+  SELECT MIN(cust#)
+  , MAX(cust#)
+  , COUNT(*)
+  , SUM(balance)
+  , 'I'
+  , CURRENT TIMESTAMP
+FROM newtab;
+....
+
+.After Trigger - record update
+[source,sql]
+....
+CREATE TRIGGER trans_his_upd1
+AFTER UPDATE ON cust_balance
+REFERENCING OLD_TABLE AS oldtab
+NEW_TABLE AS newtab
+FOR EACH STATEMENT
+MODE Db2SQL
+INSERT INTO cust_trans
+  SELECT MIN(nt.cust#)
+       , MAX(nt.cust#)
+       , COUNT(*)
+       , SUM(nt.balance - ot.balance)
+       , 'U'
+       , CURRENT TIMESTAMP
+  FROM oldtab ot
+     , newtab nt
+  WHERE ot.cust# = nt.cust#;
+....
+
+.After Trigger - record delete
+[source,sql]
+....
+CREATE TRIGGER trans_his_del1
+AFTER DELETE ON cust_balance
+REFERENCING OLD_TABLE AS oldtab
+FOR EACH STATEMENT
+MODE Db2SQL
+INSERT INTO cust_trans
+  SELECT MIN(cust#)
+       , MAX(cust#)
+       , COUNT(*)
+       , SUM(balance)
+       , 'D'
+       , CURRENT TIMESTAMP
+  FROM oldtab;
+....
+
+*Notes*
+
+* If the DML statement changes no rows, the OLD or NEW table referenced by the trigger will be empty, but still exist, and a SELECT COUNT(*) on the (empty) table will return a zero, which will then be inserted. 
+* Any DML statements that failed (e.g. stopped by the before trigger), or that were subsequently rolled back, will not be recorded in the transaction table.
+
+==== Examples of Usage
+
+The following DML statements were run against the customer table:
+
+.Sample DML statements
+[source,sql]
+....
+INSERT INTO cust_balance (status, balance) VALUES ('C',123.45);
+INSERT INTO cust_balance (status, balance) VALUES ('C',000.00);
+INSERT INTO cust_balance (status, balance) VALUES ('D', -1.00);
+UPDATE cust_balance
+  SET balance = balance + 123
+WHERE cust# <= 2;
+UPDATE cust_balance
+  SET balance = balance * -1
+WHERE cust# = -1;
+UPDATE cust_balance
+  SET balance = balance - 123
+WHERE cust# = 1;
+DELETE FROM cust_balance
+WHERE cust# = 3;
+....
+
+=== Tables After DML
+
+At the end of the above, the three tables had the following data:
+
+.Customer-balance table rows
+|===
+|CUST#|STATUS|BALANCE|NUM_TRANS|CUR_TS
+|1    |C     |123.45 |3        |2005-05-31-19.58.46.096000
+|2    |C     |123.00 |2        |2005-05-31-19.58.46.034000
+|===
+
+.Customer-history table rows
+|===
+|CUST#| TRANS#| BALANCE| BGN_TS                     | END_TS
+|1    | 1     | 123.45 | 2005-05-31-19.58.45.971000 | 2005-05-31-19.58.46.034000
+|1    | 2     | 246.45 | 2005-05-31-19.58.46.034000 | 2005-05-31-19.58.46.096000
+|1    | 3     | 123.45 | 2005-05-31-19.58.46.096000 | 9999-12-31-24.00.00.000000
+|2    | 1     | 0.00   | 2005-05-31-19.58.45.987000 | 2005-05-31-19.58.46.034000
+|2    | 2     | 123.00 | 2005-05-31-19.58.46.034000 | 9999-12-31-24.00.00.000000
+|3    | 1     | -1.00  | 2005-05-31-19.58.46.003000 |2005-05-31-19.58.46.096003
+|===
+
+.Customer-transaction table rows
+|===
+|MIN_CUST#| MAX_CUST#| ROWS |CHANGE_VAL| CHANGE_TYPE |CUR_TS
+|1        | 1        | 1    | 123.45   | I           | 2005-05-31-19.58.45.971000
+|2        | 2        | 1    | 0.00     | I           | 2005-05-31-19.58.45.987000
+|3        | 3        | 1    | -1.00    | I           | 2005-05-31-19.58.46.003000
+|1        | 2        | 2    | 246.00   | U           | 2005-05-31-19.58.46.034000
+|-        | -        | 0    | -        | U           | 2005-05-31-19.58.46.065000
+|1        | 1        | 1    | -123.00  | U           | 2005-05-31-19.58.46.096000
+|3        | 3        | 1    | 1.00     | D           | 2005-05-31-19.58.46.096003
+|===
+
+

@@ -1,0 +1,2002 @@
+[[join.chapter]]
+== Joins
+
+A join is used to relate sets of rows in two or more logical tables. The tables are always joined on a row-by-row basis using whatever join criteria are provided in the query. The result of a join is always a new, albeit possibly empty, set of rows. In a join, the matching rows are joined side-by-side to make the result table. By contrast, in a union (see <<union.chapter>>) the matching rows are joined (in a sense) one-above-the-other to make the result table.
+
+=== Why Joins Matter
+
+The most important data in a relational database is not that stored in the individual rows. Rather, it is the implied relationships between sets of related rows. For example, individual rows in an EMPLOYEE table may contain the employee ID and salary - both of which are very important data items. However, it is the set of all rows in the same table that gives the gross wages for the whole company, and it is the (implied) relationship between the EMPLOYEE and DEPARTMENT tables that enables one to get a breakdown of employees by department and/or division. Joins are important because one uses them to tease the relationships out of the database. They are also important because they are very easy to get wrong.
+
+=== Sample Views
+
+.Sample Views used in Join Examples
+[source,sql]
+....
+CREATE VIEW staff_v1 AS
+SELECT id
+     , name
+FROM staff
+WHERE id BETWEEN 10 AND 30;
+
+CREATE VIEW staff_v2 AS
+SELECT id
+     , job
+FROM staff
+WHERE id BETWEEN 20 AND 50
+  UNION ALL
+SELECT id
+    , 'Clerk' AS job
+FROM staff
+WHERE id = 30;
+....
+
+_STAFF_V1_
+
+|===
+|ID|NAME 
+|10|Sanders
+|20|Pernal
+|30|Marenghi
+|===
+
+_STAFF_V2_
+
+|===
+|ID|JOB 
+|20|Sales
+|30|Clerk
+|30|Mgr
+|40|Sales
+|50|Mgr
+|===
+
+Observe that the above two views have the following characteristics:
+
+* Both views contain rows that have no corresponding ID in the other view.
+* In the V2 view, there are two rows for ID of 30.
+
+=== Join Syntax
+
+Db2 SQL comes with two quite different ways to represent a join. Both syntax styles will be shown throughout this section though, in truth, ne of the styles is usually the better, depending upon the situation. + 
+The first style, which is only really suitable for inner joins, involves listing the tables to be joined in a FROM statement. A comma separates each table name. A subsequent WHERE statement constrains the join.
+
+Here are some sample joins:
+
+.Sample two-table join
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , v2.job
+FROM staff_v1 v1
+   , staff_v2 v2
+WHERE v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_JOIN ANSWER_
+
+|===
+|ID|NAME    |JOB
+|20|Pernal  |Sales
+|30|Marenghi|Clerk
+|30|Marenghi|Mgr
+|===
+
+.Sample three-table join
+[source,sql]
+....
+SELECT v1.id
+     , v2.job
+     , v3.name
+FROM staff_v1 v1
+   , staff_v2 v2
+   , staff_v1 v3
+WHERE v1.id = v2.id AND 
+      v2.id = v3.id AND
+      v3.name LIKE 'M%'
+ORDER BY v1.name
+       , v2.job;
+....
+
+_JOIN ANSWER_
+
+|===
+|ID|JOB  |NAME
+|30|Clerk|Marenghi
+|30|Mgr  |Marenghi
+|===
+
+The second join style, which is suitable for both inner and outer joins, involves joining the tables two at a time, listing the type of join as one goes. ON conditions constrain the join (note: there must be at least one), while WHERE conditions are applied after the join and constrain the result.
+
+The following sample joins are logically equivalent to the two given above:
+
+.Sample two-table inner join
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , v2.job
+FROM staff_v1 v1
+INNER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_JOIN ANSWER_
+
+|===
+|ID|NAME    |JOB
+|20|Pernal  |Sales
+|30|Marenghi|Clerk
+|30|Marenghi|Mgr|
+|===
+
+.Sample three-table inner join
+[source,sql]
+....
+SELECT v1.id
+     , v2.job
+     , v3.name
+FROM staff_v1 v1 
+JOIN staff_v2 v2
+ON v1.id = v2.id
+JOIN staff_v1 v3
+ON v2.id = v3.id
+WHERE v3.name LIKE 'M%'
+ORDER BY v1.name
+       , v2.job;
+....
+
+_STAFF_V1_
+
+|===
+|ID|NAME
+|10|Sanders
+|20|Pernal 
+|30|Marenghi
+|===
+
+_JOIN ANSWER_
+
+|===
+|ID|JOB  |NAME
+|30|Clerk|Marenghi
+|30|Mgr  |Marenghi
+|===
+
+_STAFF_V2_
+
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+
+==== Query Processing Sequence
+
+The following table lists the sequence with which various parts of a query are executed:
+
+.Query Processing Sequence
+[source,sql]
+....
+FROM clause
+JOIN ON clause
+WHERE clause
+GROUP BY and aggregate
+HAVING clause
+SELECT list
+ORDER BY clause
+FETCH FIRST
+....
+
+Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join - see figure 633.
+
+[[on-vs-where]]
+==== ON vs. WHERE
+
+A join written using the second syntax style shown above can have either, or both, ON and WHERE checks. These two types of check work quite differently:
+
+* *WHERE* checks are used to filter rows, and to define the nature of the join. Only those rows that match all WHERE checks are returned.
+* *ON* checks define the nature of the join. They are used to categorize rows as either joined or not-joined, rather than to exclude rows from the answer-set, though they may do this in some situations.
+
+Let illustrate this difference with a simple, if slightly silly, left outer join:
+
+.Sample Views used in Join Examples
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON 1 = 1
+AND v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |- |-
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+Now lets replace the second ON check with a WHERE check:
+
+.Sample Views used in Join Examples
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON 1 = 1
+WHERE v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+In the first example above, all rows were retrieved from the V1 view.
+Then, for each row, the two ON checks were used to find matching rows in the V2 view. In the second query, all rows were again retrieved from the V1 view. Then each V1 row was joined to every row in the V2 view using the (silly) ON check. Finally, the WHERE check (which is always done after the join) was applied to filter out all pairs that do not match on ID. Can an ON check ever exclude rows? The answer is complicated:
+
+* In an inner join, an ON check can exclude rows because it is used to define the nature of the join and, by definition, in an inner join only matching rows are returned.
+* In a partial outer join, an ON check on the originating table does not exclude rows. It simply categorizes each row as participating in the join or not.
+* In a partial outer join, an ON check on the table to be joined to can exclude rows because if the row fails the test, it does not match the join.
+* In a full outer join, an ON check never excludes rows. It simply categorizes them as matching the join or not.
+* Each of the above principles will be demonstrated as we look at the different types of join.
+
+[[join.types]]
+==== Join Types
+
+A generic join matches one row with another to create a new compound row. Joins can be categorized by the nature of the match between the joined rows. In this section we shall discuss each join type and how to code it in SQL.
+
+===== Inner Join
+
+An inner-join is another name for a standard join in which two sets of columns are joined by matching those rows that have equal data values.
+Most of the joins that one writes will probably be of this kind and, assuming that suitable indexes have been created, they will almost always be very efficient.
+
+_STAFF_V1_
+
+|===
+|ID|NAME
+|10|Sanders
+|20|Pernal
+|30|Marenghi
+|===
+
+_STAFF_V2_
+
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr|
+|===
+
+===== Join on ID
+
+_INNER-JOIN ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+.Inner Join SQL (1 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+   , staff_v2 v2
+WHERE v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+.Inner Join SQL (2 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+INNER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+[[on.and.where.usage]]
+==== ON and WHERE Usage
+
+In an inner join only, an ON and a WHERE check work much the same way. Both define the nature of the join, and because in an inner join, only matching rows are returned, both act to exclude all rows that do not match the join. Below is an inner join that uses an ON check to exclude managers:
+
+.Inner join, using ON check
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+INNER JOIN staff_v2 v2
+ON  v1.id  = v2.id 
+AND v2.job <> 'Mgr'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|===
+
+Here is the same query written using a WHERE check
+
+.Inner join, using WHERE check
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+INNER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v2.job <> 'Mgr'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|===
+
+[[left.outer.join]]
+==== Left Outer Join
+
+A left outer join is the same as saying that I want all of the rows in the first table listed, plus any matching rows in the second table:
+
+pass:[_STAFF_V1_]
+
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi
+|===
+
+pass:[_STAFF_V2_]
+
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+
+_LEFT-OUTER-JOIN ANSWER_
+
+.Example of Left Outer Join
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |- |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+.Left Outer Join SQL (1 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY 1,4;
+....
+
+It is possible to code a left outer join using the standard inner join syntax (with commas between tables), but it is a lot of work:
+
+.Left Outer Join SQL (2 of 2)
+[source,sql]
+....
+SELECT v1.*                                   -- (1)
+     , v2.*
+FROM staff_v1 v1
+   , staff_v2 v2
+WHERE v1.id = v2.id
+UNION
+SELECT v1.*                                   -- (2)
+     , CAST(NULL AS SMALLINT) AS id
+     , CAST(NULL AS CHAR(5)) AS job
+FROM staff_v1 v1
+WHERE v1.id NOT IN
+      (SELECT id FROM staff_v2)
+ORDER BY 1,4;
+....
+
+*(1)* This join gets all rows in STAFF_V1 that match rows in STAFF_V2.
+*(2)* This query gets all the rows in STAFF_V1 with no matching rows in STAFF_V2.
+
+==== ON and WHERE Usage
+
+In any type of join, a WHERE check works as if the join is an inner join. If no row matches, then no row is returned, regardless of what table the predicate refers to. By contrast, in a left or right outer join, an ON check works differently, depending on what table field it refers to:
+
+* If it refers to a field in the table being joined to, it determines whether the related row matches the join or not.
+* If it refers to a field in the table being joined from, it determines whether the related row finds a match or not. Regardless, the row will be returned.
+
+In the next example, those rows in the table being joined to (i.e. the V2 view) that match on ID, and that are not for a manager are joined to:
+
+.ON check on table being joined to
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON  v1.id  =  v2.id
+AND v2.job <> 'Mgr'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk|
+|===
+
+If we rewrite the above query using a WHERE check we will lose a row (of output) because the check is applied after the join is done, and a null JOB does not match:
+
+.WHERE check on table being joined to (1 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v2.job <> 'Mgr'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|===
+
+We could make the WHERE equivalent to the ON, if we also checked for nulls:
+
+.WHERE check on table being joined to (2 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE (v2.job <> 'Mgr' OR
+       v2.job IS NULL)
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID| NAME|ID| JOB
+|10| Sanders||
+|20| Pernal|20| Sales
+|30|Marenghi| 30| Clerk|
+|===
+
+In the next example, those rows in the table being joined from (i.e. the V1 view) that match on ID and have a NAME > 'N' participate in the join. Note however that V1 rows that do not participate in the join (i.e. ID = 30) are still returned:
+
+.ON check on table being joined from
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+AND v1.name > 'N'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |- |-
+|20|Pernal  |20|Sales
+|30|Marenghi|- |-
+|===
+
+If we rewrite the above query using a WHERE check (on NAME) we will lose a row because now the check excludes rows from the answer-set, rather than from participating in the join:
+
+.WHERE check on table being joined from
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.name > 'N'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME   |ID|JOB
+|10|Sanders|  |
+|20|Pernal |20|Sales
+|===
+
+Unlike in the previous example, there is no way to alter the above WHERE check to make it logically equivalent to the prior ON check. The ON and the WHERE are applied at different times and for different purposes, and thus do completely different things.
+
+==== Right Outer Join
+
+A right outer join is the inverse of a left outer join. One gets every row in the second table listed, plus any matching rows in the first table:
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi|
+|===
+
+pass:[_STAFF_V2_]
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+
+_RIGHT-OUTER-JOIN ANSWER_
+.Example of Right Outer Join
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+.Right Outer Join SQL (1 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+RIGHT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|- |        |40|Sales
+|- |        |50|Mgr
+|===
+
+It is also possible to code a right outer join using the standard inner join syntax:
+
+.Right Outer Join SQL (2 of 2)
+[source,sql]
+....
+SELECT v1.*
+     , v2.*
+FROM staff_v1 v1
+   , staff_v2 v2
+WHERE v1.id = v2.id
+UNION
+SELECT CAST(NULL AS SMALLINT) AS id
+     , CAST(NULL AS VARCHAR(9)) AS name
+     , v2.*
+FROM staff_v2 v2
+WHERE v2.id NOT IN
+      (SELECT id FROM staff_v1)
+ORDER BY 3, 4;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+===== ON and WHERE Usage
+
+The rules for ON and WHERE usage are the same in a right outer join as they are for a left outer join (see <<left.outer.join>>), except that the relevant tables are reversed.
+
+[[full.outer.joins]]
+==== Full Outer Joins
+
+A full outer join occurs when all of the matching rows in two tables are joined, and there is also returned one copy of each non-matching row in both tables.
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi
+|===
+pass:[_STAFF_V2_]
+
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr|
+|===
+
+_FULL-OUTER-JOIN ANSWER_
+.Example of Full Outer Join
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+.Full Outer Join SQL
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|´ |        |40|Sales
+|  |        |50|Mgr
+|===
+
+Here is the same done using the standard inner join syntax:
+
+.Full Outer Join SQL
+[source,sql]
+....
+SELECT v1.*
+     , v2.*
+FROM staff_v1 v1
+   , staff_v2 v2
+WHERE v1.id = v2.id
+UNION
+SELECT v1.*
+     , CAST(NULL AS SMALLINT) AS id
+     , CAST(NULL AS CHAR(5)) AS job
+FROM staff_v1 v1
+WHERE v1.id NOT IN
+      (SELECT id FROM staff_v2)
+UNION
+SELECT CAST(NULL AS SMALLINT) AS id
+     , CAST(NULL AS VARCHAR(9)) AS name
+     , v2.*
+FROM staff_v2 v2
+WHERE v2.id NOT IN
+      (SELECT id FROM staff_v1)
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+The above is reasonably hard to understand when two tables are involved, and it goes down hill fast as more tables are joined. Avoid.
+
+===== ON and WHERE Usage
+
+In a full outer join, an ON check is quite unlike a WHERE check in that it never results in a row being excluded from the answer set. All it does is categorize the input row as being either matching or non-matching. For example, in the following full outer join, the ON check joins those rows with equal key values:
+
+.Full Outer Join, match on keys
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+In the next example, we have deemed that only those IDs that match, and that also have a value greater than 20, are a true match:
+
+.Full Outer Join, match on keys > 20
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+AND v1.id > 20
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |  |
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |20|Sales
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+Observe how in the above statement we added a predicate, and we got more rows! This is because in an outer join an ON predicate never removes rows. It simply categorizes them as being either matching or non-matching. If they match, it joins them. If they don't, it passes them through.
+
+In the next example, nothing matches. Consequently, every row is returned individually. This query is logically similar to doing a UNION ALL on the two views:
+
+.Full Outer Join, match on keys (no rows match)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id 
+AND +1 = -1
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |  |
+|30|Marenghi|  |
+|  |        |20|Sales
+|  |        |30|Clerk
+|  |        |30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+*ON* checks are somewhat like *WHERE* checks in that they have two purposes. Within a table, they are used to categorize rows as being either matching or non-matching. Between tables, they are used to define the fields that are to be joined on. In the prior example, the first *ON* check defined the fields to join on, while the second join identified those fields that matched the join. Because nothing matched (due to the second predicate), everything fell into the "outer join" category. This means that we can remove the first ON check without altering the answer set:
+
+.Full Outer Join, don't match on keys (no rows match)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON +1 = -1
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |  |
+|30|Marenghi|  |
+|  |        |20|Sales
+|  |        |30|Clerk
+|  |        |30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+What happens if everything matches and we don't identify the join fields? The result in a Cartesian Product:
+
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON +1 <> -1
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi
+|===
+
+pass:[_STAFF_V2_]
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+
+_ANSWER_
+.Full Outer Join, don't match on keys (all rows match)
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |20|Sales
+|10|Sanders |30|Clerk
+|10|Sanders |30|Mgr
+|10|Sanders |40|Sales
+|10|Sanders |50|Mgr
+|20|Pernal  |20|Sales
+|20|Pernal  |30|Clerk
+|20|Pernal  |30|Mgr
+|20|Pernal  |40|Sales
+|20|Pernal  |50|Mgr
+|30|Marenghi|20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|30|Marenghi|40|Sales
+|30|Marenghi|50|Mgr
+|===
+
+In an outer join, WHERE predicates behave as if they were written for an inner join. In particular, they always do the following:
+
+* *WHERE* predicates defining join fields enforce an inner join on those fields.
+* *WHERE* predicates on non-join fields are applied after the join, which means that when they are used on not-null fields, they negate the outer join.
+
+Here is an example of a WHERE join predicate turning an outer join into an inner join:
+
+.Full Outer Join, turned into an inner join by WHERE
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.id = v2.id
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|===
+
+To illustrate some of the complications that WHERE checks can cause, imagine that we want to do a FULL OUTER JOIN on our two test views (see below), limiting the answer to those rows where the "V1 ID" field is less than 30. There are several ways to express this query, each giving a different answer:
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders
+|20|Pernal
+|30|Marenghi
+|===
+
+pass:[_STAFF_V2_]
+
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+
+_OUTER-JOIN CRITERIA_ 
+.Outer join V1.ID < 30, sample data
+....
+V1.ID = V2.ID V1.ID < 30
+
+ANSWER ???, *_DEPENDS_*
+....
+
+In our first example, the "V1.ID < 30" predicate is applied after the join, which effectively eliminates all "V2" rows that don't match (because their "V1.ID" value is null):
+
+.Outer join V1.ID < 30, check applied in WHERE (after join)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.id < 30
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |ID|JOB
+|10|Sanders|  |
+|20|Pernal |20|Sales|
+|===
+
+In the next example the "V1.ID < 30" check is done during the outer join where it does not any eliminate rows, but rather limits those that match in the two views:
+
+.Outer join V1.ID < 30, check applied in ON (during join)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL JOIN staff_v2 v2
+ON v1.id = v2.id
+AND v1.id < 30
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|  |
+|  |        |30|Clerk
+|  |        |30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+Imagine that what really wanted to have the "V1.ID < 30" check to only apply to those rows in the "V1" table. Then one has to apply the check before the join, which requires the use of a nested-table expression:
+
+.Outer join V1.ID < 30, check applied in WHERE (before join)
+[source,sql]
+....
+SELECT *
+FROM (SELECT *
+      FROM staff_v1
+      WHERE id < 30) AS v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |ID|JOB
+|10|Sanders|  |
+|20|Pernal |20|Sales
+|  |       |30|Clerk
+|  |       |30|Mgr
+|  |       |40|Sales
+|  |       |50|Mgr
+|===
+
+Observe how in the above query we still got a row back with an ID of 30, but it came from the "V2" table. This makes sense, because the WHERE condition had been applied before we got to this table. There are several incorrect ways to answer the above question. In the first example, we shall keep all non-matching V2 rows by allowing to pass any null V1.ID values:
+
+.Outer join V1.ID < 30, (gives wrong answer - see text)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.id < 30
+OR v1.id IS NULL
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |ID|JOB
+|10|Sanders|  |
+|20|Pernal |20|Sales
+|  |       |40|Sales
+|  |       |50|Mgr
+|===
+
+There are two problems with the above query: First, it is only appropriate to use when the V1.ID field is defined as not null, which it is in this case. Second, we lost the row in the V2 table where the ID equaled 30. We can fix this latter problem, by adding another check, but the answer is still wrong:
+
+.Outer join V1.ID < 30, (gives wrong answer - see text)
+[source,sql]
+....
+SELECT  *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.id < 30
+OR v1.id = v2.id
+OR v1.id IS NULL
+ORDER BY 1,3,4;
+....
+
+_ANSWER_
+
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |  |
+|20|Pernal  |20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|  |        |40|Sales
+|  |        |50|Mgr
+|===
+
+The last two checks in the above query ensure that every V2 row is returned. But they also have the affect of returning the NAME field from the V1 table whenever there is a match. Given our intentions, this should not happen. + 
+*SUMMARY*: Query WHERE conditions are applied after the join. When used in an outer join, this means that they applied to all rows from all tables. In effect, this means that any WHERE conditions in a full outer join will, in most cases, turn it into a form of inner join.
+
+==== Cartesian Product
+
+A Cartesian Product is a form of inner join, where the join predicates either do not exist, or where they do a poor job of matching the keys in the joined tables.
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi
+|===
+
+pass:[_STAFF_V2_]
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+
+.Example of Cartesian Product
+|===
+|ID|NAME    |ID|JOB
+|10|Sanders |20|Sales
+|10|Sanders |30|Clerk
+|10|Sanders |30|Mgr
+|10|Sanders |40|Sales
+|10|Sanders |50|Mgr
+|20|Pernal  |20|Sales
+|20|Pernal  |30|Clerk
+|20|Pernal  |30|Mgr
+|20|Pernal  |40|Sales
+|20|Pernal  |50|Mgr
+|30|Marenghi|20|Sales
+|30|Marenghi|30|Clerk
+|30|Marenghi|30|Mgr
+|30|Marenghi|40|Sales
+|30|Marenghi|50|Mgr
+|===
+
+Writing a Cartesian Product is simplicity itself. One simply omits the WHERE conditions:
+
+.Cartesian Product SQL (1 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+   , staff_v2 v2
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+One way to reduce the likelihood of writing a full Cartesian Product is to always use the inner/outer join style. With this syntax, an ON predicate is always required. There is however no guarantee that the ON will do any good. Witness the following example:
+
+.Cartesian Product SQL (2 of 2)
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+INNER JOIN staff_v2 v2
+ON 'A' <> 'B'
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+A Cartesian Product is almost always the wrong result. There are very few business situations where it makes sense to use the kind of SQL shown above. The good news is that few people ever make the mistake of writing the above. But partial Cartesian Products are very common, and they are also almost always incorrect. Here is an example:
+
+.Partial Cartesian Product SQL
+[source,sql]
+....
+SELECT v2a.id
+     , v2a.job
+     , v2b.id
+FROM staff_v2 v2a
+   , staff_v2 v2b
+WHERE v2a.job = v2b.job
+AND   v2a.id < 40
+ORDER BY v2a.id
+       , v2b.id;
+....
+
+_ANSWER_
+|===
+|ID| JOB|ID
+|20| Sales| 20
+|20| Sales| 40
+|30| Clerk| 30
+|30|Mgr|30
+|30| Mgr|50|
+|===
+
+In the above example we joined the two views by JOB, which is not a unique key. The result was that for each JOB value, we got a mini Cartesian Product. +
+Cartesian Products are at their most insidious when the result of the (invalid) join is feed into a GROUP BY or DISTINCT statement that removes all of the duplicate rows. Below is an example where the only clue that things are wrong is that the count is incorrect:
+
+.Partial Cartesian Product SQL, with GROUP BY
+[source,sql]
+....
+SELECT v2.job
+     , COUNT(*) AS #rows
+FROM staff_v1 v1
+   , staff_v2 v2
+GROUP BY v2.job
+ORDER BY #rows
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|JOB  |#ROWS
+|Clerk|3
+|Mgr  |6
+|Sales|6
+|===
+
+To really mess up with a Cartesian Product you may have to join more than one table. Note however that big tables are not required. For example, a Cartesian Product of five 100-row tables will result in 10,000,000,000 rows being returned. +
+
+TIP: A good rule of thumb to use when writing a join is that for all of the tables (except one) there should be equal conditions on all of the fields that make up the various unique keys. If this is not true then it is probable that some kind Cartesian Product is being done and the answer may be wrong.
+
+==== Join Notes
+
+[[using.the.coalesce.function]]
+===== Using the COALESCE Function
+
+If you don't like working with nulls, but you need to do outer joins, then life is tough. In an outer join, fields in non-matching rows are given null values as placeholders. Fortunately, these nulls can be eliminated using the COALESCE function. The COALESCE function can be used to combine multiple fields into one, and/or to eliminate null values where they occur. The result of the COALESCE is always the first non-null value encountered. In the following example, the two ID fields are combined, and any null NAME values are replaced with a question mark.
+
+.Use of COALESCE function in outer join
+[source,sql]
+....
+SELECT COALESCE(v1.id, v2.id) AS id
+     , COALESCE(v1.name, '?') AS name
+     , v2.job
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |JOB
+|10|Sanders |
+|20|Pernal  |Sales
+|30|Marenghi|Clerk
+|30|Marenghi|Mgr
+|40|?       |Sales
+|50|?       |Mgr
+|===
+
+===== Listing non-matching rows only
+
+Imagine that we wanted to do an outer join on our two test views, only getting those rows that do not match. This is a surprisingly hard query to write.
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi|
+|===
+pass:[_STAFF_V2_]
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr
+|===
+_NON-MATCHING OUTER-JOIN ANSWER_
+
+.Example of outer join, only getting the non-matching rows
+|===
+|ID|NAME   |ID|JOB
+|10|Sanders|  |
+|  |       |40|Sales
+|  |       |50|Mgr
+|===
+
+
+One way to express the above is to use the standard inner-join syntax:
+
+.Outer Join SQL, getting only non-matching rows
+[source,sql]
+....
+SELECT v1.*                                    -- (1)
+     , CAST(NULL AS SMALLINT) AS id
+     , CAST(NULL AS CHAR(5)) AS job
+FROM staff_v1 v1
+WHERE v1.id NOT IN
+      (SELECT id FROM staff_v2)
+UNION
+SELECT CAST(NULL AS SMALLINT) AS id            -- (2)
+     , CAST(NULL AS VARCHAR(9)) AS name
+     , v2.*
+FROM staff_v2 v2
+WHERE v2.id NOT IN
+      (SELECT id FROM staff_v1)
+ORDER BY 1,3,4;
+....
+
+*(1)* Get all the rows in STAFF_V1 that have no matching row in STAFF_V2.
+
+*(2)* Get all the rows in STAFF_V2 that have no matching row in STAFF_V1.
+
+The above question can also be expressed using the outer-join syntax, but it requires the use of two nested-table expressions. These are used to assign a label field to each table. Only those rows where either of the two labels are null are returned:
+
+.Outer Join SQL, getting only non-matching rows
+[source,sql]
+....
+SELECT *
+FROM (SELECT v1.*
+           , 'V1' AS flag
+      FROM staff_v1 v1) AS v1
+FULL OUTER JOIN
+     (SELECT v2.*
+          , 'V2' AS flag
+      FROM staff_v2 v2) AS v2
+ON v1.id = v2.id
+WHERE v1.flag IS NULL
+OR    v2.flag IS NULL
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |FLAG|ID|JOB  |FLAG
+|10|Sanders|V1  |  |     |
+|  |       |    |40|Sales|V2 
+|  |       |    |50|Mgr  |V2
+|===
+
+Alternatively, one can use two common table expressions to do the same job:
+
+.Outer Join SQL, getting only non-matching rows
+[source,sql]
+....
+WITH v1 AS
+  (SELECT v1.*
+       , 'V1' AS flag
+   FROM staff_v1 v1)
+, v2 AS
+  (SELECT v2.*
+       , 'V2' AS flag
+   FROM staff_v2 v2)
+SELECT *
+FROM v1 v1
+FULL OUTER JOIN v2 v2
+ON v1.id = v2.id
+WHERE v1.flag IS NULL
+OR    v2.flag IS NULL
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |FLAG|ID|JOB  |FLAG
+|10|Sanders|V1  |  |     |
+|  |       |    |40|Sales|V2
+|  |       |    |50|Mgr  |V2
+|===
+
+If either or both of the input tables have a field that is defined as not null, then label fields can be discarded. For example, in our test tables, the two ID fields will suffice:
+
+.Outer Join SQL, getting only non-matching rows
+[source,sql]
+....
+SELECT *
+FROM staff_v1 v1
+FULL OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.id IS NULL
+OR v2.id IS NULL
+ORDER BY v1.id
+       , v2.id
+       , v2.job;
+....
+
+Join in SELECT Phrase
+
+Imagine that we want to get selected rows from the V1 view, and for each matching row, get the corresponding JOB from the V2 view - if there is one:
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders 
+|20|Pernal 
+|30|Marenghi
+|===
+pass:[_STAFF_V2_]
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+ |50|Mgr
+|===
+.Left outer join example
+[source,sql]
+....
+V1.ID = V2.ID V1.ID <> 30
+....
+_ANSWER_ 
+|===
+|ID| NAME|ID| JOB
+|10| Sanders||
+|20| Pernal| 20| Sales
+|===
+
+Here is one way to express the above as a query:
+
+.Outer Join done in FROM phrase of SQL
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , v2.job
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v1.id <> 30
+ORDER BY v1.id ;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |JOB
+|10|Sanders|
+|20|Pernal |Sales
+|===
+
+Below is a logically equivalent left outer join with the join placed in the SELECT phrase of the SQL statement. In this query, for each matching row in pass:[STAFF_V1], the join (i.e. the nested table expression) will be done:
+
+.Outer Join done in SELECT phrase of SQL
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , (SELECT v2.job
+        FROM staff_v2 v2
+        WHERE v1.id = v2.id) AS jb
+FROM staff_v1 v1
+WHERE v1.id <> 30
+ORDER BY v1.id;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |JB
+|10|Sanders|
+|20|Pernal |Sales
+|===
+
+Certain rules apply when using the above syntax:
+
+* The nested table expression in the SELECT is applied after all other joins and sub-queries (i.e. in the FROM section of the query) are done.
+* The nested table expression acts as a left outer join.
+* Only one column and row (at most) can be returned by the expression.
+* If no row is returned, the result is null.
+
+Given the above restrictions, the following query will fail because more than one V2 row is returned for every V1 row (for ID = 30):
+
+.Outer Join done in SELECT phrase of SQL - gets error
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , (SELECT v2.job
+        FROM staff_v2 v2
+        WHERE v1.id = v2.id) AS jb
+FROM staff_v1 v1
+ORDER BY v1.id;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |JB
+|10|Sanders|
+|20|Pernal |Sales|
+|===
+
+To make the above query work for all IDs, we have to decide which of the two matching JOB values for ID 30 we want. Let us assume that we want the maximum:
+
+.Outer Join done in SELECT phrase of SQL - fixed
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , (SELECT MAX(v2.job)
+        FROM staff_v2 v2
+        WHERE v1.id = v2.id) AS jb
+FROM staff_v1 v1
+ORDER BY v1.id;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |JB
+|10|Sanders |
+|20|Pernal  |Sales
+|30|Marenghi|Mgr
+|===
+
+The above is equivalent to the following query:
+
+.Same as prior query - using join and GROUP BY
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , MAX(v2.job) AS jb
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+GROUP BY v1.id
+       , v1.name
+ORDER BY v1.id ;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |JB
+|10|Sanders |
+|20|Pernal  |Sales
+|30|Marenghi|Mgr
+|===
+
+The above query is rather misleading because someone unfamiliar with the data may not understand why the NAME field is in the GROUP BY.
+Obviously, it is not there to remove any rows, it simply needs to be there because of the presence of the MAX function. Therefore, the preceding query is better because it is much easier to understand. It is also probably more efficient.
+
+===== CASE Usage
+
+The SELECT expression can be placed in a CASE statement if needed. To illustrate, in the following query we get the JOB from the V2 view, except when the person is a manager, in which case we get the NAME from the corresponding row in the V1 view:
+
+.Sample Views used in Join Examples
+[source,sql]
+....
+SELECT v2.id
+     , CASE
+         WHEN v2.job <> 'Mgr' THEN v2.job
+         ELSE (SELECT v1.name
+               FROM staff_v1 v1
+               WHERE v1.id = v2.id)
+      END AS j2
+FROM staff_v2 v2
+ORDER BY v2.id
+       , j2;
+....
+
+_ANSWER_
+|===
+|ID|J2
+|20|Sales
+|30|Clerk
+|30|Marenghi
+|40|Sales
+|50|-
+|===
+
+===== Multiple Columns
+
+If you want to retrieve two columns using this type of join, you need to have two independent nested table expressions:
+
+.Outer Join done in SELECT, 2 columns
+[source,sql]
+....
+SELECT v2.id
+     , v2.job
+     , (SELECT v1.name
+        FROM staff_v1 v1
+        WHERE v2.id = v1.id)
+     , (SELECT LENGTH(v1.name) AS n2
+        FROM staff_v1 v1
+        WHERE v2.id = v1.id)
+FROM staff_v2 v2
+ORDER BY v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|JOB  |NAME    |N2
+|20|Sales|Pernal  |6
+|30|Clerk|Marenghi|8
+|30|Mgr  |Marenghi|8
+|40|Sales|        |
+|50|Mgr  |        |
+|===
+
+An easier way to do the above is to write an ordinary left outer join with the joined columns in the SELECT list. To illustrate this, the next query is logically equivalent to the prior:
+
+.Outer Join done in FROM, 2 columns
+[source,sql]
+....
+SELECT v2.id
+     , v2.job
+     , v1.name
+     , LENGTH(v1.name) AS n2
+FROM staff_v2 v2
+LEFT OUTER JOIN staff_v1 v1
+ON v2.id = v1.id
+ORDER BY v2.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|JOB  |NAME    |N2
+|20|Sales|Pernal  |6
+|30|Clerk|Marenghi|8
+|30|Mgr  |Marenghi|8
+|40|Sales|        |
+|50|Mgr  |        |
+|===
+
+===== Column Functions
+
+This join style lets one easily mix and match individual rows with the results of column functions. For example, the following query returns a running SUM of the ID column:
+
+.Running total, using JOIN in SELECT
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , (SELECT SUM(x1.id)
+        FROM staff_v1 x1
+        WHERE x1.id <= v1.id
+       )AS sum_id
+FROM staff_v1 v1
+ORDER BY v1.id
+       , v2.job;
+....
+
+|===
+|ID|NAME    |SUM_ID
+|10|Sanders |10
+|20|Pernal  |30
+|30|Marenghi|60
+|===
+
+An easier way to do the same as the above is to use an OLAP function:
+
+.Running total, using OLAP function
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , SUM(id) OVER(ORDER BY id) AS sum_id
+FROM staff_v1 v1
+ORDER BY v1.id;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |SUM_ID
+|10|Sanders |10
+|20|Pernal  |30
+|30|Marenghi|60
+|===
+
+===== Predicates and Joins, a Lesson
+
+Imagine that one wants to get all of the rows in STAFF_V1, and to also join those matching rows in STAFF_V2 where the JOB begins with an 'S':
+
+pass:[_STAFF_V1_]
+|===
+|ID|NAME 
+|10|Sanders
+|20|Pernal
+|30|Marenghi
+|===
+pass:[_STAFF_V2_]
+|===
+|ID|JOB 
+|20|Sales 
+|30|Clerk 
+|30|Mgr
+|40|Sales 
+|50|Mgr|
+|===
+_OUTER-JOIN CRITERIA_
+
+.Outer join, with WHERE filter
+[source,sql]
+....
+V1.ID = V2.ID
+V2.JOB LIKE 'S%'
+....
+
+_ANSWER_
+|===
+|ID|NAME    |JOB
+|10|Sanders |
+|20|Pernal  |Sales
+|30|Marenghi|
+|===
+
+The first query below gives the wrong answer. It is wrong because the WHERE is applied after the join, so eliminating some of the rows in the pass:[STAFF_V1] table:
+
+.Outer Join, WHERE done after - wrong
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , v2.job
+FROM staff_v1 v1
+LEFT OUTER JOIN staff_v2 v2
+ON v1.id = v2.id
+WHERE v2.job LIKE 'S%'
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER (WRONG)_
+|===
+|ID|NAME  |JOB
+|20|Pernal|Sales
+|===
+
+In the next query, the WHERE is moved into a nested table expression - so it is done before the join (and against pass:[STAFF_V2] only), thus giving the correct answer:
+
+.Outer Join, WHERE done before - correct
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , v2.job
+FROM staff_v1 v1
+LEFT OUTER JOIN
+    (SELECT *
+     FROM staff_v2
+     WHERE job LIKE 'S%'
+    ) AS v2
+ON v1.id = v2.id
+ORDER BY v1.id
+       , v2.job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |JOB
+|10|Sanders |
+|20|Pernal  |Sales
+|30|Marenghi| 
+|===
+
+The next query does the join in the SELECT phrase. In this case, whatever predicates are in the nested table expression apply to pass:[STAFF_V2] only, so we get the correct answer:
+
+.Outer Join, WHERE done independently - correct
+[source,sql]
+....
+SELECT v1.id
+     , v1.name
+     , (SELECT v2.job
+        FROM staff_v2 v2
+        WHERE v1.id = v2.id
+        AND v2.job LIKE 'S%')
+FROM staff_v1 v1
+ORDER BY v1.id
+       , job;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |JOB
+|10|Sanders |
+|20|Pernal  |Sales
+|30|Marenghi|
+|===
+
+===== Joins - Things to Remember
+
+* You get nulls in an outer join, whether you want them or not, because the fields in nonmatching rows are set to null. If they bug you, use the COALESCE function to remove them. See <<using.the.coalesce.function>> for an example.
+* From a logical perspective, all WHERE conditions are applied after the join. For performance reasons, Db2 may apply some checks before the join, especially in an inner join, where doing this cannot affect the result set.
+* All WHERE conditions that join tables act as if they are doing an inner join, even when they are written in an outer join.
+* The ON checks in a full outer join never remove rows. They simply determine what rows are matching versus not (see <<on.and.where.usage>>). To eliminate rows in an outer join, one must use a WHERE condition.
+* The ON checks in a partial outer join work differently, depending on whether they are against fields in the table being joined to, or joined from (<<on.and.where.usage>>).
+* A Cartesian Product is not an outer join. It is a poorly matching inner join. By contrast, a true outer join gets both matching rows, and non-matching rows.
+* The NODENUMBER and PARTITION functions cannot be used in an outer join. These functions only work on rows in real tables.
+* When the join is defined in the SELECT part of the query (see <<on.and.where.usage>>), it is done after any other joins and/or sub-queries specified in the FROM phrase. And it acts as if it is a left outer join.
+
+==== Complex Joins
+
+When one joins multiple tables using an outer join, one must consider carefully what exactly what one wants to do, because the answer that one gets will depend upon how one writes the query. To illustrate, the following query first gets a set of rows from the employee table, and then joins (from the employee table) to both the activity and photo tables:
+
+.Join from Employee to Activity and Photo
+[source,sql]
+....
+SELECT eee.empno
+     , aaa.projno
+     , aaa.actno
+     , ppp.photo_format AS format
+FROM employee eee
+LEFT OUTER JOIN emp_act aaa
+ON eee.empno = aaa.empno
+AND aaa.emptime = 1
+AND aaa.projno LIKE 'M%1%'
+LEFT OUTER JOIN emp_photo ppp
+ON eee.empno = ppp.empno
+AND ppp.photo_format LIKE 'b%'
+WHERE eee.lastname LIKE '%A%'
+AND eee.empno <  '000170'
+AND eee.empno <> '000030'
+ORDER BY eee.empno;
+....
+
+_ANSWER_
+|===
+|EMPN O|PROJNO|ACTNO|FORMAT
+|000010|MA2110|10   |-
+|000070|-     |-    |-
+|000130|-     |-    |bitmap
+|000150|MA2112|60   |bitmap
+|000150|MA2112|180  |bitmap
+|000160|MA2113|60   |-
+|===
+
+Observe that we got photo data, even when there was no activity data. This is because both tables were joined directly from the employee table. In the next query, we will again start at the employee table, then join to the activity table, and then from the activity table join to the photo table. We will not get any photo data, if the employee has no activity:
+
+.Join from Employee to Activity, then from Activity to Photo
+[source,sql]
+....
+SELECT eee.empno
+     , aaa.projno
+     , aaa.actno
+     , ppp.photo_format AS format
+FROM employee eee
+LEFT OUTER JOIN emp_act aaa
+ON eee.empno = aaa.empno
+AND aaa.emptime = 1
+AND aaa.projno LIKE 'M%1%'
+LEFT OUTER JOIN emp_photo ppp
+ON aaa.empno = ppp.empno
+AND ppp.photo_format LIKE 'b%'
+WHERE eee.lastname LIKE '%A%'
+AND eee.empno < '000170'
+AND eee.empno <> '000030'
+ORDER BY eee.empno;
+....
+
+_ANSWER_
+|===
+|EMPNO |PROJNO|ACTNO| FORMAT
+|000010|MA2110|10   |
+|000070|-     |     |
+|000130|      |     |
+|000150|MA2112|60   |bitmap
+|000150|MA2112|180  |bitmap
+|000160|MA2113|60   |-
+|===
+
+The only difference between the above two queries is the first line of the second ON.
+
+===== Outer Join followed by Inner Join
+
+Mixing and matching inner and outer joins in the same query can cause one to get the wrong answer. To illustrate, the next query has an outer join, followed by an inner join. We are trying to do the following:
+
+* Get a list of matching employees - based on some local predicates.
+* For each employee found, list their matching activities, if any (i.e. left outer join).
+* For each activity found, only list it if its project-name contains the letter "Q" (i.e. inner join between activity and project).
+
+Below is the wrong way to write this query. It is wrong because the final inner join (between activity and project) turns the preceding outer join into an inner join. This causes an employee to not show when there are no matching projects:
+
+.Complex join - wrong
+[source,sql]
+....
+SELECT eee.workdept AS dp#
+     , eee.empno
+     , aaa.projno
+     , ppp.prstaff AS staff
+FROM 
+   (SELECT *
+    FROM employee
+    WHERE lastname LIKE '%A%'
+    AND job <> 'DESIGNER'
+    AND workdept BETWEEN 'B' AND 'E'
+   ) AS eee
+LEFT OUTER JOIN emp_act aaa
+ON aaa.empno = eee.empno
+AND aaa.emptime <= 0.5
+INNER JOIN project ppp
+ON aaa.projno = ppp.projno
+AND ppp.projname LIKE '%Q%'
+ORDER BY eee.workdept
+       , eee.empno
+       , aaa.projno;
+....
+|===
+|DP#|EMPNO |PROJNO|STAFF
+|C01|000030|IF1000|2.00
+|C01|000130|IF1000|2.00
+|===
+
+As was stated above, we really want to get all matching employees, and their related activities (projects). If an employee has no matching activates, we still want to see the employee.
+
+The next query gets the correct answer by putting the inner join between the activity and project tables in parenthesis, and then doing an outer join to the combined result:
+
+.Complex join - right
+[source,sql]
+....
+SELECT eee.workdept AS dp#
+     , eee.empno
+     , xxx.projno
+     , xxx.prstaff AS staff
+FROM
+    (SELECT *
+     FROM employee
+     WHERE lastname LIKE '%A%'
+     AND job <> 'DESIGNER'
+     AND workdept BETWEEN 'B' AND 'E'
+    ) AS eee
+LEFT OUTER JOIN 
+   (SELECT aaa.empno
+         , aaa.emptime
+         , aaa.projno
+         , ppp.prstaff
+    FROM emp_act aaa
+    INNER JOIN project ppp
+    ON aaa.projno = ppp.projno
+    AND ppp.projname LIKE '%Q%'
+   ) AS xxx
+ON xxx.empno = eee.empno 
+AND xxx.emptime <= 0.5
+ORDER BY eee.workdept
+       , eee.empno
+       , xxx.projno;
+....
+|===
+|DP#|EMPNO |PROJNO|STAFF
+|C01|000030|IF1000|2.00
+|C01|000130|IF1000|2.00
+|D21|000070|      |
+|D21|000240|      |
+|===
+
+The lesson to be learnt here is that if a subsequent inner join acts upon data in a preceding outer join, then it, in effect, turns the former into an inner join.
+
+==== Simplified Nested Table Expression
+
+The next query is the same as the prior, except that the nested-table expression has no select list, nor correlation name. In this example, any columns in tables that are inside of the nested table expression are referenced directly in the rest of the query:
+
+.Complex join - right
+[source,sql]
+....
+SELECT eee.workdept AS dp#
+     , eee.empno
+     , aaa.projno
+     , ppp.prstaff AS staff
+FROM
+    (SELECT *
+     FROM employee
+     WHERE lastname LIKE '%A%'
+     AND job <> 'DESIGNER'
+     AND workdept BETWEEN 'B' AND 'E'
+    ) AS eee
+LEFT OUTER JOIN
+    (SELECT aaa.empno
+          , aaa.emptime
+          , aaa.projno
+          , ppp.prstaff
+     FROM emp_act aaa
+     INNER JOIN project ppp
+     ON aaa.projno = ppp.projno
+     AND ppp.projname LIKE '%Q%'
+    ) AS xxx
+ON xxx.empno = eee.empno
+AND xxx.emptime <= 0.5
+ORDER BY eee.workdept
+       , eee.empno
+       , xxx.projno;
+....
+
+|===
+|DP#|EMPNO |PROJNO|STAFF
+|C01|000030|IF1000|2.00
+|C01|000130|IF1000|2.00
+|D21|000070|      |
+|D21|000240|      |
+|===
+
+
+

@@ -1,0 +1,1898 @@
+== OLAP Functions
+
+=== Introduction
+
+Online Analytical Processing (OLAP) functions enable one to sequence and rank query rows. They are especially useful when the calling program is very simple.
+
+=== The Bad Old Days
+
+To really appreciate the value of the OLAP functions, one should try to do some seemingly trivial task without them. To illustrate this point, consider the following query:
+
+.Select rows from STAFF table
+[source,sql]
+....
+SELECT s1.job
+     , s1.id
+     , s1.salary
+FROM staff s1
+WHERE s1.name LIKE '%s%'
+AND   s1.id   <    90
+ORDER BY s1.job
+       , s1.id;
+....
+
+_ANSWER_
+|===
+|JOB  | ID| SALARY
+|Clerk| 80| 43504.60
+|Mgr  | 10| 98357.50
+|Mgr  | 50| 80659.80
+|===
+
+Let us now add two fields to this query:
+
+* A running sum of the salaries selected.
+* A running count of the rows retrieved.
+
+Adding these fields is easy - when using OLAP functions:
+
+.Using OLAP functions to get additional fields
+[source,sql]
+....
+SELECT s1.job
+     , s1.id
+     , s1.salary
+     , SUM(salary) OVER(ORDER BY job, id)  AS sumsal
+     , ROW_NUMBER() OVER(ORDER BY job, id) AS r
+FROM staff s1
+WHERE s1.name LIKE '%s%'
+AND   s1.id   <    90
+ORDER BY s1.job
+       , s1.id;
+....
+
+_ANSWER_
+|===
+|JOB  | ID| SALARY  | SUMSAL   | R
+|Clerk| 80| 43504.60| 43504.60 | 1
+|Mgr  | 10| 98357.50| 141862.10| 2
+|Mgr  | 50| 80659.80| 222521.90| 3
+|===
+
+==== Write Query without OLAP Functions
+
+If one does not have OLAP functions, one can still get the required answer, but the code is quite tricky. The problem is that this seemingly simple query contains two nasty tricks:
+
+* Not all of the rows in the table are selected.
+* The output is ordered on two fields, the first of which is not unique.
+
+Below is the arguably the most elegant way to write the above query without using OLAP functions. There query has the following basic characteristics:
+
+* Define a common-table-expression with the set of matching rows.
+* Query from this common-table-expression.
+* For each row fetched, do two nested select statements. The first gets a running sum of the salaries, and the second gets a running count of the rows retrieved.
+
+Now for the code:
+
+.Running counts without OLAP functions
+[source,sql]
+....
+WITH temp1 AS
+(SELECT *
+ FROM staff s1
+ WHERE s1.name LIKE '%s%'
+ AND   s1.id   <    90
+)
+SELECT s1.job
+     , s1.id
+     , s1.salary
+     , (SELECT SUM(s2.salary)
+        FROM temp1 s2
+        WHERE (s2.job < s1.job)
+        OR    (s2.job = s1.job AND s2.id <= s1.id)
+       ) AS sumsal
+    , (SELECT COUNT(*)
+       FROM temp1 s2
+       WHERE (s2.job < s1.job)
+       OR    (s2.job = s1.job AND s2.id <= s1.id)
+      ) AS r
+FROM temp1 s1
+ORDER BY s1.job
+       , s1.id;
+....
+
+_ANSWER_
+|===
+|JOB  | ID| SALARY  | SUMSAL   | R
+|Clerk| 80| 43504.60| 43504.60 | 1
+|Mgr  | 10| 98357.50| 141862.10| 2
+|Mgr  | 50| 80659.80| 222521.90| 3
+|===
+
+==== Concepts
+
+Below are some of the basic characteristics of OLAP functions:
+
+* OLAP functions are column functions that work (only) on the set of rows that match the predicates of the query.
+* Unlike ordinarily column functions, (e.g. SUM), OLAP functions do not require that the whole answer-set be summarized. In fact, OLAP functions never change the number of rows returned by the query.
+* OLAP functions work on sets of values, but the result is always a single value.
+* OLAP functions are used to return individual rows from a table (e.g. about each staff member), along with related summary data (e.g. average salary in department).
+* OLAP functions are often applied on some set (i.e. of a moving window) of rows that is defined relative to the current row being processed. These matching rows are classified using an ORDER BY as being one of three types:
+** *Preceding* rows are those that have already been processed.
+** *Following* rows are those that have yet to be processed.
+** *Current row* is the one currently being processed.
+* The ORDER BY used in an OLAP function is not related to the ORDER BY expression used to define the output order of the final answer set.
+* OLAP functions can summarize the matching rows by a subset (i.e. partition). When this is done, it is similar to the use of a GROUP BY in an ordinary column function.
+
+Below is a query that illustrates these concepts. It gets some individual rows from the STAFF table, while using an OLAP function to calculate a running average salary within the DEPT of the current row.
+The average is calculated using one preceding row (in ID order), the current row, and two following rows:
+
+.Sample OLAP query
+[source,sql]
+....
+SELECT dept
+     , id
+     , salary
+     , DEC(AVG(salary) OVER(PARTITION BY dept
+                            ORDER BY id
+                            ROWS BETWEEN 1 PRECEDING
+                                 AND     2 FOLLOWING)
+           , 8, 2) AS avb_sal
+FROM staff
+WHERE dept IN (20, 38)
+ORDER BY dept
+       , id;
+....
+
+_ANSWER_
+|===
+|DEPT| ID | SALARY  | AVG_SAL
+|20  | 10 | 98357.50| 73344.45
+|20  | 20 | 78171.25| 63571.52
+|20  | 80 | 43504.60| 51976.20
+|20  | 190| 34252.75| 38878.67
+|38  | 30 | 77506.75| 74107.01
+|38  | 40 | 78006.00| 66318.95
+|38  | 60 | 66808.30| 56194.70
+|38  | 120| 42954.75| 48924.26
+|38  | 180| 37009.75| 39982.25
+|===
+
+_TABLE_
+
+|===
+|DEPT| ID | SALARY  | Matching?| Partition|Relation to row [38 60 66808.30 56194.70]
+|15  | 110| 42508.20|N         |-         |-
+|15  | 170| 42258.50|N         |-         |-
+|20  | 10 | 98357.50|Y         |1         |-
+|20  | 20 | 78171.25|Y         |1         |-
+|20  | 80 | 43504.60|Y         |1         |-
+|20  | 190| 34252.75|Y         |1         |-
+|38  | 30 | 77506.75|Y         |2         |Preceding row
+|38  | 40 | 78006.00|Y         |2         |Preceding row
+|38  | 60 | 66808.30|Y         |2         |Current row
+|38  | 120| 42954.75|Y         |2         |Following row
+|38  | 180| 37009.75|Y         |2         |Following row
+|42  | 90 | 38001.75|N         |-         |-
+|42  | 100| 78352.80|N         |-         |-
+|42  | 130| 40505.90|N         |-         |-
+|===
+
+Below is another query that calculates various running averages:
+
+.Sample OLAP query
+[source,sql]
+....
+SELECT dept
+     , id
+     , salary
+     , DEC(AVG(salary) OVER() ,8,2)                  AS avg1
+     , DEC(AVG(salary) OVER(PARTITION BY dept) ,8,2) AS avg2
+     , DEC(AVG(salary) OVER(PARTITION BY dept
+                            ORDER BY id
+                            ROWS UNBOUNDED PRECEDING)
+          , 8, 2)                                    AS avg3
+     , DEC(AVG(salary) OVER(PARTITION BY dept
+                            ORDER BY id
+                            ROWS BETWEEN 1 PRECEDING AND 2 FOLLOWING)
+          , 8, 2)                                    AS avg4
+FROM staff
+WHERE dept IN (15,20)
+AND   id   >  20
+ORDER BY dept
+       , id;
+....
+
+_ANSWER_
+|===
+|DEPT|ID |SALARY   |AVG1    |AVG2    |AVG3    |AVG4 
+|15  |50 |80659.80 |53281.11|60482.33|80659.80|66556.94 
+|15  |70 |76502.83 |53281.11|60482.33|78581.31|60482.33
+|15  |110|42508.20 |53281.11|60482.33|66556.94|53756.51
+|15  |170|42258.50 |53281.11|60482.33|60482.33|42383.35 
+|20  |80 |43504.60 |53281.11|38878.67|43504.60|38878.67 
+|20  |190|34252.75 |53281.11|38878.67|38878.67|38878.67
+|===
+
+* *AVG1*: An average of all matching rows
+* *AVG2*: An average of all matching rows within a department.
+* *AVG3*: An average of matching rows within a department, from the
+first matching row (ordered by ID), up to and including the current row.
+* *AVG4*: An average of matching rows within a department, starting with one preceding row (i.e. the highest, ordered by ID), the current row, and the next two following rows.
+
+==== PARTITION Expression
+
+The PARTITION BY expression, which is optional, defines the set of rows that are used in each OLAP function calculation.
+
+Below is a query that uses different partitions to average sets of rows:
+
+.PARTITION BY examples
+[source, sql]
+....
+SELECT id
+     , dept
+     , job
+     , years
+     , salary
+     , DEC(AVG(salary) OVER(PARTITION BY dept) ,7,2)      AS dpt_avg
+     , DEC(AVG(salary) OVER(PARTITION BY job) ,7,2)       AS job_avg
+     , DEC(AVG(salary) OVER(PARTITION BY years/2) ,7,2)   AS yr2_avg
+     , DEC(AVG(salary) OVER(PARTITION BY dept, job) ,7,2) AS d_j_avg
+FROM staff
+WHERE dept IN (15,20)
+AND   id   >  20
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |DEPT| JOB  |YEARS| SALARY  | DPT_AVG | JOB_AVG | YR2_AVG | D_J_AVG
+|50 |15  | Mgr  |10   | 80659.80| 60482.33| 80659.80| 80659.80| 80659.80
+|70 |15  | Sales|7    | 76502.83| 60482.33| 76502.83| 76502.83| 76502.83
+|80 |20  | Clerk|-    | 43504.60| 38878.67| 40631.01| 43504.60| 38878.67
+|110|15  | Clerk|5    | 42508.20| 60482.33| 40631.01| 42383.35| 42383.35
+|170|15  | Clerk|4    | 42258.50| 60482.33| 40631.01| 42383.35| 42383.35
+|190|20  | Clerk|8    | 34252.75| 38878.67| 40631.01| 34252.75| 38878.67
+|===
+
+[[partition-vs-group-by]]
+==== PARTITION vs. GROUP BY
+
+The PARTITION clause, when used by itself, returns a very similar result to a GROUP BY, except that like all OLAP functions, it does not remove the duplicate rows. To illustrate, below is a simple query that does a GROUP BY:
+
+.Sample query using GROUP BY
+[source, sql]
+....
+SELECT dept
+     , SUM(years) AS sum
+     , AVG(years) AS avg
+     , COUNT(*)   AS row
+FROM staff
+WHERE id    BETWEEN 40 AND 120
+AND   years IS NOT  NULL
+GROUP BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT| SUM| AVG| ROW
+|15  | 22 | 7  | 3
+|38  | 6  | 6  | 1
+|42  | 13 | 6  | 2
+|===
+
+Below is a similar query that uses a PARTITION phrase. Observe that each value calculated is the same, but duplicate rows have not been removed:
+
+.Sample query using PARTITION
+[source, sql]
+....
+SELECT dept
+     , SUM(years) OVER(PARTITION BY dept) AS sum
+     , AVG(years) OVER(PARTITION BY dept) AS avg
+     , COUNT(*)   OVER(PARTITION BY dept) AS row
+FROM staff
+WHERE id    BETWEEN 40 AND 120
+AND   years IS NOT  NULL
+ORDER BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT| SUM| AVG| ROW
+|15  | 22 | 7  | 3
+|15  | 22 | 7  | 3
+|15  | 22 | 7  | 3
+|38  | 6  | 6  | 1
+|42  | 13 | 6  | 2
+|42  | 13 | 6  | 2
+|===
+
+Below is a similar query that uses the PARTITION phrase, and then uses a DISTINCT clause to remove the duplicate rows:
+
+.Sample query using PARTITION and DISTINCT
+[source,sql]
+....
+SELECT DISTINCT dept
+     , SUM(years) OVER(PARTITION BY dept) AS sum
+     , AVG(years) OVER(PARTITION BY dept) AS avg
+     , COUNT(*)   OVER(PARTITION BY dept) AS row
+FROM staff
+WHERE id    BETWEEN 40 AND 120
+AND   years IS NOT  NULL
+ORDER BY dept;
+....
+
+_ANSWER_
+
+|===
+|DEPT| SUM| AVG| ROW
+|15  | 22 | 7  | 3
+|38  | 6  | 6  | 1
+|42  | 13 | 6  | 2
+|===
+
+NOTE: Even though the above statement gives the same answer as the prior GROUP BY example, it is not the same internally. Nor is it (probably) as efficient, and it is certainly not as easy to understand. Therefore, when in doubt, use the GROUP BY syntax.
+
+[[window.definition]]
+==== Window Definition
+
+An OLAP function works on a "window" of matching rows. This window can be defined as:
+
+* All matching rows.
+* All matching rows within a partition.
+* Some moving subset of the matching rows (within a partition, if defined).
+
+A moving window has to have an ORDER BY clause so that the set of matching rows can be determined.
+
+===== Window Size Partitions
+
+* *UNBOUNDED PRECEDING*: All of the preceding rows.
+* *Number PRECEDING*: The "n" preceding rows.
+* *UNBOUNDED FOLLOWING*: All of the following rows.
+* *Number FOLLOWING*: The "n" following rows.
+* *CURRENT ROW*: Only the current row.
+
+Defaults
+
+* *No ORDER BY*: UNBOUNDED PRECEDING to UNBOUNDED FOLLOWING.
+* *ORDER BY only*: UNBOUNDED PRECEDING to CURRENT ROW.
+* *No BETWEEN*: CURRENT ROW to "n" preceding/following row or rank.
+* *BETWEEN stmt*: From "n" to "n" preceding/following row or rank. The end-point must be greater than or equal to the starting point.
+
+==== Sample Queries
+
+Below is a query that illustrates some of the above concepts:
+
+.Different window sizes_
+[source,sql]
+....
+SELECT id
+     , salary
+     , DEC(AVG(salary) OVER()                 ,7,2) AS avg_all
+     , DEC(AVG(salary) OVER(ORDER BY id)      ,7,2) AS avg_odr
+     , DEC(AVG(salary) 
+        OVER(ORDER BY id
+             ROWS BETWEEN UNBOUNDED PRECEDING
+             AND UNBOUNDED FOLLOWING)         ,7,2) AS avg_p_f
+     , DEC(AVG(salary) 
+        OVER(ORDER BY id
+             ROWS BETWEEN UNBOUNDED PRECEDING
+             AND CURRENT ROW)                ,7,2) AS avg_p_c
+     , DEC(AVG(salary) 
+        OVER(ORDER BY id
+             ROWS BETWEEN CURRENT ROW
+             AND UNBOUNDED FOLLOWING)        ,7,2) AS avg_c_f
+     , DEC(AVG(salary) 
+        OVER(ORDER BY id
+             ROWS BETWEEN 2 PRECEDING
+             AND 1 FOLLOWING)                ,7,2) AS avg_2_1
+FROM staff
+WHERE dept IN (15,20)
+AND id > 20
+ORDER BY id;
+....
+
+_ANSWER_
+
+|===
+|ID | SALARY  | AVG_ALL | AVG_ODR | AVG_P_F | AVG_P_C | AVG_C_F | AVG_2_1
+|50 | 80659.80| 53281.11| 80659.80| 53281.11| 80659.80| 53281.11| 78581.31
+|70 | 76502.83| 53281.11| 78581.31| 53281.11| 78581.31| 47805.37| 66889.07
+|80 | 43504.60| 53281.11| 66889.07| 53281.11| 66889.07| 40631.01| 60793.85
+|110| 42508.20| 53281.11| 60793.85| 53281.11| 60793.85| 39673.15| 51193.53
+|170| 42258.50| 53281.11| 57086.78| 53281.11| 57086.78| 38255.62| 40631.01
+|190| 34252.75| 53281.11| 53281.11| 53281.11| 53281.11| 34252.75| 39673.15
+|===
+
+NOTE: When the BETWEEN syntax is used, the start of the range/rows must be less than or equal to the end of the range/rows.
+
+When no BETWEEN is used, the set of rows to be evaluated goes from the current row up or down to the end value:
+
+.Different window sizes
+[source,sql]
+....
+SELECT id
+, SUM(id) OVER(ORDER BY id)                          AS sum1
+, SUM(id) OVER(ORDER BY id ROWS 1 PRECEDING)         AS sum2
+, SUM(id) OVER(ORDER BY id ROWS UNBOUNDED PRECEDING) AS sum3
+, SUM(id) OVER(ORDER BY id ROWS CURRENT ROW)         AS sum4
+, SUM(id) OVER(ORDER BY id ROWS2 FOLLOWING)          AS sum6
+, SUM(id) OVER(ORDER BY id ROWS UNBOUNDED FOLLOWING) AS sum6
+FROM staff
+WHERE id < 40
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| SUM1| SUM2| SUM3| SUM4| SUM5| SUM6
+|10| 10  | 10  | 10  | 10  | 60  | 60
+|20| 30  | 30  | 30  | 20  | 50  | 50
+|30| 60  | 50  | 60  | 30  | 30  | 30
+|===
+
+[[rows.vs.range]]
+==== ROWS vs. RANGE
+
+A moving window of rows to be evaluated (relative to the current row) can be defined using either the ROW or RANGE expressions. These differ as follows:
+
+* *ROWS*: Refers to the "n" rows before and/or after (within the partition), as defined by the ORDER BY.
+* *RANGE*: Refers to those rows before and/or after (within the partition) that are within an arithmetic range of the current row, as defined by the ORDER BY.
+
+The next query compares the ROW and RANGE expressions:
+
+.ROW vs. RANGE example
+[source,sql]
+....
+SELECT id
+, SMALLINT(SUM(id) 
+    OVER(ORDER BY id
+         RANGE BETWEEN 10 PRECEDING AND 10 FOLLOWING))        AS rng1
+, SMALLINT(SUM(id) 
+    OVER(ORDER BY id
+         ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING))           AS row1
+, SMALLINT(SUM(id) 
+    OVER(ORDER BY id
+         RANGE BETWEEN 10 PRECEDING AND CURRENT ROW))         AS rng2
+, SMALLINT(SUM(id) 
+    OVER(ORDER BY id
+         ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING))           AS row2
+, SMALLINT(SUM(id) 
+    OVER(ORDER BY id DESC
+         ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING))           AS row3
+, SMALLINT(SUM(id) 
+    OVER(ORDER BY id
+         RANGE BETWEEN UNBOUNDED PRECEDING AND 20 FOLLOWING)) AS rng3
+FROM staff
+WHERE id < 60
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| RNG1| ROW1| RNG2| ROW2| ROW3| RNG3 
+|10| 30  | 30  | 10  | -   | 90  | 60
+|20| 60  | 60  | 30  | 10  | 120 | 100 
+|30| 90  | 90  | 50  | 30  | 90  | 150
+|40| 120 | 120 | 70  | 60  | 50  | 150
+|50| 90  | 90  | 90  | 90  | -   | 150
+|===
+
+*Usage Notes*
+
+* An ORDER BY statement is required when using either expression.
+* If no RANGE or ROWS expression was provided, the default range (assuming there was an ORDER BY) is all preceding rows – up to the current row.
+* When using the RANGE expression, only one expression can be specified in the ORDER BY, and that expression must be numeric.
+
+==== ORDER BY Expression
+
+The ORDER BY phrase has several purposes:
+
+* It defines the set of rows that make up a moving window.
+* It provides a set of values to do aggregations on. Each distinct value gets a new result.
+* It gives a direction to the aggregation function processing (i.e. ASC or DESC).
+
+An ORDER BY expression is required for the RANK and DENSE_RANK functions. It is optional for all others (except of using ROWS or RANGE).
+
+*Usage Notes*
+
+* *ASC*: Sorts the values in ascending order. This is the default.
+* *DESC*: Sorts the values in descending order.
+* *NULLS*: Determines whether null values are sorted high or low, relative to the non-null values present. Note that the default option differs for ascending and descending order.
+* *Sort Expression*: The sort-key expression can be any valid column, or any scalar expression is deterministic, and has no external action.
+* *ORDER BY ORDER OF table-designator*: The table designator refers to a subselect or fullselect in the query and any ordering defined on columns in that subselect or fullselect (note: if there is no explicit ordering
+the results are unpredictable). If the subselect or fullselect ORDER BY is changed, the ordering sequence will automatically change to match. Note that the final query may have an ordering that differs from that in
+the subselect or fullselect. 
+
+NOTE: When the table designator refers to a table in the current subselect or fullselect, as opposed to the
+results of a nested subselect or fullselect, the values are
+unpredictable.
+
+==== Sample Query
+
+In the next query, various aggregations are done on a variety of fields, and on a nested-tableexpression that contains an ORDER BY. Observe that the ascending fields sum or count up, while the descending fields sum down. Also observe that each aggregation field gets a separate result
+for each new set of rows, as defined in the ORDER BY phrase:
+
+.ORDER BY example
+[source,sql]
+....
+SELECT dept
+     , name
+     , salary
+     , DEC(SUM(salary) OVER(ORDER BY dept) ,8,2)           AS sum1
+     , DEC(SUM(salary) OVER(ORDER BY dept DESC) ,8,2)      AS sum2
+     , DEC(SUM(salary) OVER(ORDER BY ORDER OF s1) ,8,2)    AS sum3
+     , SMALLINT(RANK() OVER(ORDER BY salary, name, dept) ) AS r1
+     , SMALLINT(RANK() OVER(ORDER BY ORDER OF s1)          AS r2
+     , ROW_NUMBER() OVER(ORDER)                            AS w1
+     , COUNT(*) OVER(ORDER BY salary)                      AS w2
+FROM (SELECT *
+      FROM staff
+      WHERE id < 60
+      ORDER BY dept
+             , name
+      ) AS s1
+ORDER BY 1, 2;
+....
+
+_ANSWER_
+|===
+|DEPT|NAME    |SALARY  | SUM1     | SUM2     | SUM3     | R1| R2| W1| W2
+|15  |Hanes   |80659.80| 80659.80 | 412701.30| 80659.80 | 4 | 1 | 4 | 4
+|20  |Pernal  |78171.25| 257188.55| 332041.50| 158831.05| 3 | 2 | 3 | 3
+|20  |Sanders |98357.50| 257188.55| 332041.50| 257188.55| 5 | 3 | 5 | 5
+|38  |Marenghi|77506.75| 412701.30| 155512.75| 334695.30| 1 | 4 | 1 | 1
+|38  |O'Brien |78006.00| 412701.30| 155512.75| 412701.30| 2 | 5 | 2 | 2
+|===
+
+NOTE: There is no relationship between the ORDER BY used in an OLAP function, and the final ordering of the answer. Both are calculated independently.
+
+==== Table Designator
+
+The next two queries illustrate referencing a table designator in a subselect. Observe that as the ORDER BY in the subselect changes, the ordering sequence changes. Note that the final query output order does match that of the subselect:
+
+[source,sql]
+....
+SELECT id
+     , name
+     , ROW_NUMBER() 
+       OVER(ORDER BY ORDER OF s) od
+FROM (SELECT *
+      FROM staff
+      WHERE id < 50
+      ORDER BY name ASC
+     ) AS s
+ORDER BY id ASC;
+....
+
+_ANSWER_
+|===
+|ID| NAME    |OD
+|10| Sanders |4
+|20| Pernal  |3
+|30| Marenghi|1
+|40|O'Brien  |2
+|===
+
+.ORDER BY table designator examples
+[source,sql]
+....
+SELECT id
+     , name
+     , ROW_NUMBER() 
+       OVER(ORDER BY ORDER OF s) od
+FROM (SELECT *
+      FROM staff
+      WHERE id < 50
+      ORDER BY name DESC
+     ) AS s
+ORDER BY id ASC;
+....
+
+_ANSWER_
+|===
+|ID| NAME    |OD
+|10| Sanders |1
+|20| Pernal  |2
+|30| Marenghi|4
+|40| O'Brien |3
+|===
+
+
+==== Nulls Processing
+
+When writing the ORDER BY, one can optionally specify whether or not null values should be counted as high or low. The default, for an ascending field is that they are counted as high (i.e. come last), and for a descending field, that they are counted as low:
+
+.Overriding the default null ordering sequence
+[source,sql]
+....
+SELECT id
+     , years                                              AS yr
+     , salary
+     , DENSE_RANK() OVER(ORDER BY years ASC)              AS a
+     , DENSE_RANK() OVER(ORDER BY years ASC NULLS FIRST)  AS af
+     , DENSE_RANK() OVER(ORDER BY years ASC NULLS LAST )  AS al
+     , DENSE_RANK() OVER(ORDER BY years DESC)             AS d
+     , DENSE_RANK() OVER(ORDER BY years DESC NULLS FIRST) AS df
+     , DENSE_RANK() OVER(ORDER BY years DESC NULLS LAST ) AS dl
+FROM staff
+WHERE id < 100
+ORDER BY years
+       , salary;
+....
+
+_ANSWER_
+|===
+|ID| YR| SALARY  |A | AF| AL|D |DF| DL
+|30| 5 | 77506.75|1 | 2 | 1 |6 | 6| 5
+|90| 6 | 38001.75|2 | 3 | 2 |5 | 5| 4
+|40| 6 | 78006.00|2 | 3 | 2 |5 | 5| 4
+|70| 7 | 76502.83|3 | 4 | 3 |4 | 4| 3
+|10| 7 | 98357.50|3 | 4 | 3 |4 | 4| 3
+|20| 8 | 78171.25|4 | 5 | 4 |3 | 3| 2
+|50| 10| 80659.80|5 | 6 | 5 |2 | 2| 1
+|80| - | 43504.60|6 | 1 | 6 |1 | 1| 6
+|60| - | 66808.30|6 | 1 | 6 |1 | 1| 6
+|===
+
+NOTE: In general, one null value does not equal another null value. But, as is illustrated above, for purposes of assigning rank, all null values are considered equal.
+
+==== Counting Nulls
+
+The DENSE RANK and RANK functions include null values when calculating rankings. By contrast the COUNT DISTINCT statement excludes null values when counting values. Thus, as is illustrated below, the two methods will differ (by one) when they are used get a count of distinct values -
+if there are nulls in the target data:
+
+.Counting distinct values - comparison
+[source,sql]
+....
+SELECT COUNT(DISTINCT years) AS y#1
+     , MAX(y#)               AS y#2
+FROM (SELECT years
+           , DENSE_RANK() OVER(ORDER BY years) AS y#
+      FROM staff
+      WHERE id < 100
+     ) AS xxx
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|Y#1| Y#2
+|5  | 6
+|===
+
+==== OLAP Functions
+
+[[rank.and.dense_rank]]
+===== RANK and DENSE_RANK
+
+The RANK and DENSE_RANK functions enable one to rank the rows returned by a query. The result is of type BIGINT.
+
+NOTE: The ORDER BY phrase, which is required, is used to both sequence the values, and to tell Db2 when to generate a new value.
+
+[[rank-vs-dense_rank]]
+====== RANK vs. DENSE_RANK
+
+The two functions differ in how they handle multiple rows with the same value:
+
+* The RANK function returns the number of proceeding rows, plus one. If multiple rows have equal values, they all get the same rank, while subsequent rows get a ranking that counts all of the prior rows. Thus, there may be gaps in the ranking sequence.
+* The DENSE_RANK function returns the number of proceeding distinct values, plus one. If multiple rows have equal values, they all get the same rank. Each change in data value causes the ranking number to be incremented by one.
+
+*Usage Notes*
+
+* The ORDER BY expression is mandatory. 
+* The PARTITION BY expression is optional. 
+
+====== Compare Functions
+
+The following query illustrates the use of the two functions:
+
+.Ranking functions example
+[source,sql]
+....
+SELECT id
+     , years
+     , salary
+     , RANK()
+        OVER(ORDER BY years) AS rank#
+     , DENSE_RANK() 
+        OVER(ORDER BY years) AS dense#
+     , ROW_NUMBER() 
+        OVER(ORDER BY years) AS row#
+FROM staff
+WHERE id    < 100
+AND   years < 10
+ORDER BY years;
+....
+
+_ANSWER_
+|===
+|ID|YEARS| SALARY  |RANK#|DENSE#|ROW#
+|30|5    | 77506.75|1    |1     |1
+|40|6    | 78006.00|2    |2     |2
+|90|6    | 38001.75|2    |2     |3
+|10|7    | 98357.50|4    |3     |4
+|70|7    | 76502.83|4    |3     |5
+|20|8    | 78171.25|6    |4     |6
+|===
+
+
+==== ORDER BY Usage
+
+The mandatory ORDER BY phrase gives a sequence to the ranking, and also tells Db2 when to start a new rank value. The following query illustrates both uses:
+
+.ORDER BY usage
+[source,sql]
+....
+SELECT job                                                 AS job
+     , years                                               AS yr
+     , id                                                  AS id 
+     , name                                                AS name
+     , RANK() OVER(ORDER BY job ASC )                      AS a1
+     , RANK() OVER(ORDER BY job ASC, years ASC)            AS a2
+     , RANK() OVER(ORDER BY job ASC, years ASC ,id ASC )   AS a3
+     , RANK() OVER(ORDER BY job DESC)                      AS d1
+     , RANK() OVER(ORDER BY job DESC, years DESC)          AS d2
+     , RANK() OVER(ORDER BY job DESC, years DESC, id DESC) AS d3
+     , RANK() OVER(ORDER BY job ASC, years DESC, id ASC )  AS m1
+     , RANK() OVER(ORDER BY job DESC, years ASC, id DESC)  AS m2
+FROM staff
+WHERE id    <   150
+AND   years IN (6,7)
+AND   job   >  'L'
+ORDER BY job
+       , years
+       , id;
+....
+
+_ANSWER_
+|===
+|JOB  |YR| ID | NAME   |A1|A2| A3| D1| D2| D3| M1| M2
+|Mgr  |6 | 140| Fraye  |1 |1 | 1 | 4 | 6 | 6 | 3 | 4
+|Mgr  |7 | 10 | Sanders|1 |2 | 2 | 4 | 4 | 5 | 1 | 6
+|Mgr  |7 | 100| Plotz  |1 |2 | 3 | 4 | 4 | 4 | 2 | 5
+|Sales|6 | 40 | O'Brien|4 |4 | 4 | 1 | 2 | 3 | 5 | 2
+|Sales|6 | 90 | Koonitz|4 |4 | 5 | 1 | 2 | 2 | 6 | 1
+|Sales|7 | 70 | Rothman|4 |6 | 6 | 1 | 1 | 1 | 4 | 3
+|===
+
+Observe above that adding more fields to the ORDER BY phrase resulted in more ranking values being generated.
+
+==== PARTITION Usage
+
+The optional PARTITION phrase lets one rank the data by subsets of the rows returned. In the following example, the rows are ranked by salary within year:
+
+.Values ranked by subset of rows
+[source,sql]
+....
+SELECT id
+     , years AS yr
+     , salary
+     , RANK() OVER(PARTITION BY years
+                   ORDER BY salary)  AS r1
+FROM staff
+WHERE id     < 80
+AND   years IS NOT NULL
+ORDER BY years
+       , salary;
+....
+
+_ANSWER_
+|===
+|ID| YR| SALARY  | R1
+|30| 5 | 77506.75| 1
+|40| 6 | 78006.00| 1
+|70| 7 | 76502.83| 1
+|10| 7 | 98357.50| 2
+|20| 8 | 78171.25| 1
+|50| 0 | 80659.80| 1
+|===
+
+==== Multiple Rankings
+
+One can do multiple independent rankings in the same query:
+
+.Multiple rankings in same query
+[source,sql]
+....
+SELECT id
+     , years
+     , salary
+     , SMALLINT(RANK() OVER(ORDER BY years ASC))  AS rank_a
+     , SMALLINT(RANK() OVER(ORDER BY years DESC)) AS rank_d
+     , SMALLINT(RANK() OVER(ORDER BY id, years))  AS rank_iy
+FROM staff
+WHERE id  <  100
+AND years IS NOT NULL
+ORDER BY years;
+....
+
+==== Dumb Rankings
+
+If one wants to, one can do some really dumb rankings. All of the examples below are fairly stupid, but arguably the dumbest of the lot is the last. In this case, the "ORDER BY 1" phrase ranks the rows returned by the constant "one", so every row gets the same rank. By contrast the "ORDER BY 1" phrase at the bottom of the query sequences the rows, and
+so has valid business meaning:
+
+.Dumb rankings, SQL
+[source,sql]
+....
+SELECT id
+     , years
+     , name
+     , salary
+     , SMALLINT(RANK() OVER(ORDER BY SUBSTR(name,3,2))) AS dumb1
+     , SMALLINT(RANK() OVER(ORDER BY salary / 1000))    AS dumb2
+     , SMALLINT(RANK() OVER(ORDER BY years * ID))       AS dumb3
+     , SMALLINT(RANK() OVER(ORDER BY 1))                AS dumb4
+FROM staff
+WHERE id < 40
+AND years IS NOT NULL
+ORDER BY 1;
+....
+
+|===
+|ID| YEARS| NAME    | SALARY  | DUMB1| DUMB2| DUMB3| DUMB4
+|10| 7    | Sanders | 98357.50| 1    | 3    | 1    | 1
+|20| 8    | Pernal  | 78171.25| 3    | 2    | 3    | 1
+|30| 5    | Marenghi| 77506.75| 2    | 1    | 2    | 1
+|===
+
+==== Subsequent Processing
+
+The ranking function gets the rank of the value as of when the function was applied. Subsequent processing may mean that the rank no longer makes sense. To illustrate this point, the following query ranks the same field twice. Between the two ranking calls, some rows were removed
+from the answer set, which has caused the ranking results to differ:
+
+.Subsequent processing of ranked data
+[source,sql]
+....
+SELECT xxx.*
+     , RANK()OVER(ORDER BY id) AS r2
+FROM (SELECT id
+           , name
+           , RANK() OVER(ORDER BY id) AS r1
+      FROM staff
+      WHERE id     < 100
+      AND   years IS NOT NULL
+    ) AS xxx
+WHERE id > 30
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| NAME   |R1| R2
+|40| O'Brien|4 | 1
+|50| Hanes  |5 | 2
+|70| Rothman|6 | 3
+|90| Koonitz|7 | 4
+|===
+
+==== Ordering Rows by Rank
+
+One can order the rows based on the output of a ranking function. This can let one sequence the data in ways that might be quite difficult to do using ordinary SQL. For example, in the following query the matching rows are ordered so that all those staff with the highest salary in
+their respective department come first, followed by those with the second highest salary, and so on. Within each ranking value, the person with the highest overall salary is listed first:
+
+.Ordering rows by rank, using RANK function
+[source,sql]
+....
+SELECT id
+     , RANK() OVER(PARTITION BY dept
+                   ORDER BY salary DESC) AS r1
+     , salary
+     , dept AS dp
+FROM staff
+WHERE id     < 80
+AND   years IS NOT NULL
+ORDER BY r1     ASC
+       , salary DESC;
+....
+
+_ANSWER_
+|===
+|ID| R1| SALARY  | DP
+|10| 1 | 98357.50| 20
+|50| 1 | 80659.80| 15
+|40| 1 | 78006.00| 38
+|20| 2 | 78171.25| 20
+|30| 2 | 77506.75| 38
+|70| 2 | 76502.83| 15
+|===
+
+Here is the same query, written without the ranking function:
+
+.Ordering rows by rank, using sub-query
+[source,sql]
+....
+SELECT id
+    , (SELECT COUNT(*)
+       FROM staff s2
+       WHERE s2.id   < 80
+       AND s2.years IS NOT NULL
+       AND s2.dept = s1.dept
+       AND s2.salary >= s1.salary
+      ) AS R1
+    , salary
+    , dept AS dp
+FROM staff s1
+WHERE id     < 80
+AND   years IS NOT NULL
+ORDER BY r1     ASC
+       , salary DESC;
+....
+
+_ANSWER_
+|===
+|ID| R1| SALARY  | DP
+|10| 1 | 98357.50| 20
+|50| 1 | 80659.80| 15
+|40| 1 | 78006.00| 38
+|20| 2 | 78171.25| 20
+|30| 2 | 77506.75| 38
+|70| 2 | 76502.83| 15
+|===
+
+The above query has all of the failings that were discussed at the beginning of this chapter:
+
+* The nested table expression has to repeat all of the predicates in the main query, and have predicates that define the ordering sequence. Thus it is hard to read.
+* The nested table expression will (inefficiently) join every matching row to all prior rows.
+
+==== Selecting the Highest Value
+
+The ranking functions can also be used to retrieve the row with the highest value in a set of rows. To do this, one must first generate the ranking in a nested table expression, and then query the derived field later in the query. The following statement illustrates this concept by getting the person, or persons, in each department with the highest salary:
+
+.Get highest salary in each department, use RANK function
+[source,sql]
+....
+SELECT id
+     , salary
+     , dept AS dp
+FROM 
+   (SELECT s1.*
+         , RANK() OVER(PARTITION BY dept
+                       ORDER BY salary DESC) AS r1
+    FROM staff s1
+    WHERE id     < 80
+    AND   years IS NOT NULL
+   ) AS xxx
+WHERE r1 = 1
+ORDER BY dp;
+....
+
+_ANSWER_
+|===
+|ID| SALARY  |DP
+|50| 80659.80|15
+|10| 98357.50|20
+|40| 78006.00|38
+|===
+
+Here is the same query, written using a correlated sub-query:
+
+.Get highest salary in each department, use correlated sub-query
+[source,sql]
+....
+SELECT id
+     , salary
+     , dept AS dp
+FROM staff s1
+WHERE id     < 80
+AND   years IS NOT NULL
+AND NOT EXISTS
+  (SELECT *
+   FROM staff s2
+   WHERE s2.id     < 80
+   AND   s2.years IS NOT NULL
+   AND s2.dept = s1.dept
+   AND s2.salary > s1.salary)
+ORDER BY dp;
+....
+
+|===
+|ID| SALARY  |DP
+|50| 80659.80|15
+|10| 98357.50|20
+|40| 78006.00|38
+|===
+
+Here is the same query, written using an uncorrelated sub-query:
+
+.Get highest salary in each department, use uncorrelated sub-query
+[source,sql]
+....
+SELECT id
+     , salary
+     , dept AS dp
+FROM staff
+WHERE id     < 80
+AND   years IS NOT NULL
+AND (dept, salary) IN
+  (SELECT dept, MAX(salary)
+   FROM staff
+   WHERE id     < 80
+   AND   years IS NOT NULL
+   GROUP BY dept)
+ORDER BY dp;
+....
+
+_ANSWER_
+|===
+|ID| SALARY  |DP
+|50| 80659.80|15
+|10| 98357.50|20
+|40| 78006.00|38
+|===
+
+Arguably, the first query above (i.e. the one using the RANK function) is the most elegant of the series because it is the only statement where the basic predicates that define what rows match are written once. With the two sub-query examples, these predicates have to be repeated, which can often lead to errors.
+
+[[row_number.function]]
+==== ROW_NUMBER
+
+The ROW_NUMBER function lets one number the rows being returned. The result is of type BIGINT. A syntax diagram follows. Observe that unlike with the ranking functions, the ORDER BY is not required.
+
+===== ORDER BY Usage
+
+You don't have to provide an ORDER BY when using the ROW_NUMBER function, but not doing so can be considered to be either brave or foolish, depending on one's outlook on life. To illustrate this issue, consider the following query:
+
+.ORDER BY example, 1 of 3
+[source,sql]
+....
+SELECT id
+     , name
+     , ROW_NUMBER() OVER()            AS r1
+     , ROW_NUMBER() OVER(ORDER BY id) AS r2
+FROM staff
+WHERE id     < 50
+AND   years IS NOT NULL
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| NAME    |R1| R2
+|10| Sanders |1 | 1
+|20| Pernal  |2 | 2
+|30| Marenghi|3 | 3
+|40| O'Brien |4 | 4
+|===
+
+In the above example, both ROW_NUMBER functions return the same set of values, which happen to correspond to the sequence in which the rows are returned. In the next query, the second ROW_NUMBER function purposely uses another sequence:
+
+.ORDER BY example, 2 of 3
+[source,sql]
+....
+SELECT id
+     , name
+     , ROW_NUMBER() OVER()              AS r1
+     , ROW_NUMBER() OVER(ORDER BY name) AS r2
+FROM staff
+WHERE id     < 50
+AND   years IS NOT NULL
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| NAME    |R1| R2
+|10| Sanders |4 | 4
+|20| Pernal  |3 | 3
+|30| Marenghi|1 | 1
+|40| O'Brien |2 | 2
+|===
+
+Observe that changing the second function has had an impact on the first. Now lets see what happens when we add another ROW_NUMBER function:
+
+.ORDER BY example, 3 of 3
+[source,sql]
+....
+SELECT id
+,name
+,ROW_NUMBER() OVER()              AS r1
+,ROW_NUMBER() OVER(ORDER BY ID)   AS r2
+,ROW_NUMBER() OVER(ORDER BY NAME) AS r3
+FROM staff
+WHERE id     < 50
+AND   years IS NOT NULL
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| NAME    |R1| R2| R3
+|10| Sanders |1 | 1 | 4
+|20| Pernal  |2 | 2 | 3
+|30| Marenghi|3 | 3 | 1
+|40| O'Brien |4 | 4 | 2
+|===
+
+Observe that now the first function has reverted back to the original sequence.
+
+NOTE: When not given an explicit ORDER BY, the ROW_NUMBER function, may create a value in any odd order. Usually, the sequence will reflect the order in which the rows are returned - but not always.
+
+==== PARTITION Usage
+
+The PARTITION phrase lets one number the matching rows by subsets of the rows returned. In the following example, the rows are both ranked and numbered within each JOB:
+
+.Use of PARTITION phrase
+[source,sql]
+....
+SELECT job
+     , years
+     , id
+     , name
+     , ROW_NUMBER() OVER(PARTITION BY job ORDER BY years) AS row#
+     , RANK()       OVER(PARTITION BY job ORDER BY years) AS rn1#
+     , DENSE_RANK() OVER(PARTITION BY job ORDER BY years) AS rn2#
+FROM staff
+WHERE id     < 150
+AND   years IN (6,7)
+AND job > 'L'
+ORDER BY job,years;
+....
+
+_ANSWER_
+|===
+|JOB  |YEARS| ID | NAME   |ROW#| RN1#| RN2#
+|Mgr  |6    | 140| Fraye  |1   |1    | 1
+|Mgr  |7    | 10 | Sanders|2   |2    | 2
+|Mgr  |7    | 100| Plotz  |3   |2    | 2
+|Sales|6    | 40 | O'Brien|1   |1    | 1
+|Sales|6    | 90 | Koonitz|2   |1    | 1
+|Sales|7    | 70 | Rothman|3   |3    | 2
+|===
+
+One problem with the above query is that the final ORDER BY that sequences the rows does not identify a unique field (e.g. ID). Consequently, the rows can be returned in any sequence within a given JOB and YEAR. Because the ORDER BY in the ROW_NUMBER function also fails to identify a unique row, this means that there is no guarantee that a particular row will always give the same row number. For consistent results, ensure that both the ORDER BY phrase in the function call, and at the end of the query, identify a unique row. And to always get the rows returned in the desired row-number sequence, these phrases must be equal.
+
+[[selecting.n.rows]]
+===== Selecting "n" Rows
+
+To query the output of the ROW_NUMBER function, one has to make a nested temporary table that contains the function expression. In the following example, this technique is used to limit the query to the first three matching rows:
+
+.Select first 3 rows, using ROW_NUMBER function
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT id
+          , name
+          , ROW_NUMBER() OVER(ORDER BY id) AS r
+    FROM staff
+    WHERE id     < 100
+    AND   years IS NOT NULL
+   ) AS xxx
+WHERE r <= 3
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| NAME    | R
+|10| Sanders | 1
+|20| Pernal  | 2
+|30| Marenghi| 3
+|===
+
+In the next query, the FETCH FIRST "n" ROWS notation is used to achieve the same result:
+
+.Select first 3 rows, using FETCH FIRST notation
+[source,sql]
+....
+SELECT id
+     , name
+     , ROW_NUMBER() OVER(ORDER BY id) AS r
+FROM staff
+WHERE id     < 100
+AND   years IS NOT NULL
+ORDER BY id
+FETCH FIRST 3 ROWS ONLY;
+....
+
+_ANSWER_
+|===
+|ID| NAME    | R
+|10| Sanders | 1
+|20| Pernal  | 2
+|30| Marenghi| 3
+|===
+
+So far, the ROW_NUMBER and the FETCH FIRST notations seem to be about the same. But the former is much more flexible. To illustrate, the next query gets the 3rd through 6th rows:
+
+.Select 3rd through 6th rows
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT id
+          , name
+          , ROW_NUMBER() OVER(ORDER BY id) AS r
+     FROM staff
+     WHERE id     < 200
+     AND   years IS NOT NULL
+    ) AS xxx
+WHERE r BETWEEN 3 AND 6
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID| NAME    |R
+|30| Marenghi|3 
+|40| O'Brien |4
+|50| Hanes   |5 
+|70| Rothman |6
+|===
+
+In the next query we get every 5th matching row - starting with the first:
+
+.Select every 5th matching row
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT id
+          , name
+          , ROW_NUMBER() OVER(ORDER BY id) AS r
+     FROM staff
+     WHERE id     < 200
+     AND   years IS NOT NULL
+    ) AS xxx
+WHERE (r - 1) = ((r - 1) / 5) * 5
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID | NAME   |R
+|10 | Sanders|1
+|70 | Rothman|6
+|140| Fraye  |11
+|190| Sneider|16
+|===
+
+In the next query we get the last two matching rows:
+
+.Select last two rows
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT id
+          , name
+          , ROW_NUMBER() OVER(ORDER BY id DESC) AS r
+     FROM staff
+     WHERE id     < 200 
+     AND   years IS NOT NULL
+    ) AS xxx
+WHERE r <= 2
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID | NAME    |R
+|180| Abrahams|2
+|190| Sneider |1
+|===
+
+==== Selecting "n" or more Rows
+
+Imagine that one wants to fetch the first "n" rows in a query. This is easy to do, and has been illustrated above. But imagine that one also wants to keep on fetching if the following rows have the same value as the "nth". In the next example, we will get the first three matching rows in the STAFF table, ordered by years of service. However, if the 4th row, or any of the following rows, has the same YEAR as the 3rd row, then we also want to fetch them.
+
+The query logic goes as follows:
+
+* Select every matching row in the STAFF table, and give them all both a row-number and a ranking value. Both values are assigned according to the order of the final output. Do all of this work in a nested table expression.
+* Select from the nested table expression where the rank is three or less.
+
+The query relies on the fact that the RANK function (see <<rank.and.dense_rank>>) assigns the lowest common row number to each row with the same ranking:
+
+.Select first "n" rows, or more if needed
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT years
+    , id
+    , name
+    , RANK() OVER(ORDER BY years)           AS rnk
+    , ROW_NUMBER() OVER(ORDER BY years, id) AS row
+    FROM staff
+    WHERE id     < 200
+    AND   years IS NOT NULL
+    ) AS xxx
+WHERE rnk <= 3
+ORDER BY years
+       , id;
+....
+
+_ANSWER_
+|===
+|YEARS| ID | NAME    |RNK|ROW
+|3    | 180| Abrahams|1  |1
+|4    | 170| Kermisch|2  |2
+|5    | 30 | Marenghi|3  |3
+|5    | 110| Ngan    |3  |4
+|===
+
+The type of query illustrated above can be extremely useful in certain business situations. To illustrate, imagine that one wants to give a reward to the three employees that have worked for the company the longest. Stopping the query that lists the lucky winners after three rows are fetched can get one into a lot of trouble if it happens that there are more than three employees that have worked for the company for the same number of years. 
+
+==== Selecting "n" Rows - Efficiently
+
+Sometimes, one only wants to fetch the first "n" rows, where "n" is small, but the number of matching rows is extremely large. In this section, we will discus how to obtain these "n" rows efficiently, which means that we will try to fetch just them without having to process any of the many other matching rows. Below is an invoice table. Observe that we have defined the INV# field as the primary key, which means that Db2 will build a unique index on this column:
+
+.Performance test table - definition
+[source,sql]
+....
+CREATE TABLE invoice
+( inv#       INTEGER      NOT NULL
+, customer#  INTEGER      NOT NULL
+, sale_date  DATE         NOT NULL
+, sale_value DECIMAL(9,2) NOT NULL
+, CONSTRAINT ctx1 PRIMARY KEY (inv#)
+, CONSTRAINT ctx2 CHECK(inv# >= 0));
+....
+
+The next SQL statement will insert 1,000,000 rows into the above table.
+After the rows are inserted a REORG and RUNSTATS is run, so the optimizer can choose the best access path.
+
+.Performance test table - insert 1,000,000 rows
+[source,sql]
+....
+INSERT INTO invoice
+WITH temp (n, m) AS
+(VALUES
+  (INTEGER(0), RAND(1))
+  UNION ALL
+  SELECT n+1, RAND()
+  FROM temp
+  WHERE n+1 < 1000000
+)
+SELECT n                                AS inv#
+     , INT(m * 1000)                    AS customer#
+     , DATE('2000-11-01') + (m*40) DAYS AS sale_date
+     , DECIMAL((m * m * 100),8,2)       AS sale_value
+FROM temp;
+....
+
+Imagine we want to retrieve the first five rows (only) from the above table. Below are several queries that get this result. For each query, the elapsed time, as measured by Db2BATCH, is provided. Below we use the "FETCH FIRST n ROWS" notation to stop the query at the 5th row. The query scans the primary index to get first five matching rows, and thus is cheap:
+
+.Fetch first 5 rows - 0.000 elapsed seconds
+[source,sql]
+....
+SELECT s.*
+FROM invoice s
+ORDER BY inv#
+FETCH FIRST 5 ROWS ONLY;
+....
+
+The next query is essentially the same as the prior, but this time we tell Db2 to optimize the query for fetching five rows. Nothing has changed, and all is good:
+
+.Fetch first 5 rows - 0.000 elapsed seconds
+[source,sql]
+....
+SELECT s.*
+FROM invoice s
+ORDER BY inv#
+FETCH FIRST 5 ROWS ONLY
+OPTIMIZE FOR 5 ROWS;
+....
+
+The next query is the same as the first, except that it invokes the ROW_NUMBER function to passively sequence the output. This query also uses the primary index to identify the first five matching rows, and so is cheap:
+
+.Fetch first 5 rows+ number rows - 0.000 elapsed seconds
+[source,sql]
+....
+SELECT s.*
+     , ROW_NUMBER() OVER() AS row#
+FROM invoice s
+ORDER BY inv#
+FETCH FIRST 5 ROWS ONLY;
+....
+
+The next query is the same as the previous. It uses a nested-table-expression, but no action is taken subsequently, so this code is ignored:
+
+.Fetch first 5 rows+ number rows - 0.000 elapsed seconds
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT s.*
+          , ROW_NUMBER() OVER() AS row#
+     FROM invoice s
+    ) xxx
+ORDER BY inv#
+FETCH FIRST 5 ROWS ONLY;
+....
+
+All of the above queries processed only five matching rows. The next query will process all one million matching rows in order to calculate the ROW_NUMBER value, which is on no particular column. It will cost:
+
+.Process and number all rows - 0.049 elapsed seconds
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT s.*
+          , ROW_NUMBER() OVER() AS row#
+     FROM invoice s
+    ) xxx
+WHERE row# <= 5
+ORDER BY inv#;
+....
+
+In the above query the "OVER()" phrase told Db2 to assign row numbers to each row. In the next query we explicitly provide the ROW_NUMBER with a target column, which happens to be the same at the ORDER BY sequence, and is also an indexed column. Db2 can use all this information to confine the query to the first "n" matching rows:
+
+.Process and number 5 rows only - 0.000 elapsed seconds
+[source,sql]
+....
+SELECT *
+FROM 
+    (SELECT s.*
+          , ROW_NUMBER() OVER(ORDER BY inv#) AS row#
+     FROM invoice s
+    ) xxx
+WHERE row# <= 5
+ORDER BY inv#;
+....
+
+WARNING: Changing the above predicate to: "WHERE row# BETWEEN 1 AND 5" will get the same answer, but use a much less efficient access path.
+
+One can also use recursion to get the first "n" rows. One begins by getting the first matching row, and then uses that row to get the next, and then the next, and so on (in a recursive join), until the required number of rows have been obtained. In the following example, we start by getting the row with the MIN invoice-number. This row is then joined to the row with the next to lowest invoice-number, which is then joined to the next, and so on. After five such joins, the cycle is stopped and the
+result is selected:
+
+.Fetch first 5 rows - 0.000 elapsed seconds
+[source,sql]
+....
+WITH temp (inv#, c#, sd, sv, n) AS
+(SELECT inv.*
+      , 1
+FROM invoice inv
+WHERE inv# = 
+    (SELECT MIN(inv#)
+    FROM invoice)
+UNION ALL
+SELECT new.*
+     , n + 1
+FROM temp old
+, invoice new
+WHERE old.inv# < new.inv#
+AND   old.n    < 5
+AND   new.inv# = 
+    (SELECT MIN(xxx.inv#)
+     FROM invoice xxx
+     WHERE xxx.inv# > old.inv#)
+)
+SELECT *
+FROM temp;
+....
+
+The above technique is nice to know, but it has several major disadvantages:
+
+* It is not exactly easy to understand.
+* It requires that all primary predicates (e.g. get only those rows where the sale-value is greater than $10,000) be repeated four times. In the above example there are none, which is unusual in the real world.
+* It quickly becomes both very complicated and quite inefficient when the sequencing value is made up of multiple fields. In the above example, we sequenced by the INV# column, but imagine if we had used the sale-date, sale-value, and customer-number.
+* It is extremely vulnerable to inefficient access paths. For example, if instead of joining from one (indexed) invoice-number to the next, we joined from one (non-indexed) customer-number to the next, the query
+would run forever.
+
+In this section we have illustrated how minor changes to the SQL syntax can cause major changes in query performance. But to illustrate this phenomenon, we used a set of queries with 1,000,000 matching rows. In situations where there are far fewer matching rows, one can reasonably
+assume that this problem is not an issue.
+
+==== FIRST_VALUE and LAST_VALUE
+
+The FIRST_VALUE and LAST_VALUE functions get first or last value in the (moving) window of matching rows.
+
+*Usage Notes*
+
+* An expression value must be provided in the first set of parenthesis. Usually this will be a column name, but any valid scalar expression is acceptable.
+* The PARTITION BY expression is optional. 
+* The ORDER BY expression is optional. 
+* See <<window.definition>> for notes on how to define a moving-window of rows to process.
+* If no explicit moving-window definition is provided, the default window size is between UNBOUNDED PRECEDING (of the partition and/or range) and the CURRENT ROW. This can sometimes cause logic errors when using the LAST_VALUE function. The last value is often simply the current row. To get the last matching value within the partition and/or
+range, set the upper bound to UNBOUNDED FOLLOWING.
+* If IGNORE NULLS is specified, null values are ignored, unless all values are null, in which case the result is null. The default is RESPECT NULLS.
+
+*Examples*
+
+The following query illustrates the basics. The first matching name (in ID order) within each department is obtained:
+
+.FIRST_VALUE function example
+[source,sql]
+....
+SELECT dept
+     , id
+     , name
+     , FIRST_VALUE(name) OVER(PARTITION BY dept
+                              ORDER BY id)       AS frst
+FROM staff
+WHERE dept <= 15
+AND   id   >  160
+ORDER BY dept ,id;
+....
+
+_ANSWER_
+|===
+|DEPT| ID | NAME    |FRST
+|10  | 210| Lu      |Lu
+|10  | 240| Daniels |Lu
+|10  | 260| Jones   |Lu
+|15  | 170| Kermisch|Kermisch
+|===
+
+The next uses various ordering schemas and moving-window sizes the get a particular first or last value (within a department):
+
+.Function examples
+[source,sql]
+....
+SELECT dept
+     , id
+     , comm
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm)                            AS first1
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm NULLS FIRST)                AS first2
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm NULLS LAST)                 AS first3
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm NULLS LAST
+                              ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS first4
+     , LAST_VALUE(comm)  OVER(PARTITION BY dept 
+                              ORDER BY comm)                            AS last1
+     , LAST_VALUE(comm)  OVER(PARTITION BY dept 
+                              ORDER BY comm NULLS FIRST
+                              ROWS UNBOUNDED FOLLOWING)                 AS last2
+FROM
+staff
+WHERE id < 100
+AND dept < 30
+ORDER BY dept ,comm;
+....
+
+_ANSWER_
+|===
+|DEPT|ID|COMM   |FIRST1 |FIRST2| FIRST3|FIRST4 |LAST1  |LAST2
+|15  |70|1152.00|1152.00|-     |1152.00|1152.00|1152.00|1152.00
+|15  |50|-      |1152.00|-     |1152.00|1152.00|-      |1152.00
+|20  |80|128.20 |128.20 |-     |128.20 |128.20 |128.20 |612.45
+|20  |20|612.45 |128.20 |-     |128.20 |128.20 |612.45 |612.45
+|20  |10|-      |128.20 |-     |128.20 |612.45 |-      |612.45
+|===
+
+The next query illustrates what happens when one, or all, of the matching values are null:
+
+.Null value processing
+[source,sql]
+....
+SELECT dept
+     , id
+     , comm
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm)                            AS rn_lst
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm NULLS LAST)                 AS rn_ls2
+     , FIRST_VALUE(comm) OVER(PARTITION BY dept 
+                              ORDER BY comm NULLS FIRST)                AS rn_fst
+     , FIRST_VALUE(comm,'IGNORE NULLS') OVER(PARTITION BY dept 
+                                             ORDER BY comm NULLS FIRST) AS in_fst
+FROM staff
+WHERE id   BETWEEN 20 AND 160
+AND   dept <= 20
+ORDER BY dept ,comm;
+....
+
+_ANSWER_
+|===
+|DEPT|ID |COMM   |RN_LST|RN_LS2| RN_FST|IN_FST
+|10  |160|       |      |      |       |
+|15  |110|206.60 |206.60|206.60|-      |206.60
+|15  |70 |1152.00|206.60|206.60|-      |206.60
+|15  |50 |-      |206.60|206.60|       |
+|20  |80 |128.20 |128.20|128.20|128.20 |128.20
+|20  |20 |612.45 |128.20|128.20|128.20 |128.20
+|===
+
+==== LAG and LEAD
+
+The LAG, and LEAD functions get the previous or next value from the (moving) window of matching rows:
+
+* *LAG*: Get previous value. Return null if at first value.
+* *LEAD*: Get next value. Return null if at last value.
+
+*Usage Notes*
+
+* An expression value must be provided in the first set of parenthesis. Usually this will be a column name, but any valid scalar expression is acceptable.
+* The PARTITION BY expression is optional. 
+* The ORDER BY expression is mandatory. 
+* The default OFFSET value is 1. A value of zero refers to the current row. An offset that is outside of the moving-window returns null.
+* If IGNORE NULLS is specified, a default (override) value must also be provided.
+
+*Examples*
+
+The next query uses the LAG function to illustrate what happens when one messes around with the ORDER BY expression:
+
+.LAG and LEAD function Examples
+[source,sql]
+....
+SELECT dept
+     , id
+     , comm
+     , LAG(comm)                     OVER(PARTITION BY dept ORDER BY comm) AS lag1
+     , LAG(comm,0)                   OVER(PARTITION BY dept ORDER BY comm) AS lag2
+     , LAG(comm,2)                   OVER(PARTITION BY dept ORDER BY comm) AS lag3
+     , LAG(comm,1,-1,'IGNORE NULLS') OVER(PARTITION BY dept ORDER BY comm) AS lag4
+     , LEAD(comm)                    OVER(PARTITION BY dept ORDER BY comm) AS led1
+FROM staff
+WHERE id   BETWEEN 20 AND 160
+AND   dept <= 20
+ORDER BY dept ,comm;
+....
+
+_ANSWER_
+|===
+|DEPT| ID | COMM   |LAG1   |LAG2   |LAG3  |LAG4   |LED1
+|10  | 160| -      |-      |-      |-     |-1.00  |-
+|15  | 110| 206.60 |-      |206.60 |-     |-1.00  |1152.00
+|15  | 70 | 1152.00|206.60 |1152.00|-     |206.60 |-
+|15  | 50 | -      |1152.00|-      |206.60|1152.00|-
+|20  | 80 | 128.20 |-      |128.20 |-     |-1.00  |612.45
+|20  | 20 | 612.45 |128.20 |612.45 |-     |128.20 |-
+|===
+
+==== Aggregation
+
+The various aggregation functions let one do cute things like get cumulative totals or running averages. In some ways, they can be considered to be extensions of the existing Db2 column functions. The output type is dependent upon the input type.
+
+*Syntax Notes*
+
+Guess what - this is a complicated function. Be aware of the following:
+
+* Any Db2 column function (e.g. AVG, SUM, COUNT), except ARRAY_AGG, can use the aggregation function.
+* The OVER() usage aggregates all of the matching rows. This is equivalent to getting the current row, and also applying a column function (e.g. MAX, SUM) against all of the matching rows.
+* The PARTITION BY expression is optional. 
+* The ORDER BY expression is mandatory if the aggregation is confined to a set of rows or range of values. Otherwise it is optional. If a RANGE is specified (see <<rows.vs.range>> for definition), then the ORDER BY expression must be a single value that allows subtraction.
+* If an ORDER BY phrase is provided, but neither a RANGE nor ROWS is specified, then the aggregation is done from the first row to the current row.
+* See <<window.definition>> for notes on how to define a moving-window of rows to process.
+
+*Basic Usage*
+
+In its simplest form, with just an "OVER()" phrase, an aggregation function works on all of the matching rows, running the column function specified. Thus, one gets both the detailed data, plus the SUM, or AVG, or whatever, of all the matching rows. In the following example, five rows are selected from the STAFF table. Along with various detailed fields, the query also gets sum summary data about the matching rows:
+
+.Aggregation function, basic usage
+[source,sql]
+....
+SELECT id
+     , name
+     , salary
+     , SUM(salary) OVER() AS sum_sal
+     , AVG(salary) OVER() AS avg_sal
+     , MIN(salary) OVER() AS min_sal
+     , MAX(salary) OVER() AS max_sal
+     , COUNT(*)    OVER() AS #rows 
+FROM staff
+WHERE id < 30
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |SALARY  |SUM_SAL  |AVG_SAL |MIN_SAL |MAX_SAL |#ROWS
+|10|Sanders |98357.50|254035.50|84678.50|77506.75|98357.50|3 
+|20|Pernal  |78171.25|254035.50|84678.50|77506.75|98357.50|3
+|30|Marenghi|77506.75|254035.50|84678.50|77506.75|98357.50|3
+|===
+
+An aggregation function with just an "OVER()" phrase is logically equivalent to one that has an ORDER BY on a field that has the same value for all matching rows. To illustrate, in the following query, the four aggregation functions are all logically equivalent:
+
+.Logically equivalent aggregation functions
+[source,sql]
+....
+SELECT id
+     , name
+     , salary
+     , SUM(salary) OVER()                                  AS sum1
+     , SUM(salary) OVER(ORDER BY id * 0)                   AS sum2
+     , SUM(salary) OVER(ORDER BY 'ABC')                    AS sum3
+     , SUM(salary) OVER(ORDER BY 'ABC'
+                        RANGE BETWEEN UNBOUNDED PRECEDING
+                        AND UNBOUNDED FOLLOWING)           AS sum4
+FROM staff
+WHERE id < 60
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |SALARY  |SUM1     |SUM2     |SUM3     |SUM4
+|10|Sanders |98357.50|412701.30|412701.30|412701.30|412701.30
+|20|Pernal  |78171.25|412701.30|412701.30|412701.30|412701.30
+|30|Marenghi|77506.75|412701.30|412701.30|412701.30|412701.30
+|40|O'Brien |78006.00|412701.30|412701.30|412701.30|412701.30
+|50|Hanes   |80659.80|412701.30|412701.30|412701.30|412701.30|
+|===
+
+==== ORDER BY Usage
+
+The ORDER BY phrase (see <<order.by.chapter>> for syntax) has two main purposes:
+
+* It provides a set of values to do aggregations on. Each distinct value gets a new result.
+* It gives a direction to the aggregation function processing (i.e. ASC or DESC).
+
+In the next query, various aggregations are run on the DEPT field, which is not unique, and on the DEPT and NAME fields combined, which are unique (for these rows). Both ascending and descending aggregations are illustrated. Observe that the ascending fields sum or count up, while the descending fields sum down. Also observe that each aggregation field gets a separate result for each new set of rows, as defined in the ORDER BY phrase:
+
+.Aggregation function, ORDER BY usage
+[source,sql]
+....
+SELECT dept
+     , name
+     , salary
+     , SUM(salary) OVER(ORDER BY dept)                 AS sum1
+     , SUM(salary) OVER(ORDER BY dept DESC)            AS sum2
+     , SUM(salary) OVER(ORDER BY dept, NAME)           AS sum3
+     , SUM(salary) OVER(ORDER BY dept DESC, name DESC) AS sum4
+     , COUNT(*)    OVER(ORDER BY dept)                 AS rw1
+     , COUNT(*)    OVER(ORDER BY dept, NAME)           AS rw2
+FROM staff
+WHERE id < 60
+ORDER BY dept
+, name;
+....
+
+_ANSWER_
+|===
+|DEPT|NAME    |SALARY  |SUM1     |SUM2     |SUM3     |SUM4     |RW1|RW2
+|15  |Hanes   |80659.80|80659.80 |412701.30|80659.80 |412701.30|1  |1
+|20  |Pernal  |78171.25|257188.55|332041.50|158831.05|332041.50|3  |2
+|20  |Sanders |98357.50|257188.55|332041.50|257188.55|253870.25|3  |3
+|38  |Marenghi|77506.75|412701.30|155512.75|334695.30|155512.75|5  |4
+|38  |O'Brien |78006.00|412701.30|155512.75|412701.30|78006.00 |5  |5
+|===
+
+==== ROWS Usage
+
+The ROWS phrase (see <<window.definition>> for syntax) is used to limit the aggregation function to a subset of the matching rows. The set of rows to process are defined thus:
+
+* *No ORDER BY*: UNBOUNDED PRECEDING to UNBOUNDED FOLLOWING.
+* *ORDER BY only*: UNBOUNDED PRECEDING to CURRENT ROW.
+* *No BETWEEN*: CURRENT ROW to "n" preceding/following row.
+* *BETWEEN stmt*: From "n" to "n" preceding/following row. The end-point must be greater than or equal to the starting point.
+
+The following query illustrates these concepts:
+
+.ROWS usage examples
+[source,sql]
+....
+SELECT id
+     , years
+     , AVG(years) OVER()                                                    AS "p_f"
+     , AVG(years) OVER(ORDER BY id ROWS 
+                       BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS "p_f"
+     , AVG(years) OVER(ORDER BY id)                                         AS "p_c"
+     , AVG(years) OVER(ORDER BY id 
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)    AS "p_c"
+     , AVG(years) OVER(ORDER BY id 
+                       ROWS UNBOUNDED PRECEDING)                            AS "p_c"
+     , AVG(years) OVER(ORDER BY id 
+                       ROWS UNBOUNDED FOLLOWING)                            AS "c_f"
+     , AVG(years) OVER(ORDER BY id 
+                       ROWS 2 FOLLOWING)                                    AS "c_2"
+     , AVG(years) OVER(ORDER BY id 
+                       ROWS 1 PRECEDING)                                    AS "1_c"
+     , AVG(years) OVER(ORDER BY id 
+                       ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING)            AS "1_2"
+FROM staff
+WHERE dept IN (15,20)
+AND id > 20
+AND years > 1
+ORDER BY id;
+....
+
+|===
+|ID |YEARS |p_f|p_f|p_c|p_c|p_c|c_f|c_2|1_c|1_2
+|50 |10    |6  |6  |10 |10 |10 |6  |7  |10 |6
+|70 |7     |6  |6  |8  |8  |8  |6  |5  |8  |4
+|110|5     |6  |6  |7  |7  |7  |5  |5  |6  |6
+|170|4     |6  |6  |6  |6  |6  |6  |6  |4  |8
+|190|8     |6  |6  |6  |6  |6  |8  |8  |6  |-
+|===
+
+==== RANGE Usage
+
+The RANGE phrase limits the aggregation result to a range of numeric values - defined relative to the value of the current row being processed (see <<window.definition>>). The range is obtained by taking the value in the current row (defined by the ORDER BY expression) and adding to and/or subtracting from it, then seeing what other matching rows are in the range.
+
+NOTE: When using a RANGE, only one expression can be specified in the ORDER BY, and that expression must be numeric.
+
+In the following example, the RANGE function adds to and/or subtracts from the DEPT field. For example, in the function that is used to populate the RG10 field, the current DEPT value is checked against the preceding DEPT values. If their value is within 10 digits of the current value, the related YEARS field is added to the SUM:
+
+.RANGE usage
+[source,sql]
+....
+SELECT dept
+     , name
+     , years
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                ROWS BETWEEN 1 PRECEDING AND CURRENT ROW))    AS row1
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                ROWS BETWEEN 2 PRECEDING AND CURRENT ROW))    AS row2
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                RANGE BETWEEN 1 PRECEDING AND CURRENT ROW))   AS rg01
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                RANGE BETWEEN 10 PRECEDING AND CURRENT ROW))  AS rg10
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                RANGE BETWEEN 20 PRECEDING AND CURRENT ROW))  AS rg20
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                RANGE BETWEEN 10 PRECEDING AND 20 FOLLOWING)) AS rg11
+     , SMALLINT(SUM(years) OVER(ORDER BY dept 
+                                RANGE BETWEEN CURRENT ROW AND 20 FOLLOWING))  AS rg99 
+FROM staff
+WHERE id < 100
+AND years IS NOT NULL
+ORDER BY dept
+       , name;
+....
+
+ANSWER
+|===
+|DEPT|NAME   |YEARS|ROW1|ROW2|RG01|RG10|RG20|RG11|RG99
+|15  |Hanes  |10   |10  |10  |17  |17  |17  |32  |32
+|15  |Rothman|7    |17  |17  |17  |17  |17  |32  |32
+|20  |Pernal |8    |15  |25  |15  |32  |32  |43  |26
+|20  |Sanders|7    |15  |22  |15  |32  |32  |43  |26
+|38  |Marengh|5    |12  |20  |11  |11  |26  |17  |17
+|38  |O'Brien|6    |11  |18  |11  |11  |26  |17  |17
+|42  |Koonitz|6    |12  |17  |6   |17  |17  |17  |6
+|===
+
+Note the difference between the ROWS as RANGE expressions:
+
+* The ROWS expression refers to the "n" rows before and/or after (within the partition), as defined by the ORDER BY.
+* The RANGE expression refers to those before and/or after rows (within the partition) that are within an arithmetic range of the current row.
+
+[[between-vs-order-by]]
+==== BETWEEN vs. ORDER BY
+
+The BETWEEN predicate in an ordinary SQL statement is used to get those rows that have a value between the specified low-value (given first) and the high value (given last). Thus the predicate "BETWEEN 5 AND 10" may find rows, but the predicate "BETWEEN 10 AND 5" will never find any. The
+BETWEEN phrase in an aggregation function has a similar usage in that it defines the set of rows to be aggregated. But it differs in that the answer depends upon the related ORDER BY sequence, and a non-match returns a null value, not no-rows. Below is some sample SQL. Observe that the first two aggregations are ascending, while the last two are descending:
+
+.BETWEEN and ORDER BY usage
+[source,sql]
+....
+SELECT id
+     , name
+     , SMALLINT(SUM(id) OVER(ORDER BY id ASC 
+                             ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) AS apc
+     , SMALLINT(SUM(id) OVER(ORDER BY id ASC 
+                             ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)) AS acf
+     , SMALLINT(SUM(id) OVER(ORDER BY id DESC 
+                             ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)) AS dpc
+     , SMALLINT(SUM(id) OVER(ORDER BY id DESC 
+                             ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)) AS dcf
+FROM staff
+WHERE id     < 50
+AND   years IS NOT NULL
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME    |APC|ACF|DPC|DCF
+|10|Sanders |10 |30 |30 |10
+|20|Pernal  |30 |50 |50 |30
+|30|Marenghi|50 |70 |70 |50
+|40|O'Brien |70 |40 |40 |70
+|===
+
+The following table illustrates the processing sequence in the above query. Each BETWEEN is applied from left to right, while the rows are read either from left to right (ORDER BY ID ASC) or right to left (ORDER BY ID DESC):
+
+*ASC id (10,20,30,40)*
+|===
+|READ ROWS, LEFT to RIGHT  | 1ST-ROW | 2ND-ROW | 3RD-ROW | 4TH-ROW
+|1 PRECEDING to CURRENT ROW| 10=10   | 10+20=30| 20+30=40| 30+40=70
+|CURRENT ROW to 1 FOLLOWING| 10+20=30| 20+30=50| 30+40=70| 40 =40
+|===
+*DESC id (40,30,20,10)*
+|===
+|READ ROWS, RIGHT to LEFT   |1ST-ROW |2ND-ROW |3RD-ROW |4TH-ROW
+|1 PRECEDING to CURRENT ROW |20+10=30|30+20=50|40+30=70| 40 =40
+|CURRENT ROW to 1 FOLLOWING |10 =10  |20+10=30|30+20=50|40+30=70
+|===
+
+NOTE: Preceding row is always on LEFT of current row. Following row_ is always on RIGHT of current row.
+
+IMPORTANT: The BETWEEN predicate, when used in an ordinary SQL statement, is not affected by the sequence of the input rows. But the BETWEEN phrase, when used in an aggregation function, is affected by the input sequence.
+
+

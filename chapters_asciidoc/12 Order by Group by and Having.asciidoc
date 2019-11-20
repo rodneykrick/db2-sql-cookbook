@@ -1,0 +1,1684 @@
+[[order.by.chapter]]
+== Order By, Group By, and Having
+
+=== Order By
+
+The ORDER BY statement is used to sequence output rows.
+
+*Notes*
+
+One can order on any one of the following:
+
+* A named column, or an expression, neither of which need to be in the select list.
+* An unnamed column - identified by its number in the list of columns selected.
+* The ordering sequence of a specific nested subselect.
+* For an insert, the order in which the rows were inserted (see <<insert.examples>>).
+
+*Also note*:
+
+* One can have multiple ORDER BY statements in a query, but only one per subselect.
+* Specifying the same field multiple times in an ORDER BY list is allowed, but silly. Only the first specification of the field will have any impact on the output order.
+* If the ORDER BY column list does not uniquely identify each row, any rows with duplicate values will come out in random order. This is almost always the wrong thing to do when the data is being displayed to an end-user.
+* Use the TRANSLATE function to order data regardless of case. Note that this trick may not work consistently with some European character sets.
+* NULL values sort high.
+
+*Sample Data*
+
+The following view is used throughout this section:
+
+.ORDER BY sample data definition
+[source,sql]
+....
+CREATE VIEW SEQ_DATA(col1,col2) AS
+VALUES ('ab','xy')
+     , ('AB','xy')
+     , ('ac','XY')
+     , ('AB','XY')
+     , ('Ab','12');
+....
+
+==== Order by Examples
+
+The following query presents the output in ascending order:
+
+.Simple ORDER BY
+[source,sql]
+....
+SELECT col1
+     , col2
+FROM seq_data
+ORDER BY col1 ASC
+       , col2;
+....
+
+*SEQ_DATA*
+|===
+|COL1|COL2
+|ab  |xy 
+|AB  |xy 
+|ac  |XY 
+|AB  |XY 
+|Ab  |12 
+|===
+
+_ANSWER_
+|===
+|COL1|COL2
+|AB  |XY
+|AB  |xy
+|Ab  |12
+|ab  |xy
+|ac  |XY
+|===
+
+In the above example, all of the lower case data comes before any of the upper case data. Use the TRANSLATE function to display the data in case-independent order:
+
+.Case insensitive ORDER BY
+[source,sql]
+....
+SELECT col1
+     , col2
+FROM seq_data
+ORDER BY TRANSLATE(col1) ASC
+       , TRANSLATE(col2) ASC
+....
+
+_ANSWER_
+|===
+|COL1|COL2
+|Ab  |12
+|ab  |xy
+|AB  |xy
+|AB  |XY
+|ac  |XY
+|===
+
+One does not have to specify the column in the ORDER BY in the select list though, to the end-user, the data may seem to be random order if one leaves it out:
+
+.ORDER BY on not-displayed column
+[source,sql]
+....
+SELECT col2
+FROM seq_data
+ORDER BY col1
+       , col2;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|COL2
+|XY
+|xy
+|12
+|xy
+|XY
+|===
+
+In the next example, the data is (primarily) sorted in descending sequence, based on the second byte of the first column:
+
+.ORDER BY second byte of first column
+[source,sql]
+....
+SELECT col1
+     , col2
+FROM seq_data
+ORDER BY SUBSTR(col1,2) DESC
+       , col2
+       , 1;
+....
+
+_ANSWER_
+|===
+|COL1|COL2
+|ac  |XY
+|Ab  |12
+|ab  |xy
+|AB  |XY
+|AB  |xy
+|===
+
+The standard ASCII collating sequence defines upper-case characters as being lower than lower-case (i.e. 'A' < 'a'), so upper-case characters display first if the data is ascending order. In the next example, this is illustrated using the HEX function is used to display character data in bit-data order:
+
+.ORDER BY in bit-data sequence
+[source,sql]
+....
+SELECT col1
+     , HEX(col1) AS hex1
+     , col2
+     , HEX(col2) AS hex2
+FROM seq_data
+ORDER BY HEX(col1)
+       , HEX(col2)
+....
+
+_ANSWER_
+|===
+|COL1|HEX1|COL2|HEX2
+|AB  |4142|XY  |5859
+|AB  |4142|xy  |7879
+|Ab  |4162|12  |3132
+|ab  |6162|xy  |7879
+|ac  |6163|XY  |5859
+|===
+
+==== ORDER BY subselect
+
+One can order by the result of a nested ORDER BY, thus enabling one to order by a column that is not in the input - as is done below:
+
+-ORDER BY nested ORDER BY
+[source,sql]
+....
+SELECT col1
+FROM 
+  (SELECT col1
+   FROM seq_data
+   ORDER BY col2
+  ) AS xxx
+ORDER BY ORDER OF xxx;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|COL1
+|Ab
+|ac
+|AB
+|ab
+|AB
+|===
+
+In the next example the ordering of the innermost subselect is used, in part, to order the final output. This is done by first referring it to directly, and then indirectly:
+
+.Multiple nested ORDER BY statements
+[source,sql]
+....
+SELECT *
+FROM
+  (SELECT *
+   FROM
+     (SELECT *
+      FROM seq_data
+      ORDER BY col2
+     ) AS xxx
+   ORDER BY ORDER OF xxx
+          , SUBSTR(col1, 2)
+  ) AS yyy
+ORDER BY ORDER OF yyy
+                , col1;
+....
+
+_ANSWER_
+|===
+|COL1|COL2
+|Ab  |12
+|AB  |XY
+|ac  |XY
+|AB  |xy
+|ac  |xy
+|===
+
+==== ORDER BY inserted rows
+
+One can select from an insert statement (see <<insert.examples>>) to see what was inserted. Order by the INSERT SEQUENCE to display the rows in the order that they were inserted:
+
+.ORDER BY insert input sequence
+[source,sql]
+....
+SELECT empno
+     , projno AS prj
+     , actno AS act
+     , ROW_NUMBER() OVER() AS r#
+FROM
+  FINAL TABLE
+   (INSERT INTO emp_act (empno, projno, actno)
+    VALUES ('400000','ZZZ',999)
+         , ('400000','VVV',111)
+   )
+ORDER BY INPUT SEQUENCE;
+....
+
+_ANSWER_
+|===
+|EMPNO |PRJ|ACT|R#
+|400000|ZZZ|999|1
+|400000|VVV|111|2
+|===
+
+NOTE: The INPUT SEQUENCE phrase only works in an insert statement. It can be listed in the ORDER BY part of the statement, but not in the SELECT part. The select cannot be a nested table expression.
+
+==== Group By and Having
+
+The GROUP BY and GROUPING SETS statements are used to group individual rows into combined sets based on the value in one, or more, columns. The related ROLLUP and CUBE statements are short-hand forms of particular types of GROUPING SETS statement.
+
+*Rules and Restrictions*
+
+* There can only be one GROUP BY per SELECT. Multiple select statements in the same query can each have their own GROUP BY.
+* Every field in the SELECT list must either be specified in the GROUP BY, or must have a column function applied against it.
+* The result of a simple GROUP BY is always a distinct set of rows, where the unique identifier is whatever fields were grouped on.
+* Only expressions returning constant values (e.g. a column name, a constant) can be referenced in a GROUP BY. For example, one cannot group on the RAND function as its result varies from one call to the next. To reference such a value in a GROUP BY, resolve it beforehand using a nested-table-expression.
+* Variable length character fields with differing numbers on trailing blanks are treated as equal in the GROUP. The number of trailing blanks, if any, in the result is unpredictable.
+* When grouping, all null values in the GROUP BY fields are considered equal.
+* There is no guarantee that the rows resulting from a GROUP BY will come back in any particular order. If this is a problem, use an ORDER BY.
+
+==== GROUP BY Flavors
+
+A typical GROUP BY that encompasses one or more fields is actually a subset of the more general GROUPING SETS command. In a grouping set, one can do the following:
+
+* Summarize the selected data by the items listed such that one row is returned per unique combination of values. This is an ordinary GROUP BY.
+* Summarize the selected data using multiple independent fields. This is equivalent to doing multiple independent GROUP BY statements - with the separate results combined into one using UNION ALL statements.
+* Summarize the selected data by the items listed such that one row is returned per unique combination of values, and also get various sub-totals, plus a grand-total. Depending on what exactly is wanted, this statement can be written as a ROLLUP, or a CUBE.
+
+To illustrate the above concepts, imagine that we want to group some company data by team, department, and division. The possible sub-totals and totals that we might want to get are:
+
+.Possible groupings
+[source,sql]
+....
+GROUP BY division, department, team
+GROUP BY division, department
+GROUP BY division
+GROUP BY division, team
+GROUP BY department, team
+GROUP BY department
+GROUP BY team
+GROUP BY ()   <= grand-total
+....
+
+If we wanted to get the first three totals listed above, plus the grand-total, we could write the statement one of three ways: 
+
+.Three ways to write the same GROUP BY
+[source,sql]
+....
+GROUP BY division, department, team
+UNION ALL
+GROUP BY division, department
+UNION ALL
+GROUP BY division
+UNION ALL
+GROUP BY () 
+
+GROUP BY GROUPING SETS ((division, department, team)
+                      , (division, department)
+                      , (division)
+                      , ())
+
+GROUP BY ROLLUP (division, department, team)
+....
+
+*Usage Warnings*
+
+Before we continue, be aware of the following:
+
+* Single vs. double parenthesis is a very big deal in grouping sets. When using the former, one is listing multiple independent groupings, while with the latter one is listing the set of items in a particular grouping.
+* Repetition matters - sometimes. In an ordinary GROUP BY duplicate references to the same field has no impact on the result. By contrast, in a GROUPING SET, ROLLUP, or CUBE statement, duplicate references can often result in the same set of data being retrieved multiple times.
+
+==== GROUP BY Sample Data
+
+The following view will be used throughout this section:
+
+.GROUP BY Sample Data
+[source,sql]
+....
+CREATE VIEW employee_view (d1, dept, sex, salary) AS
+VALUES ('A', 'A00', 'F', 52750)
+     , ('A', 'A00', 'M', 29250)
+     , ('A', 'A00', 'M', 46500)
+     , ('B', 'B01', 'M', 41250)
+     , ('C', 'C01', 'F', 23800)
+     , ('C', 'C01', 'F', 28420)
+     , ('C', 'C01', 'F', 38250)
+     , ('D', 'D11', 'F', 21340)
+     , ('D', 'D11', 'F', 22250)
+     , ('D', 'D11', 'F', 29840)
+     , ('D', 'D11', 'M', 18270)
+     , ('D', 'D11', 'M', 20450)
+     , ('D', 'D11', 'M', 24680)
+     , ('D', 'D11', 'M', 25280)
+     , ('D', 'D11', 'M', 27740)
+     , ('D', 'D11', 'M', 32250);
+....
+
+*VIEW CONTENTS*
+|===
+|D1|DEPT|SEX|SALARY
+|A |A00 |F  |52750
+|A |A00 |M  |29250
+|A |A00 |M  |46500
+|B |B01 |M  |41250
+|C |C01 |F  |23800
+|C |C01 |F  |28420
+|C |C01 |F  |38250
+|D |D11 |F  |21340
+|D |D11 |F  |22250
+|D |D11 |F  |29840
+|D |D11 |M  |18270
+|D |D11 |M  |20450
+|D |D11 |M  |24680
+|D |D11 |M  |25280
+|D |D11 |M  |27740
+|D |D11 |M  |32250
+|===
+
+==== Simple GROUP BY Statements
+
+A simple GROUP BY is used to combine individual rows into a distinct set of summary rows.
+
+===== Sample Queries
+
+In this first query we group our sample data by the leftmost three fields in the view:
+
+.Simple GROUP BY
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+WHERE dept <> 'ABC'
+GROUP BY d1
+       , dept
+       , sex
+HAVING dept      >  'A0'
+AND (SUM(salary) >  100
+OR MIN(salary)   >  10
+OR COUNT(*)      <> 22)
+ORDER BY d1
+       , dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SALARY|#ROWS
+|A |A00 |F  |52750 |1
+|A |A00 |M  |75750 |2
+|B |B01 |M  |41250 |1
+|C |C01 |F  |90470 |3
+|D |D11 |F  |73430 |3
+|D |D11 |M  |148670|6
+|===
+
+There is no need to have a field in the GROUP BY in the SELECT list, but the answer really doesn't make much sense if one does this:
+
+.GROUP BY on non-displayed field
+[source,sql]
+....
+SELECT sex
+     , SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+WHERE sex IN ('F','M')
+GROUP BY dept
+       , sex
+ORDER BY sex;
+....
+
+ANSWER
+|===
+|SEX|SALARY|#ROWS
+|F  |52750 |1
+|F  |90470 |3
+|F  |73430 |3
+|M  |75750 |2
+|M  |41250 |1
+|M  |148670|6
+|===
+
+One can also do a GROUP BY on a derived field, which may, or may not be, in the statement SELECT list. This is an amazingly stupid thing to do:
+
+.GROUP BY on derived field, not shown
+[source,sql]
+....
+SELECT SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+WHERE d1 <> 'X'
+GROUP BY SUBSTR(dept,3,1)
+HAVING COUNT(*) <> 99;
+....
+
+_ANSWER_
+|===
+|SALARY|#ROWS
+|128500|3
+|353820|13
+|===
+
+One can not refer to the name of a derived column in a GROUP BY statement. Instead, one has to repeat the actual derivation code. One can however refer to the new column name in an ORDER BY:
+
+.GROUP BY on derived field, shown
+[source,sql]
+....
+SELECT SUBSTR(dept, 3, 1) AS wpart
+     , SUM(salary) AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+GROUP BY SUBSTR(dept, 3, 1)
+ORDER BY wpart DESC;
+....
+
+_ANSWER_
+|===
+|WPART|SALARY|#ROWS
+|1    |353820|13
+|0    |128500|3
+|===
+
+==== GROUPING SETS Statement
+
+The GROUPING SETS statement enables one to get multiple GROUP BY result sets using a single statement. It is important to understand the difference between nested (i.e. in secondary parenthesis), and non-nested GROUPING SETS sub-phrases:
+
+* A nested list of columns works as a simple GROUP BY.
+* A non-nested list of columns works as separate simple GROUP BY
+statements, which are then combined in an implied UNION ALL.
+
+.GROUPING SETS in parenthesis vs. not
+[source,sql]
+....
+GROUP BY GROUPING SETS ((A,B,C)) is equivalent to GROUP BY A , B , C
+GROUP BY GROUPING SETS (A,B,C) is equivalent to GROUP BY A UNION ALL
+GROUP BY B UNION ALL GROUP BY C
+GROUP BY GROUPING SETS (A,(B,C)) is equivalent to GROUP BY A UNION ALL
+GROUP BY B , C
+....
+
+Multiple GROUPING SETS in the same GROUP BY are combined together as if they were simple fields in a GROUP BY list:
+
+.Multiple GROUPING SETS
+[source,sql]
+....
+GROUP BY GROUPING SETS (A) is equivalent to GROUP BY A
+       , GROUPING SETS (B)                         , B
+       , GROUPING SETS (C)                         , C
+
+GROUP BY GROUPING SETS (A)      is equivalent to  GROUP BY A
+       , GROUPING SETS ((B,C))                           , B
+                                                         , C
+
+GROUP BY GROUPING SETS (A)    is equivalent to  GROUP BY A
+       , GROUPING SETS (B,C)                           , B
+                                                UNION ALL
+                                                GROUP BY A
+                                                       , C
+....
+
+One can mix simple expressions and GROUPING SETS in the same GROUP BY:
+
+.Simple GROUP BY expression and GROUPING SETS combined
+[source,sql]
+....
+GROUP BY A                       is equivalent to GROUP BY A
+       , GROUPING SETS ((B,C))                           , B
+                                                         , C
+....
+
+Repeating the same field in two parts of the GROUP BY will result in different actions depending on the nature of the repetition. The second field reference is ignored if a standard GROUP BY is being made, and used if multiple GROUP BY statements are implied:
+
+.Mixing simple GROUP BY expressions and GROUPING SETS
+[source,sql]
+....
+GROUP BY A                          is equivalent to GROUP BY A
+       , B                                                  , B
+       , GROUPING SETS ((B,C))                              , C
+
+GROUP BY A                          is equivalent to GROUP BY A
+       , B                                                  , B
+       , GROUPING SETS (B,C)                                , C
+                                                     UNION ALL
+                                                     GROUP BY A
+                                                            , B
+
+GROUP BY A                          is equivalent to GROUP BY A
+       , B                                                  , B
+       , C                                                  , C
+       , GROUPING SETS (B,C)                         UNION ALL
+                                                     GROUP BY A
+                                                            , B
+                                                            , C
+....
+
+A single GROUPING SETS statement can contain multiple sets of (implied) GROUP BY phrases. These are combined using implied UNION ALL statements:
+
+.GROUPING SETS with multiple components
+[source,sql]
+....
+GROUP BY GROUPING SETS ((A,B,C)           is equivalent to GROUP BY A
+                      , (A,B)                                     , B
+                      , (C))                                      , C
+                                                           UNION ALL
+                                                           GROUP BY A
+                                                                  , B
+                                                           UNION ALL
+                                                           GROUP BY C
+
+GROUP BY GROUPING SETS ((A)               is equivalent to GROUP BY A
+                      , (B,C)                              UNION ALL
+                      , (A)                                GROUP BY B
+                      , A                                         , C
+                      , ((C)))                             UNION ALL
+                                                           GROUP BY A
+                                                           UNION ALL
+                                                           GROUP BY A
+                                                           UNION ALL
+                                                           GROUP BY C
+....
+
+The null-field list "( )" can be used to get a grand total. This is equivalent to not having the GROUP BY at all. 
+
+.GROUPING SET with multiple components, using grand-total
+[source,sql]
+....
+GROUP BY GROUPING SETS ((A,B,C)           is equivalent to GROUP BY A
+                      , (A,B)                                     , B
+                      , (A)                                       , C
+                      , ())                                UNION ALL
+                                                           GROUP BY A
+                                                                  , B
+is equivalent to                                           UNION ALL
+                                                           GROUP BY A
+                                                           UNION ALL
+ROLLUP(A, B, C)                                            grand-totl
+....
+
+The above GROUPING SETS statement is equivalent to a ROLLUP(A,B,C), while the next is equivalent to a CUBE(A,B,C):
+
+.GROUPING SET with multiple components, using grand-total
+[source,sql]
+....
+GROUP BY GROUPING SETS ((A,B,C)           is equivalent to GROUP BY A
+                      , (A,B)                                     , B
+                      , (A,C)                                     , C
+                      , (B,C)                              UNION ALL
+                      , (A)                                GROUP BY A
+                      , (B)                                       , B
+                      , (C)                                UNION ALL
+                      , ())                                GROUP BY A
+                                                                  , C
+                                                           UNION ALL
+                                                           GROUP BY B
+is equivalent to                                                  , C
+                                                           UNION ALL
+                                                           GROUP BY A
+                                                           UNION ALL
+CUBE(A,B,C)                                                GROUP BY B
+                                                           UNION ALL
+                                                           GROUP BY C
+                                                           UNION ALL
+                                                           grand-totl
+....
+
+==== SQL Examples
+
+This first example has two GROUPING SETS. Because the second is in nested parenthesis, the result is the same as a simple three-field group by:
+
+.Multiple GROUPING SETS, making one GROUP BY
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , SUM(salary)        AS sal
+     , SMALLINT(COUNT(*)) AS #r
+     , GROUPING(d1)       AS f1
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+     FROM employee_view
+     GROUP BY GROUPING SETS (d1)
+            , GROUPING SETS ((dept, sex))
+     ORDER BY d1
+            , dept
+            , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R|DF|WF|SF
+|A |A00 |F  |52750 |1 |0 |0 |0
+|A |A00 |M  |75750 |2 |0 |0 |0
+|B |B01 |M  |41250 |1 |0 |0 |0
+|C |C01 |F  |90470 |3 |0 |0 |0
+|D |D11 |F  |73430 |3 |0 |0 |0
+|D |D11 |M  |148670|6 |0 |0 |0
+|===
+
+NOTE: The GROUPING(field-name) column function is used in these examples to identify what rows come from which particular GROUPING SET. A value of 1 indicates that the corresponding data field is null because the row is from of a GROUPING SET that does not involve this row. Otherwise, the value is zero.
+
+In the next query, the second GROUPING SET is not in nested-parenthesis.
+The query is therefore equivalent to GROUP BY D1, DEPT UNION ALL GROUP BY D1, SEX:
+
+.Multiple GROUPING SETS, making two GROUP BY results
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , SUM(salary)        AS sal
+     , SMALLINT(COUNT(*)) AS #r
+     , GROUPING(d1)       AS f1
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_view
+GROUP BY GROUPING SETS (d1)
+       , GROUPING SETS (dept, sex)
+ORDER BY d1
+       , dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R|F1|FD|FS
+|A |A00 |-  |128500|3 |0 |0 |1
+|A |-   |F  |52750 |1 |0 |1 |0
+|A |-   |M  |75750 |2 |0 |1 |0
+|B |B01 |-  |41250 |1 |0 |0 |1
+|B |-   |M  |41250 |1 |0 |1 |0
+|C |C01 |-  |90470 |3 |0 |0 |1
+|C |-   |F  |90470 |3 |0 |1 |0
+|D |D11 |-  |222100|9 |0 |0 |1
+|D |-   |F  |73430 |3 |0 |1 |0
+|D |-   |M  |148670|6 |0 |1 |0
+|===
+
+It is generally unwise to repeat the same field in both ordinary GROUP BY and GROUPING SETS statements, because the result is often rather hard to understand. To illustrate, the following two queries differ only in their use of nested-parenthesis. Both of them repeat the DEPT field:
+
+* In the first, the repetition is ignored, because what is created is an ordinary GROUP BY on all three fields.
+* In the second, repetition is important, because two GROUP BY statements are implicitly generated. The first is on D1 and DEPT. The second is on D1, DEPT, and SEX.
+
+.Repeated field essentially ignored
+[source,sql]
+....
+SELECT d1
+     , dept
+	 , sex
+	 , SUM(salary)        AS sal
+	 , SMALLINT(COUNT(*)) AS #r
+	 , GROUPING(d1)       AS f1
+	 , GROUPING(dept)     AS fd
+	 , GROUPING(sex)      AS fs
+FROM employee_view 
+GROUP BY d1
+       , dept
+	   , GROUPING SETS ((dept, sex))
+ORDER BY d1
+       , dept
+	   , sex;
+....
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R|F1|FD|FS
+|A |A00 |F  |52750 |1 |0 |0 |0
+|A |A00 |M  |75750 |2 |0 |0 |0
+|B |B01 |M  |41250 |1 |0 |0 |0
+|C |C01 |F  |90470 |3 |0 |0 |0
+|D |D11 |F  |73430 |3 |0 |0 |0
+|D |D11 |M  |148670|6 |0 |0 |0
+|===
+
+.Repeated field impacts query result
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , SUM(salary) AS sal
+     , SMALLINT(COUNT(*)) AS #r
+     , GROUPING(d1) AS f1
+     , GROUPING(dept) AS fd
+     , GROUPING(sex) AS fs
+FROM employee_view
+GROUP BY d1
+       , dept
+       , GROUPING SETS (dept, sex)
+ORDER BY d1
+       , dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R|F1|FD|FS
+|A |A00 |F  |52750 |1 |0 |0 |0
+|A |A00 |M  |75750 |2 |0 |0 |0
+|A |A00 |   |128500|3 |0 |0 |1
+|B |B01 |M  |41250 |1 |0 |0 |0
+|B |B01 |   |41250 |1 |0 |0 |1
+|C |C01 |F  |90470 |3 |0 |0 |0
+|C |C01 |   |90470 |3 |0 |0 |1
+|D |D11 |   |73430 |3 |0 |0 |0
+|D |D11 |M  |148670|6 |0 |0 |0
+|D |D11 |   |222100|9 |0 |0 |1
+|===
+
+The above two queries can be rewritten as follows:
+
+.Repeated field impacts query result
+[source,sql]
+....
+GROUP BY d1                     is equivalent to GROUP BY d1
+       , dept                                           , dept
+       , GROUPING SETS ((dept, sex))                    , sex
+
+GROUP BY d1                     is equivalent to GROUP BY d1
+       , dept                                           , dept
+       , GROUPING SETS (dept, sex)                      , sex
+                                                 UNION ALL
+                                                 GROUP BY d1
+                                                        , dept
+                                                        , dept
+....
+
+NOTE: Repetitions of the same field in a GROUP BY (as is done above) are ignored during query processing. Therefore GROUP BY D1, DEPT, DEPT, SEX is the same as GROUP BY D1, DEPT, SEX.
+
+[[rollup.statement]]
+==== ROLLUP Statement
+
+A ROLLUP expression displays sub-totals for the specified fields. This is equivalent to doing the original GROUP BY, and also doing more groupings on sets of the left-most columns.
+
+.ROLLUP vs. GROUPING SETS
+[source,sql]
+....
+GROUP BY ROLLUP(A,B,C) ===> GROUP BY GROUPING SETS((A,B,C)
+                                                 , (A,B)
+                                                 , (A)
+                                                 , ())
+
+GROUP BY ROLLUP(C,B)   ===> GROUP BY GROUPING SETS((C,B)
+                                                 , (C)
+                                                 , ())
+
+GROUP BY ROLLUP(A)     ===> GROUP BY GROUPING SETS((A)
+                                                 , ())
+....
+
+Imagine that we wanted to GROUP BY, but not ROLLUP one field in a list of fields. To do this, we simply combine the field to be removed with the next more granular field:
+
+.ROLLUP vs. GROUPING SETS
+[source,sql]
+....
+GROUP BY ROLLUP(A,(B,C))      ===> GROUP BY GROUPING SETS((A,B,C)
+                                                        , (A)
+                                                        , ())
+....
+
+Multiple ROLLUP statements in the same GROUP BY act independently of each other:
+
+.ROLLUP vs. GROUPING SETS
+[source,sql]
+....
+GROUP BY ROLLUP(A)               ===> GROUP BY GROUPING SETS((A,B,C)
+       , ROLLUP(B,C)                                       , (A,B)
+                                                           , (A)
+                                                           , (B, C)
+                                                           , (B)
+                                                           , ())
+....
+
+One way to understand the above is to convert the two ROLLUP statement into equivalent grouping sets, and them "multiply" them - ignoring any grand-totals except when they are on both sides of the equation:
+
+.Multiplying GROUPING SETS
+[source,sql]
+....
+ROLLUP(A) * ROLLUP(B,C)                 = GROUPING SETS((A,B,C)
+                                                      , (A,B)
+                                                      , (A)
+GROUPING SETS((A) * GROUPING SETS((B,C) =             , (B,C)
+            , ())               , (B)                 , (B)
+                                , ())                 , (())
+....
+
+===== SQL Examples
+
+Here is a standard GROUP BY that gets no sub-totals:
+
+.Simple GROUP BY
+[source,sql]
+....
+SELECT dept
+     , SUM(salary) AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept) AS fd
+FROM employee_view
+GROUP BY dept
+ORDER BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT|SALARY|#ROWS|FD
+|A00 |128500|3    |0
+|B01 |41250 |1    |0
+|C01 |0470  |3    |0
+|D11 |222100|9    |0
+|===
+
+Imagine that we wanted to also get a grand total for the above. Below is an example of using the ROLLUP statement to do this:
+
+.GROUP BY with ROLLUP
+[source,sql]
+....
+SELECT dept
+, SUM(salary) AS salary
+, SMALLINT(COUNT(*)) AS #rows
+, GROUPING(dept) AS FD
+FROM employee_view
+GROUP BY ROLLUP(dept)
+ORDER BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT|SALARY|#ROWS|FD
+|A00 |128500|3    |0
+|B01 |41250 |1    |0
+|C01 |90470 |3    |0
+|D11 |222100|9    |0
+|-   |482320|16   |1
+|===
+
+NOTE: The GROUPING(field-name) function that is selected in the above example returns a one when the output row is a summary row, else it returns a zero.
+
+Alternatively, we could do things the old-fashioned way and use a UNION ALL to combine the original GROUP BY with an all-row summary:
+
+.ROLLUP done the old-fashioned way
+[source,sql]
+....
+SELECT dept
+     , SUM(salary)           AS salary
+     , SMALLINT(COUNT(*))    AS #rows
+     , GROUPING(dept)        AS fd
+FROM employee_view
+GROUP BY dept
+UNION ALL
+SELECT CAST(NULL AS CHAR(3)) AS dept
+     , SUM(salary)           AS salary
+     , SMALLINT(COUNT(*))    AS #rows
+     , CAST(1 AS INTEGER)    AS fd
+FROM employee_view
+ORDER BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT|SALARY|#ROWS|FD
+|A00 |128500|3    |0
+|B01 |41250 |1    |0
+|C01 |90470 |3    |0
+|D11 |222100|9    |0
+|-   |482320|16   |1
+|===
+
+Specifying a field both in the original GROUP BY, and in a ROLLUP list simply results in every data row being returned twice. In other words, the result is garbage:
+
+.Repeating a field in GROUP BY and ROLLUP (error)
+[source,sql]
+....
+SELECT dept
+     , SUM(salary) AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept) AS fd
+FROM employee_view
+GROUP BY dept
+       , ROLLUP(dept)
+ORDER BY dept;
+....
+
+_ANSWER_
+|===
+|DEPT|SALARY|#ROWS|FD
+|A00 |128500|3    |0
+|A00 |128500|3    |0
+|B01 |41250 |1    |0
+|B01 |41250 |1    |0
+|C01 |90470 |3    |0
+|C01 |90470 |3    |0
+|D11 |222100|9    |0
+|D11 |222100|9    |0
+|===
+
+Below is a graphic representation of why the data rows were repeated above. Observe that two GROUP BY statements were, in effect, generated:
+
+.Repeating a field, explanation
+[source,sql]
+....
+GROUP BY dept           => GROUP BY dept                      => GROUP BY dept
+       , ROLLUP(dept)             , GROUPING SETS((dept)         UNION ALL
+                                                , ())            GROUP BY dept
+                                                                       , ()
+....
+
+In the next example the GROUP BY, is on two fields, with the second also being rolled up:
+
+.GROUP BY on 1st field, ROLLUP on 2nd
+[source,sql]
+....
+SELECT dept
+     , sex
+     , SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_view
+GROUP BY dept
+       , ROLLUP(sex)
+ORDER BY dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|DEPT|SEX|SALARY|#ROWS|FD|FS
+|A00 |F  |52750 |1    |0 |0
+|A00 |M  |75750 |2    |0 |0
+|A00 |-  |128500|3    |0 |1
+|B01 |M  |41250 |1    |0 |0
+|B01 |-  |41250 |1    |0 |1
+|C01 |F  |90470 |3    |0 |0
+|C01 |-  | 90470|3    |0 |1
+|D11 |F  |73430 |3    |0 |0
+|D11 |M  |148670|6    |0 |0
+|D11 |-  |222100|9    |0 |1
+|===
+
+The next example does a ROLLUP on both the DEPT and SEX fields, which means that we will get rows for the following:
+
+* The work-department and sex field combined (i.e. the original raw GROUP BY).
+* A summary for all sexes within an individual work-department.
+* A summary for all work-departments (i.e. a grand-total).
+
+.ROLLUP on DEPT, then SEX
+[source,sql]
+....
+SELECT dept
+     , sex
+	 , SUM(salary) AS salary
+	 , SMALLINT(COUNT(*)) AS #rows
+	 , GROUPING(dept) AS fd
+	 , GROUPING(sex) AS fs 
+FROM employee_view 
+GROUP BY ROLLUP(dept , sex) 
+ORDER BY dept , sex;
+....
+_ANSWER_
+|===
+|DEPT|SEX|SALARY|#ROWS|FD|FS
+|A00 |F  |52750 |1    |0 |0
+|A00 |M  |75750 |2    |0 |0
+|A00 |-  |128500|3    |0 |1
+|B01 |M  |41250 |1    |0 |0
+|B01 |-  |41250 |1    |0 |1
+|C01 |F  |90470 |3    |0 |0
+|C01 |-  |90470 |3    |0 |1
+|D11 |F  |73430 |3    |0 |0
+|D11 |M  |148670|6    |0 |0
+|D11 |-  |222100|9    |0 |1
+|-   |-  |482320|16   |1 |1
+|===
+
+In the next example we have reversed the ordering of fields in the ROLLUP statement. To make things easier to read, we have also altered the ORDER BY sequence. Now get an individual row for each sex and work-department value, plus a summary row for each sex:, plus a grand-total row:
+
+.ROLLUP on SEX, then DEPT
+[source,sql]
+....
+SELECT sex
+     , dept
+     , SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_view
+GROUP BY ROLLUP(sex
+              , dept)
+ORDER BY sex
+       , dept;
+....
+
+_ANSWER_
+|===
+|SEX|DEPT|SALARY|#ROWS|FD|FS
+|F  |A00 |52750 |1    |0 |0
+|F  |C01 |90470 |3    |0 |0
+|F  |D11 |73430 |3    |0 |0
+|F  |    |216650|7    |1 |0
+|M  |A00 |75750 |2    |0 |0
+|M  |B01 |41250 |1    |0 |0
+|M  |D11 |148670|6    |0 |0
+|M  |-   |265670|9    |1 |0
+|-  |-   |482320|16   |1 |1
+|===
+
+The next statement is the same as the prior, but it uses the logically equivalent GROUPING SETS syntax:
+
+
+.ROLLUP on SEX, then DEPT
+[source,sql]
+....
+SELECT sex
+     , dept
+     , SUM(salary) AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept) AS fd
+     , GROUPING(sex) AS fs
+FROM employee_view
+GROUP BY GROUPING SETS ((sex, dept)
+                      , (sex)
+                      , ())
+ORDER BY sex
+       , dept;
+....
+
+_ANSWER_
+|===
+|SEX|DEPT|SALARY|#ROWS|FD|FS
+|F  |A00 |52750 |1    |0 |0
+|F  |C01 |90470 |3    |0 |0
+|F  |D11 |73430 |3    |0 |0
+|F  |-   |216650|7    |1 |0
+|M  |A00 |75750 |2    |0 |0
+|M  |B01 |41250 |1    |0 |0
+|M  |D11 |148670|6    |0 |0
+|M  |-   |265670|9    |1 |0
+|-  |-   |482320|16   |1 |1
+|===
+
+The next example has two independent rollups:
+
+* The first generates a summary row for each sex.
+* The second generates a summary row for each work-department.
+
+The two together make a (single) combined summary row of all matching data. This query is the same as a UNION of the two individual rollups, but it has the advantage of being done in a single pass of the data. The result is the same as a CUBE of the two fields:
+
+.Two independent ROLLUPS
+[source,sql]
+....
+SELECT sex
+     , dept
+     , SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_view
+GROUP BY ROLLUP(sex)
+      , ROLLUP(dept)
+ORDER BY sex
+       , dept;
+....
+
+_ANSWER_
+|===
+|SEX|DEPT|SALARY|#ROWS|FD|FS
+|F  |A00 |52750 |1    |0 |0
+|F  |C01 |90470 |3    |0 |0
+|F  |D11 |73430 |3    |0 |0
+|F  |-   |216650|7    |1 |0
+|M  |A00 |75750 |2    |0 |0
+|M  |B01 |41250 |1    |0 |0
+|M  |D11 |148670|6    |0 |0
+|M  |-   |265670|9    |1 |0
+|-  |A00 |128500|3    |0 |1
+|-  |B01 |41250 |1    |0 |1
+|-  |C01 |90470 |3    |0 |1
+|-  |D11 |222100|9    |0 |1
+|-  |-   |482320|16   |1 |1
+|===
+
+Below we use an inner set of parenthesis to tell the ROLLUP to treat the two fields as one, which causes us to only get the detailed rows, and the grand-total summary:
+
+.Combined-field ROLLUP
+[source,sql]
+....
+SELECT dept
+     , sex
+     , SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_view
+GROUP BY ROLLUP((dept,sex))
+ORDER BY dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|DEPT|SEX|SALARY|#ROWS|FD|FS
+|A00 |F  |52750 |1    |0 |0
+|A00 |M  |75750 |2    |0 |0
+|B01 |M  |41250 |1    |0 |0
+|C01 |F  |90470 |3    |0 |0
+|D11 |F  |73430 |3    |0 |0
+|D11 |M  |148670|6    |0 |0
+|-   |-  |482320|16   |1 |1
+|===
+
+The HAVING statement can be used to refer to the two GROUPING fields. For example, in the following query, we eliminate all rows except the grand total:
+
+.Use HAVING to get only grand-total row
+[source,sql]
+....
+SELECT SUM(salary) AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+GROUP BY ROLLUP(sex
+              , dept)
+HAVING GROUPING(dept) = 1  AND
+       GROUPING(sex) = 1
+ORDER BY salary;
+....
+
+_ANSWER_
+|===
+|SALARY|#ROWS
+|482320|16
+|===
+
+Below is a logically equivalent SQL statement:
+
+.Use GROUPING SETS to get grand-total row
+[source,sql]
+....
+SELECT SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+GROUP BY GROUPING SETS(());
+....
+
+_ANSWER_
+|===
+|SALARY|#ROWS
+|482320|16
+|===
+
+Here is another:
+
+.Use GROUP BY to get grand-total row
+[source,sql]
+....
+SELECT SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view
+GROUP BY ();
+....
+
+_ANSWER_
+|===
+|SALARY|#ROWS
+|482320|16
+|===
+
+And another:
+
+.Get grand-total row directly
+[source,sql]
+....
+SELECT SUM(salary)        AS salary
+     , SMALLINT(COUNT(*)) AS #rows
+FROM employee_view;
+....
+
+_ANSWER_
+|===
+|SALARY|#ROWS
+|482320|16
+|===
+
+==== CUBE Statement
+
+A CUBE expression displays a cross-tabulation of the sub-totals for any specified fields. As such, it generates many more totals than the similar ROLLUP.
+
+.CUBE vs. GROUPING SETS
+[source,sql]
+....
+GROUP BY CUBE(A,B,C)           ===> GROUP BY GROUPING SETS((A,B,C)
+                                                         , (A,B)
+                                                         , (A,C)
+                                                         , (B,C)
+                                                         , (A)
+                                                         , (B)
+                                                         , (C)
+                                                         , ())
+GROUP BY CUBE(C,B)             ===> GROUP BY GROUPING SETS((C,B)
+                                                         , (C)
+                                                         , (B)
+                                                         , ())
+GROUP BY CUBE(A)               ===> GROUP BY GROUPING SETS((A)
+                                                         , ())
+....
+
+As with the ROLLLUP statement, any set of fields in nested parenthesis is treated by the CUBE as a single field: 
+
+.CUBE vs. GROUPING SETS
+[source,sql]
+....
+GROUP BY CUBE(A,(B,C))           ===>  GROUP BY GROUPING SETS((A,B,C)
+                                                            , (B,C)
+                                                            , (A)
+                                                            , ())
+....
+
+Having multiple CUBE statements is allowed, but very, very silly:
+
+.CUBE vs. GROUPING SETS
+[source,sql]
+....
+GROUP BY CUBE(A,B)           ==> GROUPING SETS((A,B,C),(A,B),(A,B,C),(A,B)
+       , CUBE(B,C)                           , (A,B,C),(A,B),(A,C),(A)
+                                             , (B,C),(B),(B,C),(B)
+                                             , (B,C),(B),(C),())
+....
+
+Obviously, the above is a lot of GROUPING SETS, and even more underlying GROUP BY statements. Think of the query as the Cartesian Product of the two CUBE statements, which are first resolved down into the following two GROUPING SETS:
+
+[source,sql]
+....
+((A,B),(A),(B),())
+((B,C),(B),(C),())
+....
+
+==== SQL Examples
+
+Below is a standard CUBE statement:
+
+.CUBE example
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , INT(SUM(salary))   AS sal
+     , SMALLINT(COUNT(*)) AS #r
+     , GROUPING(d1)       AS f1
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_view
+GROUP BY CUBE(d1, dept, sex)
+ORDER BY d1
+       , dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R|F1|FD|FS
+|A |A00 |F  |52750 |1 |0 |0 |0
+|A |A00 |M  |75750 |2 |0 |0 |0
+|A |A00 |-  |128500|3 |0 |0 |1
+|A |    |F  |52750 |1 |0 |1 |0
+|A |    |M  |75750 |2 |0 |1 |0
+|A |    |   |128500|3 |0 |1 |1
+|B |B01 |M  |41250 |1 |0 |0 |0
+|B |B01 |   |41250 |1 |0 |0 |1
+|B |    |M  |41250 |1 |0 |1 |0
+|B |    |   |41250 |1 |0 |1 |1
+|C |C01 |F  |90470 |3 |0 |0 |0
+|C |C01 |   |90470 |3 |0 |0 |1
+|C |    |F  |90470 |3 |0 |1 |0
+|C |    |   |90470 |3 |0 |1 |1
+|D |D11 |F  |73430 |3 |0 |0 |0
+|D |D11 |M  |148670|6 |0 |0 |0
+|D |D11 |   |222100|9 |0 |0 |1
+|D |    |F  |73430 |3 |0 |1 |0
+|D |    |M  |148670|6 |0 |1 |0
+|D |    |   |222100|9 |0 |1 |1
+|- |A00 |F  |2750  |1 |1 |0 |0
+|- |A00 |M  |75750 |2 |1 |0 |0
+|- |A00 |   |128500|3 |1 |0 |1
+|- |B01 |M  |41250 |1 |1 |0 |0
+|- |B01 |   |41250 |1 |1 |0 |1
+|- |C01 |F  |90470 |3 |1 |0 |0
+|- |C01 |   |90470 |3 |1 |0 |1
+|- |D11 |F  |73430 |3 |1 |0 |0
+|- |D11 |M  |148670|6 |1 |0 |0
+|- |D11 |   |222100|9 |1 |0 |1
+|- |    |F  |216650|7 |1 |1 |0
+|- |    |M  |265670|9 |1 |1 |0
+|- |    |   |482320|16|1 |1 |1
+|===
+
+Here is the same query expressed as GROUPING SETS;
+
+.CUBE expressed using multiple GROUPING SETS
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , INT(SUM(salary)) AS sal
+     , SMALLINT(COUNT(*)) AS #r
+     , GROUPING(d1) AS f1
+     , GROUPING(dept) AS fd
+     , GROUPING(sex) AS fs
+FROM employee_view
+GROUP BY GROUPING SETS ((d1, dept, sex)
+                      , (d1,dept)
+                      , (d1,sex)
+                      , (dept,sex)
+                      , (d1)
+                      , (dept)
+                      , (sex)
+                      , ())
+ORDER BY d1
+       , dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL  |#R|F1|FD|FS
+|A |A00 |F  |52750|1 |0 |0 |0
+|A |A00 |M  |75750|2 |0 |0 |0
+|===
+....
+etc... (same as prior query)
+....
+
+A CUBE on a list of columns in nested parenthesis acts as if the set of columns was only one field. The result is that one gets a standard GROUP BY (on the listed columns), plus a row with the grand-totals:
+
+.CUBE on compound fields
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , INT(SUM(salary))   AS sal
+     , SMALLINT(COUNT(*)) AS #r
+     , GROUPING(d1)       AS f1
+     , GROUPING(dept)     AS fd
+     , GROUPING(sex)      AS fs
+FROM employee_VIEW
+GROUP BY CUBE((d1, dept, sex))
+ORDER BY d1
+       , dept
+       , sex;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R|F1|FD|FS
+|A |A00 |F  |52750 |1 |0 |0 |0
+|A |A00 |M  |75750 |2 |0 |0 |0
+|B |B01 |M  |41250 |1 |0 |0 |0
+|C |C01 |F  |90470 |3 |0 |0 |0
+|D |D11 |F  |73430 |3 |0 |0 |0
+|D |D11 |M  |148670|6 |0 |0 |0
+|- |    |   |482320|16|1 |1 |1
+|===
+
+The above query is resolved thus:
+
+.CUBE on compound field, explanation
+[source,sql]
+....
+GROUP BY CUBE((A,B,C))      => GROUP BY GROUPING SETS((A,B,C)      => GROUP BY A
+                                                    , ())                    , B
+                                                                             , C
+                                                                      UNION ALL
+                                                                      GROUP BY()
+....
+
+===== Complex Grouping Sets - Done Easy
+
+Many of the more complicated SQL statements illustrated above are essentially unreadable because it is very hard to tell what combinations of fields are being rolled up, and what are not. There ought to be a more user-friendly way and, fortunately, there is. The CUBE command can be used to roll up everything. Then one can use ordinary SQL predicates to select only those totals and sub-totals that one wants to display. 
+
+NOTE: Queries with multiple complicated ROLLUP and/or GROUPING SET statements sometimes fail to compile. In which case, this method can be used to get the answer.
+
+To illustrate this technique, consider the following query. It summarizes the data in the sample view by three fields:
+
+.Basic GROUP BY example
+[source,sql]
+....
+SELECT d1                 AS d1
+     , dept               AS dpt
+     , sex                AS sx
+     , INT(SUM(salary))   AS sal
+     , SMALLINT(COUNT(*)) AS r
+FROM employee_VIEW
+GROUP BY d1
+       , dept
+       , sex
+ORDER BY 1,2,3;
+....
+
+_ANSWER_
+|===
+|D1|DPT|SX|SAL   |R
+|A |A00|F |52750 |1
+|A |A00|M |75750 |2
+|B |B01|M |41250 |1
+|C |C01|F |90470 |3
+|D |D11|F |73430 |3
+|D |D11|M |148670|6
+|===
+
+Now imagine that we want to extend the above query to get the following sub-total rows:
+
+.Sub-totals that we want to get
+[source,sql]
+....
+DESIRED SUB-TOTALS                    EQUIVILENT TO
+D1, DEPT, and SEX.                    GROUP BY GROUPING SETS ((d1,dept,sex)
+D1 and DEPT.                                                , (d1,dept)
+D1 and SEX.                                                 , (d1,sex)
+D1.                                                         , (d1)
+SEX.                                                        , (sex)
+Grand total.                          EQUIVILENT TO         , ())
+                                      GROUP BY ROLLUP(d1,dept)
+                                             , ROLLUP(sex)
+....
+
+Rather than use either of the syntaxes shown on the right above, below we use the CUBE expression to get all sub-totals, and then select those that we want:
+
+.Get lots of sub-totals, using CUBE
+[source,sql]
+....
+SELECT *
+FROM (SELECT d1 AS d1
+           , dept AS dpt
+           , sex AS sx
+           , INT(SUM(salary)) AS sal
+           , SMALLINT(COUNT(*)) AS #r
+           , SMALLINT(GROUPING(d1)) AS g1
+           , SMALLINT(GROUPING(dept)) AS gd
+           , SMALLINT(GROUPING(sex)) AS gs
+      FROM EMPLOYEE_VIEW
+      GROUP BY CUBE(d1,dept,sex)
+      ) AS xxx
+WHERE (g1,gd,gs) = (0,0,0)
+   OR (g1,gd,gs) = (0,0,1)
+   OR (g1,gd,gs) = (0,1,0)
+   OR (g1,gd,gs) = (0,1,1)
+   OR (g1,gd,gs) = (1,1,0)
+   OR (g1,gd,gs) = (1,1,1)
+ORDER BY 1,2,3;
+....
+
+_ANSWER_
+|===
+|D1|DPT|SX|SAL   |#R|G1|GD|GS
+|A |A00|F |52750 |1 |0 |0 |0
+|A |A00|M |75750 |2 |0 |0 |0
+|A |A00|- |128500|3 |0 |0 |1
+|A |   |F |52750 |1 |0 |1 |0
+|A |   |M |75750 |2 |0 |1 |0
+|A |   |- |128500|3 |0 |1 |1
+|B |B01|M |41250 |1 |0 |0 |0
+|B |B01|  |41250 |1 |0 |0 |1
+|B |   |M |41250 |1 |0 |1 |0
+|B |   |  |41250 |1 |0 |1 |1
+|C |C01|F |90470 |3 |0 |0 |0
+|C |C01|  |90470 |3 |0 |0 |1
+|C |   |F |90470 |3 |0 |1 |0
+|C |   |  |90470 |3 |0 |1 |1
+|D |D11|F |73430 |3 |0 |0 |0
+|D |D11|M |148670|6 |0 |0 |0
+|D |D11|- |222100|9 |0 |0 |1
+|D |   |F |73430 |3 |0 |1 |0
+|D |   |M |148670|6 |0 |1 |0
+|D |   |- |222100|9 |0 |1 |1
+|- |   |F |216650|7 |1 |1 |0
+|- |   |M |265670|9 |1 |1 |0
+|- | - |  |482320|16|1 |1 |1
+|===
+
+In the above query, the GROUPING function (see <<grouping.function>>) is used to identify what fields are being summarized on each row. A value of one indicates that the field is being summarized; while a value of zero means that it is not. Only the following combinations are kept:
+
+.Predicates used - explanation
+....
+(G1,GD,GS) = (0,0,0) <== D1, DEPT, SEX
+(G1,GD,GS) = (0,0,1) <== D1, DEPT
+(G1,GD,GS) = (0,1,0) <== D1, SEX
+(G1,GD,GS) = (0,1,1) <== D1,
+(G1,GD,GS) = (1,1,0) <== SEX,
+(G1,GD,GS) = (1,1,1) <== grand total
+....
+
+Here is the same query written using two ROLLUP expressions. You can be the judge as to which is the easier to understand: 
+
+.Get lots of sub-totals, using ROLLUP
+[source,sql]
+....
+SELECT d1
+     , dept
+     , sex
+     , INT(SUM(salary)) AS sal
+     , SMALLINT(COUNT(*)) AS #r
+FROM employee_view
+GROUP BY ROLLUP(d1, dept)
+       , ROLLUP(sex)
+ORDER BY 1,2,3;
+....
+
+_ANSWER_
+|===
+|D1|DEPT|SEX|SAL   |#R
+|A |A00 |F  |52750 |1
+|A |A00 |M  |75750 |2
+|A |A00 |   |128500|3
+|A |    |F  |52750 |1
+|A |    |M  |75750 |2
+|A |    |   |128500|3
+|B |B01 |M  |41250 |1
+|B |B01 |   |41250 |1
+|B |    |M  |41250 |1
+|B |    |   |41250 |1
+|C |C01 |F  |90470 |3
+|C |C01 |   |90470 |3
+|C |    |F  |90470 |3
+|C |    |   |90470 |3
+|D |D11 |F  |73430 |3
+|D |D11 |M  |148670|6
+|D |D11 |   |222100|9
+|D |    |F  |73430 |3
+|D |    |M  |148670|6
+|D |    |   |222100|9
+|- |    |F  |216650|7
+|- |    |M  |265670|9
+|- |    |   |482320|16
+|===
+
+==== Group By and Order By
+
+One should never assume that the result of a GROUP BY will be a set of appropriately ordered rows because Db2 may choose to use a "strange" index for the grouping so as to avoid doing a row sort. For example, if one says "GROUP BY C1, C2" and the only suitable index is on C2 descending and then C1, the data will probably come back in index-key order.
+
+.GROUP BY with ORDER BY
+[source,sql]
+....
+SELECT dept
+     , job
+     , COUNT(*)
+FROM staff
+GROUP BY dept, job
+ORDER BY dept, job;
+....
+
+NOTE: Always code an ORDER BY if there is a need for the rows returned from the query to be specifically ordered - which there usually is._
+
+==== Group By in Join
+
+We want to select those rows in the STAFF table where the average SALARY for the employee's DEPT is greater than $18,000. Answering this question requires using a JOIN and GROUP BY in the same statement. The GROUP BY will have to be done first, then its' result will be joined to the STAFF table. There are two syntactically different, but technically similar, ways to write this query. Both techniques use a temporary table, but the way by which this is expressed differs. In the first example, we shall use a common table expression:
+
+.GROUP BY on one side of join - using common table expression
+[source,sql]
+....
+WITH staff2 (dept, avgsal) AS
+ (SELECT dept
+       , AVG(salary)
+  FROM staff
+  GROUP BY dept
+  HAVING AVG(salary) > 18000
+ )
+SELECT a.id
+     , a.name
+     , a.dept
+FROM staff a
+   , staff2 b
+WHERE a.dept = b.dept
+ORDER BY a.id;
+....
+
+_ANSWER_
+|===
+|ID |NAME    |DEPT
+|160|Molinare|10
+|210|Lu      |10
+|240|Daniels |10
+|260|Jones   |10
+|===
+
+In the next example, we shall use a fullselect:
+
+.GROUP BY on one side of join - using fullselect
+[source,sql]
+....
+SELECT a.id
+     , a.name
+     , a.dept
+FROM staff a
+  , (SELECT dept AS dept
+          , AVG(salary) AS avgsal
+     FROM staff
+     GROUP BY dept
+     HAVING AVG(salary) > 18000
+    ) AS b
+WHERE a.dept = b.dept
+ORDER BY a.id;
+....
+
+_ANSWER_
+|===
+|ID |NAME    |DEPT
+|160|Molinare|10
+|210|Lu      |10
+|240|Daniels |10
+|260|Jones   |10
+|===
+
+==== COUNT and No Rows
+
+When there are no matching rows, the value returned by the COUNT depends upon whether this is a GROUP BY in the SQL statement or not:
+
+.COUNT and No Rows
+[source,sql]
+....
+SELECT COUNT(*) AS c1
+FROM staff
+WHERE id < 1;
+
+ANSWER ==> 0
+
+SELECT COUNT(*) AS c1
+FROM staff
+WHERE id < 1
+GROUP BY id;
+
+ANSWER ==> no row
+....
+
+see <<no.rows.match>> for a comprehensive discussion of what happens when no rows match.
+
+

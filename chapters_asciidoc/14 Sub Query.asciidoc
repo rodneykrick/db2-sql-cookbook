@@ -1,0 +1,1184 @@
+[[subquery.chapter]]
+== Sub-Query
+
+Sub-queries are hard to use, tricky to tune, and often do some strange things. Consequently, a lot of people try to avoid them, but this is stupid because sub-queries are really, really, useful. Using a relational database and not writing sub-queries is almost as bad as not doing joins. A sub-query is a special type of fullselect that is used to relate one table to another without actually doing a join. For example, it lets one select all of the rows in one table where some related value exists, or does not exist, in another table.
+
+=== Sample Tables
+
+Two tables will be used in this section. Please note that the second sample table has a mixture of null and not-null values:
+
+.Sample tables used in sub-query examples
+[source,sql]
+....
+CREATE TABLE table1
+( t1a CHAR(1) NOT NULL
+, t1b CHAR(2) NOT NULL
+, PRIMARY KEY(t1a));
+COMMIT;
+
+CREATE TABLE table2
+( t2a CHAR(1) NOT NULL
+, t2b CHAR(1) NOT NULL
+, t2c CHAR(1));
+
+INSERT INTO table1 VALUES ('A', 'AA')
+                        , ('B','BB')
+                        , ('C','CC');
+INSERT INTO table2 VALUES ('A', 'A', 'A')
+                        , ('B', 'A', NULL);
+....
+
+_TABLE1_
+|===
+|T1A|T1B
+|A  |AA 
+|B  |BB 
+|C  |CC 
+|===
+_TABLE2_
+|===
+|T2A|T2B|T2C
+|A  |A  |A 
+|B  |A  |- 
+|===
+....
+"-" = null
+....
+
+A sub-query compares an expression against a fullselect. The type of comparison done is a function of which, if any, keyword is used.
+
+The result of doing a sub-query check can be any one of the following:
+
+* True, in which case the current row being processed is returned.
+* False, in which case the current row being processed is rejected.
+* Unknown, which is functionally equivalent to false.
+* A SQL error, due to an invalid comparison.
+
+=== No Keyword Sub-Query
+
+One does not have to provide a SOME, or ANY, or IN, or any other keyword, when writing a sub-query. But if one does not, there are three possible results:
+
+* If no row in the sub-query result matches, the answer is false.
+* If one row in the sub-query result matches, the answer is true.
+* If more than one row in the sub-query result matches, you get a SQL error.
+
+In the example below, the T1A field in TABLE1 is checked to see if it equals the result of the sub-query (against T2A in TABLE2). For the value "A" there is a match, while for the values "B" and "C" there is no match:
+
+.No keyword sub-query, works
+[source,sql]
+....
+SELECT *
+FROM table1 
+WHERE t1a =
+   (SELECT t2a
+    FROM table2
+    WHERE t2a = 'A');
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|===
+_SUB-Q RESLT_
+
+[cols="",options="header",]
+|===
+|T2A
+|A
+|===
+
+_TABLE1_
+|===
+|T1A|T1B
+|A  |AA 
+|B  |BB
+|C  |CC 
+|===
+_TABLE2_
+|===
+|T2A|T2B|T2C
+|A  |A  |A 
+|B  |A  |- 
+|===
+....
+"-" = null
+....
+
+The next example gets a SQL error. The sub-query returns two rows, which the "=l" check cannot process. Had an "= ANY" or an "= SOME" check been used instead, the query would have worked fine:
+
+.No keyword sub-query, fails
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = 
+    (SELECT t2a
+     FROM table2);
+....
+
+_ANSWER_ ==> *error*
+
+_SUB-Q RESLT_
+
+[cols="",options="header",]
+|===
+|T2A
+|A
+|B
+|===
+
+_TABLE1_
+|===
+|T1A|T1B
+|A  |AA 
+|B  |BB
+|C  |CC 
+|===
+_TABLE2_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|B  |A  |- 
+|===
+....
+"-" = null
+....
+
+NOTE: There is almost never a valid reason for coding a sub-query that does not use an appropriate sub-query keyword. Do not do the above.
+
+=== SOME/ANY Keyword Sub-Query
+
+When a SOME or ANY sub-query check is used, there are two possible results:
+
+* If any row in the sub-query result matches, the answer is true.
+* If the sub-query result is empty, or all nulls, the answer is false.
+* If no value found in the sub-query result matches, the answer is also false.
+* The query below compares the current T1A value against the sub-query result three times.
+
+The first row (i.e. T1A = "A") fails the test, while the next two rows pass:
+
+.ANY sub-query
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a > ANY
+ (SELECT t2a
+  FROM table2);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|B  |BB
+|C  |CC
+|===
+_SUB-Q RESLT_
+
+[cols="",options="header",]
+|===
+|T2A
+|A
+|B
+|===
+
+_TABLE1_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|C  |CC 
+|===
+_TABLE2_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|B  |A  |- 
+|===
+....
+"-" = null
+....
+
+When an ANY or ALL sub-query check is used with a "greater than" or similar expression (as opposed to an "equal" or a "not equal" expression) then the check can be considered similar to evaluating the MIN or the MAX of the sub-query result set. The following table shows what type of sub-query check equates to what type of column function:
+|===
+|SUB-QUERY CHECK |EQUIVALENT COLUMN FUNCTION
+| > ANY(sub-query) | > MINIMUM(sub-query results)
+| < ANY(sub-query) | < MAXIMUM(sub-query results)
+| > ALL(sub-query) | > MAXIMUM(sub-query results)
+| < ALL(sub-query) | < MINIMUM(sub-query results)
+|===
+_Figure 691, ANY and ALL vs. column functions_
+
+[[all.keyword.sub.query]]
+==== All Keyword Sub-Query
+
+When an ALL sub-query check is used, there are two possible results:
+
+* If all rows in the sub-query result match, the answer is true.
+* If there are no rows in the sub-query result, the answer is also true.
+* If any row in the sub-query result does not match, or is null, the answer is false.
+
+Below is a typical example of the ALL check usage. Observe that a TABLE1 row is returned only if the current T1A value equals all of the rows in the sub-query result:
+
+.ALL sub-query, with non-empty sub-query result
+[source,sql]
+....
+SELECT * 
+FROM table1 
+WHERE t1a = ALL
+    (SELECT t2b
+     FROM table2
+     WHERE t2b >= 'A');
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|===
+_SUB-Q RESLT_
+
+[cols="",options="header",]
+|===
+|T2B
+|A
+|A
+|===
+
+When the sub-query result consists of zero rows (i.e. an empty set) then all rows processed in TABLE1 are deemed to match:
+
+.ALL sub-query, with empty sub-query result
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2b
+     FROM table2
+     WHERE t2b >= 'X');
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|C  |CC
+|===
+_SUB-Q RESLT_
+
+[cols="",options="header",]
+|===
+|T2B
+|
+|===
+
+The above may seem a little unintuitive, but it actually makes sense, and is in accordance with how the NOT EXISTS sub-query (see <<sub.query>>) handles a similar situation.
+
+Imagine that one wanted to get a row from TABLE1 where the T1A value matched all of the sub-query result rows, but if the latter was an empty set (i.e. no rows), one wanted to get a non-match. Try this:
+
+.ALL sub-query, with extra check for empty set
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2b
+     FROM table2
+     WHERE t2b >= 'X')
+AND 0 <>
+    (SELECT COUNT(*)
+     FROM table2
+     WHERE t2b >= 'X');
+....
+
+_ANSWER_ ==> 0 rows
+
+_SQ-#1 RESLT_
+
+[cols="",options="header",]
+|===
+|T2B
+|
+|===
+
+_SQ-#2 RESLT_
+
+[cols="",options="header",]
+|===
+|(*)
+|0
+|===
+
+_TABLE1_
+|===
+|T1A|T1B
+|A  |AA 
+|B  |BB
+|C  |CC 
+|===
+_TABLE2_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|B  |A  |- 
+|===
+....
+"-" = null
+....
+
+Two sub-queries are done above: The first looks to see if all matching values in the sub-query equal the current T1A value. The second confirms that the number of matching values in the sub-query is not zero. 
+
+WARNING: Observe that the ANY sub-query check returns false when used against an empty set, while a similar ALL check returns true.
+
+=== EXISTS Keyword Sub-Query
+
+So far, we have been taking a value from the TABLE1 table and comparing it against one or more rows in the TABLE2 table. The EXISTS phrase does not compare values against rows, rather it simply looks for the existence or non-existence of rows in the sub-query result set:
+
+* If the sub-query matches on one or more rows, the result is true.
+* If the sub-query matches on no rows, the result is false.
+
+Below is an EXISTS check that, given our sample data, always returns true:
+
+.EXISTS sub-query, always returns a match
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE EXISTS
+    (SELECT *
+     FROM table2);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|C  |CC
+|===
+
+Below is an EXISTS check that, given our sample data, always returns false:
+
+.EXISTS sub-query, always returns a non-match
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t2b >= 'X');
+....
+
+_ANSWER_ ==> 0 rows
+
+When using an EXISTS check, it doesn't matter what field, if any, is selected in the sub-query SELECT phrase. What is important is whether the sub-query returns a row or not. If it does, the sub-query returns true. Having said this, the next query is an example of an EXISTS subquery that will always return true, because even when no matching rows are found in the subquery, the SELECT COUNT(*) statement will return something (i.e. a zero). Arguably, this query is logically flawed:
+
+.EXISTS sub-query, always returns a match
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE EXISTS
+    (SELECT COUNT(*)
+     FROM table2
+     WHERE t2b = 'X');
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|C  |CC
+|===
+
+=== NOT EXISTS Keyword Sub-query
+
+The NOT EXISTS phrases looks for the non-existence of rows in the sub-query result set:
+
+* If the sub-query matches on no rows, the result is true.
+* If the sub-query has rows, the result is false.
+
+We can use a NOT EXISTS check to create something similar to an ALL check, but with one very important difference. The two checks will handle nulls differently. To illustrate, consider the following two queries, both of which will return a row from TABLE1 only when it equals all of the matching rows in TABLE2:
+
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t2c >= 'A'
+     AND t2c <> t1a);
+....
+
+_ANSWERS_
+|===
+|T1A|T1B
+|A  |AA
+|===
+
+.NOT EXISTS vs. ALL, ignore nulls, find match
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2c
+     FROM table2
+     WHERE t2c >= 'A');
+....
+
+The above two queries are very similar. Both define a set of rows in TABLE2 where the T2C value is greater than or equal to "A", and then both look for matching TABLE2 rows that are not equal to the current T1A value. If a row is found, the sub-query is false. What happens when no TABLE2 rows match the ">=" predicate? As is shown below, both of our test queries treat an empty set as a match:
+
+.NOT EXISTS vs. ALL, ignore nulls, no match
+[source,sql]
+....
+-- NOT EXISTS
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t2c >= 'X'
+     AND t2c <> t1a);
+	 
+-- ALL	 
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2c
+     FROM table2
+     WHERE t2c >= 'X');
+....
+
+_ANSWERS_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|C  |CC
+|===
+
+One might think that the above two queries are logically equivalent, but they are not. As is shown below, they return different results when the sub-query answer set can include nulls:
+
+.NOT EXISTS vs. ALL, process nulls
+[source,sql]
+....
+-- NOT EXISTS
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t2c <> t1a);
+
+-- ALL
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2c
+     FROM table2);
+....
+
+_ANSWER NOT EXISTS_
+|===
+|T1A| T1B
+|A|AA
+|===
+
+_ANSWER_ALL_ ==> no rows
+
+A sub-query can only return true or false, but a Db2 field value can either match (i.e. be true), or not match (i.e. be false), or be unknown. It is the differing treatment of unknown values that is causing the above two queries to differ: 
+* In the ALL sub-query, each value in T1A is checked against all of the values in T2C. The null value is checked, deemed to differ, and so the sub-query always returns false.
+* In the NOT EXISTS sub-query, each value in T1A is used to find those T2C values that are not equal. For the T1A values "B" and "C", the T2C value "A" does not equal, so the NOT EXISTS check will fail. But for the T1A value "A", there are no "not equal" values in T2C, because a null value does not "not equal" a literal. So the NOT EXISTS check will pass. 
+
+The following three queries list those T2C values that do "not equal" a given T1A value:
+
+.List of values in T2C <> T1A value
+[source,sql]
+....
+SELECT *               -- (a)
+FROM table2
+WHERE t2c <> 'A';
+
+SELECT *               -- (b)
+FROM table2
+WHERE t2c <> 'B';
+
+SELECT *               -- (c)
+FROM table2
+WHERE t2c <> 'C';
+....
+
+_ANSWER (a)_ (no rows)
+|===
+|T2A|T2B|T2C
+|===
+
+_ANSWER (b)_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|===
+
+_ANSWER (c)_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|===
+
+To make a NOT EXISTS sub-query that is logically equivalent to the ALL sub-query that we have used above, one can add an additional check for null T2C values:
+
+.NOT EXISTS - same as ALL
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t2c <> t1a
+     OR t2c IS NULL);
+....
+
+_ANSWER_ ==> no rows
+
+One problem with the above query is that it is not exactly obvious. Another is that the two T2C predicates will have to be fenced in with parenthesis if other predicates (on TABLE2) exist. For these reasons, use an ALL sub-query when that is what you mean to do.
+
+=== IN Keyword Sub-Query
+
+The IN sub-query check is similar to the ANY and SOME checks:
+
+* If any row in the sub-query result matches, the answer is true.
+* If the sub-query result is empty, the answer is false.
+* If no row in the sub-query result matches, the answer is also false.
+* If all of the values in the sub-query result are null, the answer is false.
+
+Below is an example that compares the T1A and T2A columns. Two rows match:
+
+.IN sub-query example, two matches
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT t2a
+     FROM table2);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|===
+
+In the next example, no rows match because the sub-query result is an empty set:
+
+.IN sub-query example, no matches
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT t2a
+     FROM table2
+     WHERE t2a >= 'X');
+....
+
+_ANSWER_ ==> 0 rows
+
+The IN, ANY, SOME, and ALL checks all look for a match. Because one null value does not equal another null value, having a null expression in the "top" table causes the sub-query to always returns false:
+
+.IN and = ANY sub-query examples, with nulls
+[source,sql]
+....
+-- IN
+SELECT *
+FROM table2
+WHERE t2c IN
+    (SELECT t2c
+     FROM table2);
+
+-- = ANY
+SELECT *
+FROM table2
+WHERE t2c = ANY
+    (SELECT t2c
+     FROM table2);
+....
+
+_ANSWERS_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|===
+
+=== NOT IN Keyword Sub-Queries
+
+Sub-queries that look for the non-existence of a row work largely as one would expect, except when a null value in involved. To illustrate, consider the following query, where we want to see if the current T1A value is not in the set of T2C values:
+
+.NOT IN sub-query example, no matches
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a NOT IN
+    (SELECT t2c
+     FROM table2);
+....
+
+_ANSWER_ ==> 0 rows
+
+Observe that the T1A values "B" and "C" are obviously not in T2C, yet they are not returned. The sub-query result set contains the value null, which causes the NOT IN check to return unknown, which equates to false. The next example removes the null values from the sub-query result, which then enables the NOT IN check to find the non-matching values:
+
+.NOT IN sub-query example, matches
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a NOT IN
+    (SELECT t2c
+     FROM table2
+     WHERE t2c IS NOT NULL);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|B  |BB
+|C  |CC
+|===
+
+Another way to find the non-matching values while ignoring any null rows in the sub-query, is to use an EXISTS check in a correlated sub-query:
+
+.NOT EXISTS sub-query example, matches
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t1a = t2c);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|B  |BB
+|C  |CC
+|===
+
+[[correlated-vs-uncorrelated-sub-queries]]
+=== Correlated vs. Uncorrelated Sub-Queries
+
+An uncorrelated sub-query is one where the predicates in the sub-query part of SQL statement have no direct relationship to the current row being processed in the "top" table (hence uncorrelated). The following sub-query is uncorrelated:
+
+.Uncorrelated sub-query
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT t2a
+     FROM table2);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|===
+
+A correlated sub-query is one where the predicates in the sub-query part of the SQL statement cannot be resolved without reference to the row currently being processed in the "top" table (hence correlated). The following query is correlated: 
+
+.Correlated sub-query
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT t2a
+     FROM table2
+     WHERE t1a = t2a);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|===
+
+Below is another correlated sub-query. Because the same table is being referred to twice, correlation names have to be used to delineate which column belongs to which table:
+
+.Correlated sub-query, with correlation names
+[source,sql]
+....
+SELECT *
+FROM table2 aa
+WHERE EXISTS
+    (SELECT *
+     FROM table2 bb
+     WHERE aa.t2a = bb.t2b);
+....
+
+_ANSWER_
+|===
+|T2A|T2B|T2C
+|A  |A  |A
+|===
+
+=== Which is Faster
+
+In general, if there is a suitable index on the sub-query table, use a correlated sub-query. Else, use an uncorrelated sub-query. However, there are several very important exceptions to this rule, and some queries can only be written one way. 
+NOTE: The Db2 optimizer is not as good at choosing the best access path for sub-queries as it is with joins. Be prepared to spend some time doing tuning.
+
+[[multi.field.sub.queries]]
+=== Multi-Field Sub-Queries
+
+Imagine that you want to compare multiple items in your sub-query. The following examples use an IN expression and a correlated EXISTS sub-query to do two equality checks:
+
+.Multi-field sub-queries, equal checks
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE (t1a,t1b) IN
+    (SELECT t2a, t2b
+     FROM table2);
+
+SELECT *
+FROM table1
+WHERE EXISTS
+    (SELECT *
+    FROM table2
+    WHERE t1a = t2a
+    AND t1b = t2b);
+....
+
+_ANSWER_ ==> 0 rows
+
+Observe that to do a multiple-value IN check, you put the list of expressions to be compared in parenthesis, and then select the same number of items in the sub-query. An IN phrase is limited because it can only do an equality check. By contrast, use whatever predicates you want in an EXISTS correlated sub-query to do other types of comparison:
+
+.Multi-field sub-query, with non-equal check
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t1a = t2a
+     AND t1b >= t2b);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|B  |BB
+|===
+
+=== Nested Sub-Queries
+
+Some business questions may require that the related SQL statement be written as a series of nested sub-queries. In the following example, we are after all employees in the EMPLOYEE table who have a salary that is greater than the maximum salary of all those other employees that do not work on a project with a name beginning 'MA'.
+
+.Nested Sub-Queries
+[source,sql]
+....
+SELECT empno
+     , lastname
+     , salary
+FROM employee
+WHERE salary > 
+    (SELECT MAX(salary)
+     FROM employee
+     WHERE empno NOT IN
+         (SELECT empno
+          FROM emp_act
+          WHERE projno LIKE 'MA%'
+         )
+    )
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|EMPNO |LASTNAME |SALARY
+|000010|HAAS     |52750.00
+|000110|LUCCHESSI|46500.00
+|===
+
+=== Usage Examples
+
+In this section we will use various sub-queries to compare our two test tables - looking for those rows where none, any, ten, or all values match.
+
+==== Beware of Nulls
+
+The presence of null values greatly complicates sub-query usage. Not allowing for them when they are present can cause one to get what is arguably a wrong answer. And do not assume that just because you don't have any nullable fields that you will never therefore encounter a null value. The DEPTNO table in the Department table is defined as not null, but in the following query, the maximum DEPTNO that is returned will be null:
+
+.Getting a null value from a not null field
+[source,sql]
+....
+SELECT COUNT(*)    AS #rows
+     , MAX(deptno) AS maxdpt
+FROM department
+WHERE deptname LIKE 'Z%'
+ORDER BY 1;
+....
+
+_ANSWER_
+|===
+|#ROWS|MAXDEPT
+|0    |null
+|===
+
+==== True if NONE Match
+
+Find all rows in TABLE1 where there are no rows in TABLE2 that have a T2C value equal to the current T1A value in the TABLE1 table:
+
+.Sub-queries, true if none match
+[source,sql]
+....
+SELECT *
+FROM table1 t1
+WHERE 0 =
+    (SELECT COUNT(*)
+     FROM table2 t2
+     WHERE t1.t1a = t2.t2c);
+
+SELECT *
+FROM table1 t1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2 t2
+     WHERE t1.t1a = t2.t2c);
+
+SELECT *
+FROM table1
+WHERE t1a NOT IN
+    (SELECT t2c
+     FROM table2
+     WHERE t2c IS NOT NULL);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|B  |BB
+|C  |CC
+|===
+
+Observe that in the last statement above we eliminated the null rows from the sub-query. Had this not been done, the NOT IN check would have found them and then returned a result of "unknown" (i.e. false) for all of rows in the TABLE1A table. 
+
+==== Using a Join
+
+Another way to answer the same problem is to use a left outer join, going from TABLE1 to TABLE2 while matching on the T1A and T2C fields.
+Get only those rows (from TABLE1) where the corresponding T2C value is null:
+
+.Outer join, true if none match
+[source,sql]
+....
+SELECT t1.*
+FROM table1 t1
+LEFT OUTER JOIN table2 t2
+ON t1.t1a = t2.t2c
+WHERE t2.t2c IS NULL;
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|B  |BB
+|C  |CC
+|===
+
+==== True if ANY Match
+
+Find all rows in TABLE1 where there are one, or more, rows in TABLE2 that have a T2C value equal to the current T1A value:
+
+.Sub-queries, true if any match
+[source,sql]
+....
+SELECT *
+FROM table1 t1
+WHERE EXISTS
+    (SELECT *
+     FROM table2 t2
+     WHERE t1.t1a = t2.t2c);
+
+SELECT *
+FROM table1 t1
+WHERE 1 <= 
+    (SELECT COUNT(*)
+    FROM table2 t2
+    WHERE t1.t1a = t2.t2c);
+
+SELECT *
+FROM table1
+WHERE t1a = ANY
+    (SELECT t2c
+     FROM table2);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|===
+
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = SOME
+    (SELECT t2c
+     FROM table2);
+
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT t2c
+     FROM table2);
+....
+
+Of all of the above queries, the second query is almost certainly the worst performer. All of the others can, and probably will, stop processing the sub-query as soon as it encounters a single matching value. But the sub-query in the second statement has to count all of the matching rows before it return either a true or false indicator.
+
+==== Using a Join
+
+This question can also be answered using an inner join. The trick is to make a list of distinct T2C values, and then join that list to TABLE1 using the T1A column. Several variations on this theme are given below: 
+
+.Joins, true if any match
+[source,sql]
+....
+WITH t2 AS
+(SELECT DISTINCT t2c
+ FROM table2
+)
+SELECT t1.*
+FROM table1 t1
+          , t2
+WHERE t1.t1a = t2.t2c;
+
+SELECT t1.*
+FROM table1 t1
+          , (SELECT DISTINCT t2c
+             FROM table2
+            ) AS t2
+WHERE t1.t1a = t2.t2c;
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|===
+....
+SELECT t1.*
+FROM table1 t1
+INNER JOIN
+    (SELECT DISTINCT t2c
+     FROM table2
+    )AS t2
+ON t1.t1a = t2.t2c;
+....
+
+=== True if TEN Match
+
+Find all rows in TABLE1 where there are exactly ten rows in TABLE2 that have a T2B value equal to the current T1A value in the TABLE1 table:
+
+.Sub-queries, true if ten match (1 of 2)
+[source,sql]
+....
+SELECT *
+FROM table1 t1
+WHERE 10 =
+    (SELECT COUNT(*)
+     FROM table2 t2
+     WHERE t1.t1a = t2.t2b);
+
+SELECT *
+FROM table1
+WHERE EXISTS
+    (SELECT t2b 
+     FROM table2
+     WHERE t1a = t2b
+     GROUP BY t2b
+     HAVING COUNT(*) = 10);
+
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT t2b
+     FROM table2
+     GROUP BY t2b
+     HAVING COUNT(*) = 10);
+....
+
+_ANSWER_ ==> 0 rows
+
+The first two queries above use a correlated sub-query. The third is uncorrelated. The next query, which is also uncorrelated, is guaranteed to befuddle your coworkers. It uses a multifield IN (see <<multi.field.sub.queries>> for more notes) to both check T2B and the count at the same time:
+
+.Sub-queries, true if ten match (2 of 2)
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE (t1a,10) IN
+    (SELECT t2b
+          , COUNT(*)
+     FROM table2
+     GROUP BY t2b);
+....
+
+_ANSWER_ ==> 0 rows
+
+==== Using a Join
+
+To answer this generic question using a join, one simply builds a distinct list of T2B values that have ten rows, and then joins the result to TABLE1:
+
+.Joins, true if ten match
+[source,sql]
+....
+WITH t2 AS
+(SELECT t2b
+ FROM table2
+ GROUP BY t2b
+ HAVING COUNT(*) = 10
+)
+SELECT t1.*
+FROM table1 t1
+          , t2
+WHERE t1.t1a = t2.t2b;
+....
+
+_ANSWER_ ==> 0 rows
+
+.Joins, true if ten match
+[source,sql]
+....
+SELECT t1.*
+FROM table1 t1
+  , (SELECT t2b
+     FROM table2
+     GROUP BY t2b
+     HAVING COUNT(*) = 10) AS t2
+WHERE t1.t1a = t2.t2b;
+
+SELECT t1.*
+FROM table1 t1
+INNER JOIN 
+    (SELECT t2b
+     FROM table2
+     GROUP BY t2b
+     HAVING COUNT(*) = 10 )AS t2
+ON t1.t1a = t2.t2b;
+....
+
+=== True if ALL match
+
+Find all rows in TABLE1 where all matching rows in TABLE2 have a T2B value equal to the current T1A value in the TABLE1 table. Before we show some SQL, we need to decide what to do about nulls and empty sets:
+
+* When nulls are found in the sub-query, we can either deem that their presence makes the relationship false, which is what Db2 does, or we can exclude nulls from our analysis.
+* When there are no rows found in the sub-query, we can either say that the relationship is false, or we can do as Db2 does, and say that the relationship is true.
+
+See <<all.keyword.sub.query>> for a detailed discussion of the above issues.
+
+The next two queries use the basic Db2 logic for dealing with empty sets; In other words, if no rows are found by the sub-query, then the relationship is deemed to be true. Likewise, the relationship is also true if all rows found by the sub-query equal the current T1A value:
+
+.Sub-queries, true if all match, find rows
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2b
+     FROM table2);
+
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t1a <> t2b);
+....
+
+_ANSWER_
+|===
+|T1A|T1B
+|A  |AA
+|===
+
+The next two queries are the same as the prior, but an extra predicate has been included in the sub-query to make it return an empty set. Observe that now all TABLE1 rows match:
+
+.Sub-queries, true if all match, empty set
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2b
+     FROM table2
+     WHERE t2b >= 'X');
+....
+
+_ANSWER_
+|===
+|T1A| T1B
+|A|AA
+|B|BB
+|C|CC
+|===
+
+.Sub-queries, true if all match, empty set
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE NOT EXISTS
+    (SELECT *
+     FROM table2
+     WHERE t1a <> t2b
+     AND t2b >= 'X');
+....
+
+=== False if no Matching Rows
+
+The next two queries differ from the above in how they address empty sets. The queries will return a row from TABLE1 if the current T1A value matches all of the T2B values found in the sub-query, but they will not return a row if no matching values are found:
+
+.Sub-queries, true if all match, and at least one value found
+[source,sql]
+....
+SELECT *
+FROM table1
+WHERE t1a = ALL
+    (SELECT t2b
+     FROM table2
+     WHERE t2b >= 'X')
+AND 0 <>
+    (SELECT COUNT(*)
+     FROM table2
+     WHERE t2b >= 'X');
+
+SELECT *
+FROM table1
+WHERE t1a IN
+    (SELECT MAX(t2b)
+     FROM table2
+     WHERE t2b >= 'X'
+     HAVING COUNT(DISTINCT t2b) = 1);
+....
+
+_ANSWER_ ==> 0 rows
+
+Both of the above statements have flaws: The first processes the TABLE2 table twice, which not only involves double work, but also requires that the sub-query predicates be duplicated. The second statement is just plain strange.
+
+
+

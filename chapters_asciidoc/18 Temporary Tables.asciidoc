@@ -1,0 +1,870 @@
+== Temporary Tables
+
+=== Introduction
+
+How one defines a temporary table depends in part upon how often, and for how long, one intends to use it:
+
+* Within a query, single use.
+* Within a query, multiple uses.
+* For multiple queries in one unit of work.
+* For multiple queries, over multiple units of work, in one thread.
+
+=== Single Use in Single Statement
+
+If one intends to use a temporary table just once, it can be defined as a nested table expression. In the following example, we use a temporary table to sequence the matching rows in the STAFF table by descending salary. We then select the 2nd through 3rd rows:
+
+.Nested Table Expression
+[source,sql]
+....
+SELECT id
+     , salary
+FROM (SELECT s.*
+           , ROW_NUMBER() OVER(ORDER BY salary DESC) AS sorder
+      FROM staff s
+      WHERE id < 200
+     ) AS xxx
+WHERE sorder BETWEEN 2 AND 3
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |SALARY
+|50 |20659.80
+|140|21150.00
+|===
+
+NOTE: A fullselect in parenthesis followed by a correlation name (see above) is also called a nested table expression.
+
+Here is another way to express the same:
+
+.Common Table Expression
+[source,sql]
+....
+WITH xxx (id, salary, sorder) AS
+(SELECT ID
+      , salary
+      , ROW_NUMBER() OVER(ORDER BY salary DESC) AS sorder
+ FROM staff
+ WHERE id < 200
+)
+SELECT id
+     , salary
+FROM xxx
+WHERE sorder BETWEEN 2 AND 3
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |SALARY
+|50 |20659.80
+|140|21150.00
+|===
+
+=== Multiple Use in Single Statement
+
+Imagine that one wanted to get the percentage contribution of the salary in some set of rows in the STAFF table - compared to the total salary for the same. The only way to do this is to access the matching rows twice; Once to get the total salary (i.e. just one row), and then again to join the total salary value to each individual salary - to work out the percentage.
+
+Selecting the same set of rows twice in a single query is generally unwise because repeating the predicates increases the likelihood of typos being made. In the next example, the desired rows are first placed in a temporary table. Then the sum salary is calculated and placed in another temporary table. Finally, the two temporary tables are joined to get the percentage:
+
+.Common Table Expression
+[source,sql]
+....
+WITH rows_wanted AS
+(SELECT *
+ FROM staff
+ WHERE id < 100
+ AND UCASE(name) LIKE '%T%')
+, sum_salary AS
+(SELECT SUM(salary) AS sum_sal
+FROM rows_wanted)
+SELECT id
+     , name
+     , salary
+     , sum_sal
+     , INT((salary * 100) / sum_sal) AS pct
+FROM rows_wanted
+   , sum_salary
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|NAME   |SALARY  |SUM_SAL |PCT
+|70|Rothman|16502.83|34504.58|47
+|90|Koonitz|18001.75|34504.58|52
+|===
+
+==== Multiple Use in Multiple Statements
+
+To refer to a temporary table in multiple SQL statements in the same thread, one has to define a declared global temporary table. An example follows:
+
+.Declared Global Temporary Table
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.fred
+( dept SMALLINT NOT NULL
+, avg_salary DEC(7, 2)NOT NULL
+, num_emps SMALLINT NOT NULL)
+ON COMMIT PRESERVE ROWS;
+
+COMMIT;
+
+INSERT INTO session.fred
+SELECT dept
+     , AVG(salary)
+     , COUNT(*)
+FROM staff
+WHERE id > 200
+GROUP BY dept;
+
+COMMIT;
+
+SELECT COUNT(*) AS cnt
+FROM session.fred;
+
+DELETE FROM session.fred
+WHERE dept > 80;
+
+SELECT *
+FROM session.fred;
+....
+
+_ANSWER#1_
+
+[cols="",options="header",]
+|===
+|CNT
+|4
+|===
+
+_ANSWER#2_
+|===
+|DEPT|AVG_SALARY|NUM_EMPS
+|10  |20168.08  |3
+|51  |15161.43  |3
+|66  |17215.24  |5
+|===
+
+Unlike an ordinary table, a declared global temporary table is not defined in the Db2 catalogue. Nor is it sharable by other users. It only exists for the duration of the thread (or less) and can only be seen by the person who created it. For more information, see <<declared.global.temporary.tables>>.
+
+==== Temporary Tables - in Statement
+
+Three general syntaxes are used to define temporary tables in a query:
+
+* Use a WITH phrase at the top of the query to define a common table expression.
+* Define a fullselect in the FROM part of the query.
+* Define a fullselect in the SELECT part of the query.
+
+The following three queries, which are logically equivalent, illustrate the above syntax styles. Observe that the first two queries are explicitly defined as left outer joins, while the last one is implicitly a left outer join:
+
+.Identical query (1 of 3) - using Common Table Expression
+[source,sql]
+....
+WITH staff_dept AS
+(SELECT dept        AS dept#
+      , MAX(salary) AS max_sal
+ FROM staff
+ WHERE dept < 50
+ GROUP BY dept
+)
+SELECT id
+     , dept
+     , salary
+     , max_sal
+FROM staff
+LEFT OUTER JOIN staff_dept
+ON dept = dept#
+WHERE name LIKE 'S%'
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |DEPT|SALARY  |MAX_SAL
+|10 |20  |18357.50|18357.50
+|190|20  |14252.75|18357.50
+|200|42  |11508.60|18352.80
+|220|51  |17654.50|
+|===
+
+.Identical query (2 of 3) - using fullselect in FROM
+[source,sql]
+....
+SELECT id
+     , dept
+     , salary
+     , max_sal
+FROM staff
+LEFT OUTER JOIN
+    (SELECT dept        AS dept#
+          , MAX(salary) AS max_sal
+     FROM staff
+     WHERE dept < 50
+     GROUP BY dept) AS STAFF_dept
+ON dept = dept#
+WHERE name LIKE 'S%'
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |DEPT|SALARY  |MAX_SAL
+|10 |20  |18357.50|18357.50
+|190|20  |14252.75|18357.50
+|200|42  |11508.60|18352.80
+|220|51  |17654.50|
+|===
+
+.Identical query (3 of 3) - using fullselect in SELECT
+[source,sql]
+....
+SELECT id
+     , dept
+     , salary
+     , (SELECT MAX(salary)
+        FROM staff s2
+        WHERE s1.dept = s2.dept
+        AND s2.dept < 50
+        GROUP BY dept) AS max_sal
+FROM staff s1
+WHERE name LIKE 'S%'
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID |DEPT|SALARY  |MAX_SAL
+|10 |20  |18357.50|18357.50
+|190|20  |14252.75|18357.50
+|200|42  |11508.60|18352.80
+|220|51  |17654.50|
+|===
+
+[[common.table.expression]]
+=== Common Table Expression
+
+A common table expression is a named temporary table that is retained for the duration of a SQL statement. There can be many temporary tables in a single SQL statement. Each must have a unique name and be defined only once. All references to a temporary table (in a given SQL statement run) return the same result. This is unlike tables, views, or aliases, which are derived each time they are called. Also unlike tables, views, or aliases, temporary tables never contain indexes. 
+Certain rules apply to common table expressions:
+
+* Column names must be specified if the expression is recursive, or if the query invoked returns duplicate column names.
+* The number of column names (if any) that are specified must match the number of columns returned.
+* If there is more than one common-table-expression, latter ones (only) can refer to the output from prior ones. Cyclic references are not allowed.
+* A common table expression with the same name as a real table (or view) will replace the real table for the purposes of the query. The temporary and real tables cannot be referred to in the same query.
+* Temporary table names must follow standard Db2 table naming standards. 
+* Each temporary table name must be unique within a query.
+* Temporary tables cannot be used in sub-queries.
+
+==== Select Examples
+
+In this first query, we don't have to list the field names (at the top) because every field already has a name (given in the SELECT):
+
+.Common Table Expression, using named fields
+[source,sql]
+....
+WITH temp1 AS
+(SELECT MAX(name) AS max_name
+      , MAX(dept) AS max_dept
+ FROM staff)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|MAX_NAME |MAX_DEPT
+|Yamaguchi|84
+|===
+
+In this next example, the fields being selected are unnamed, so names have to be specified in the WITH statement:
+
+.Common Table Expression, using unnamed fields
+[source,sql]
+....
+WITH temp1 (max_name, max_dept) AS
+(SELECT MAX(name)
+      , MAX(dept)
+ FROM staff)
+SELECT *
+FROM temp1;
+....
+
+_ANSWER_
+|===
+|MAX_NAME |MAX_DEPT
+|Yamaguchi|84
+|===
+
+A single query can have multiple common-table-expressions. In this next example we use two expressions to get the department with the highest average salary:
+
+.Query with two common table expressions
+[source,sql]
+....
+WITH temp1 AS
+(SELECT dept
+      , AVG(salary) AS avg_sal
+ FROM staff
+ GROUP BY dept)
+, temp2 AS
+(SELECT MAX(avg_sal) AS max_avg
+ FROM temp1)
+SELECT *
+FROM temp2;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|MAX_AVG
+|20865.8625
+|===
+
+FYI, the exact same query can be written using nested table expressions thus:
+
+.Same as prior example, but using nested table expressions
+[source,sql]
+....
+SELECT *
+FROM
+    (SELECT MAX(avg_sal) AS max_avg
+     FROM (SELECT dept
+                , AVG(salary) AS avg_sal
+           FROM staff
+           GROUP BY dept
+          ) AS temp1
+    ) AS temp2;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|MAX_AVG
+|20865.8625
+|===
+
+The next query first builds a temporary table, then derives a second temporary table from the first, and then joins the two temporary tables together. The two tables refer to the same set of rows, and so use the same predicates. But because the second table was derived from the first, these predicates only had to be written once. This greatly simplified the code:
+
+.Deriving second temporary table from first
+[source,sql]
+....
+WITH temp1 AS
+(SELECT id
+      , name
+      , dept
+      , salary
+ FROM staff
+ WHERE id < 300
+ AND dept <> 55
+ AND name LIKE 'S%'
+ AND dept NOT IN
+     (SELECT deptnumb
+      FROM org
+      WHERE division = 'SOUTHERN'
+      OR location = 'HARTFORD'
+     )
+)
+, temp2 AS
+(SELECT dept
+      , MAX(salary) AS max_sal
+ FROM temp1
+ GROUP BY dept)
+SELECT t1.id
+     , t1.dept
+     , t1.salary
+     , t2.max_sal
+FROM temp1 t1
+   , temp2 t2
+WHERE t1.dept = t2.dept
+ORDER BY t1.id;
+....
+
+_ANSWER_
+|===
+|ID |DEPT|SALARY  |MAX_SAL
+|10 |20  |18357.50|18357.50
+|190|20  |14252.75|18357.50
+|200|42  |11508.60|11508.60
+|220|51  |17654.50|17654.50
+|===
+
+=== Insert Usage
+
+A common table expression can be used to an insert-select-from statement to build all or part of the set of rows that are inserted:
+
+.Insert using common table expression
+[source,sql]
+....
+INSERT INTO staff
+WITH temp1 (max1) AS
+(SELECT MAX(id) + 1
+ FROM staff)
+SELECT max1, 'A', 1, 'B', 2, 3, 4
+FROM temp1;
+....
+
+As it happens, the above query can be written equally well in the raw:
+
+.Equivalent insert (to above) without common table expression
+[source,sql]
+....
+INSERT INTO staff
+SELECT MAX(id) + 1, 'A', 1, 'B', 2, 3, 4
+FROM staff;
+....
+
+=== Full-Select
+
+A fullselect is an alternative way to define a temporary table. Instead of using a WITH clause at the top of the statement, the temporary table definition is embedded in the body of the SQL statement. Certain rules apply:
+
+* When used in a select statement, a fullselect can either be generated in the FROM part of the query - where it will return a temporary table, or in the SELECT part of the query where it will return a column of data.
+* When the result of a fullselect is a temporary table (i.e. in FROM part of a query), the table must be provided with a correlation name.
+* When the result of a fullselect is a column of data (i.e. in SELECT part of query), each reference to the temporary table must only return a single value.
+
+=== Full-Select in FROM Phrase
+
+The following query uses a nested table expression to get the average of an average - in this case the average departmental salary (an average in itself) per division:
+
+.Nested column function usage
+[source,sql]
+....
+SELECT division
+     , DEC(AVG(dept_avg),7,2) AS div_dept
+     , COUNT(*) AS #dpts
+     , SUM(#emps) AS #emps
+FROM 
+    (SELECT division
+          , dept
+          , AVG(salary) AS dept_avg
+          , COUNT(*) AS #emps
+     FROM staff
+        , org
+     WHERE dept = deptnumb
+     GROUP BY division
+            , dept) AS xxx
+GROUP BY division;
+....
+
+_ANSWER_
+|===
+|DIVISION |DIV_DEPT|#DPTS|#EMPS
+|Corporate|20865.86|1    |4
+|Eastern  |15670.32|3    |13
+|Midwest  |15905.21|2    |9
+|Western  |16875.99|2    |9
+|===
+
+The next query illustrates how multiple fullselects can be nested inside each other:
+
+.Nested fullselects
+[source,sql]
+....
+SELECT id
+FROM (SELECT *
+      FROM (SELECT id, years, salary
+            FROM (SELECT *
+                  FROM (SELECT *
+                        FROM staff
+                        WHERE dept < 77) AS t1
+                  WHERE id < 300) AS t2
+            WHERE job LIKE 'C%') AS t3
+      WHERE salary < 18000) AS t4
+WHERE years < 5;
+....
+
+_ANSWER_
+
+[cols="",options="header",]
+|===
+|ID
+|170
+|180
+|230
+|===
+
+A very common usage of a fullselect is to join a derived table to a real table. In the following example, the average salary for each department is joined to the individual staff row:
+
+.Join fullselect to real table
+[source,sql]
+....
+SELECT a.id
+     , a.dept
+     , a.salary
+     , DEC(b.avgsal,7,2) AS avg_dept
+FROM staff a
+LEFT OUTER JOIN (SELECT dept        AS dept
+                      , AVG(salary) AS avgsal
+                 FROM staff
+                 GROUP BY dept
+                 HAVING AVG(salary) > 16000) AS b
+ON a.dept = b.dept
+WHERE a.id < 40
+ORDER BY a.id;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY  |AVG_DEPT
+|10|20  |18357.50|16071.52
+|20|20  |78171.25|16071.52
+|30|38  |77506.75|
+|===
+
+[[table.function.usage]]
+=== Table Function Usage
+
+If the fullselect query has a reference to a row in a table that is outside of the fullselect, then it needs to be written as a TABLE function call. In the next example, the preceding "A" table is referenced in the fullselect, and so the TABLE function call is required:
+
+.Fullselect with external table reference
+[source,sql]
+....
+SELECT a.id
+     , a.dept
+     , a.salary
+     , b.deptsal
+FROM staff a
+, TABLE (SELECT b.dept
+              , SUM(b.salary) AS deptsal
+         FROM staff b
+         WHERE b.dept = a.dept
+         GROUP BY b.dept) AS b
+WHERE a.id < 40
+ORDER BY a.id;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY  |DEPTSAL
+|10|20  |18357.50|64286.10
+|20|20  |78171.25|64286.10
+|30|38  |77506.75|77285.55
+|===
+
+Below is the same query written without the reference to the "A" table in the fullselect, and thus without a TABLE function call:
+
+.Fullselect without external table reference
+[source,sql]
+....
+SELECT a.id
+     , a.dept
+     , a.salary
+     , b.deptsal
+FROM staff a
+  , (SELECT b.dept
+          , SUM(b.salary) AS deptsal
+     FROM staff b
+     GROUP BY b.dept) AS b
+WHERE a.id < 40
+AND b.dept = a.dept
+ORDER BY a.id;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY  |DEPTSAL
+|10|20  |18357.50|64286.10
+|20|20  |78171.25|64286.10
+|30|38  |77506.75|77285.55
+|===
+
+Any externally referenced table in a fullselect must be defined in the query syntax (starting at the first FROM statement) before the fullselect. Thus, in the first example above, if the "A" table had been listed after the "B" table, then the query would have been invalid.
+
+=== Full-Select in SELECT Phrase
+
+A fullselect that returns a single column and row can be used in the SELECT part of a query: 
+
+.Use an uncorrelated Full-Select in a SELECT list
+[source,sql]
+....
+SELECT id
+     , salary
+     , (SELECT MAX(salary)
+        FROM staff) AS maxsal
+FROM staff a
+WHERE id < 60
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |MAXSAL
+|10|18357.50|22959.20
+|20|78171.25|22959.20
+|30|77506.75|22959.20
+|40|18006.00|22959.20
+|50|20659.80|22959.20
+|===
+
+A fullselect in the SELECT part of a statement must return only a single row, but it need not always be the same row. In the following example, the ID and SALARY of each employee is obtained - along with the max SALARY for the employee's department.
+
+.Use a correlated Full-Select in a SELECT list
+[source,sql]
+....
+SELECT id
+     , salary
+     , (SELECT MAX(salary)
+        FROM staff b
+        WHERE a.dept = b.dept) AS maxsal
+FROM staff a
+WHERE id < 60
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|SALARY  |MAXSAL
+|10|18357.50|18357.50
+|20|78171.25|18357.50
+|30|77506.75|18006.00
+|40|18006.00|18006.00
+|50|20659.80|20659.80
+|===
+
+.Use correlated and uncorrelated Full-Selects in a SELECT list
+[source,sql]
+....
+SELECT id
+     , dept
+     , salary
+     , (SELECT MAX(salary)
+        FROM staff b
+        WHERE b.dept = a.dept)
+     , (SELECT MAX(salary)
+        FROM staff)
+FROM staff a
+WHERE id < 60
+ORDER BY id;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY  |4       |5
+|10|20  |18357.50|18357.50|22959.20
+|20|20  |78171.25|18357.50|22959.20
+|30|38  |77506.75|18006.00|22959.20
+|40|38  |18006.00|18006.00|22959.20
+|50|15  |20659.80|20659.80|22959.20
+|===
+
+=== INSERT Usage
+
+The following query uses both an uncorrelated and correlated fullselect in the query that builds the set of rows to be inserted:
+
+.Fullselect in INSERT
+[source,sql]
+....
+INSERT INTO staff
+SELECT id + 1
+    , (SELECT MIN(name)
+       FROM staff)
+    , (SELECT dept
+       FROM staff s2
+       WHERE s2.id = s1.id - 100)
+    , 'A', 1, 2, 3
+FROM staff s1
+WHERE id = (SELECT MAX(id)
+            FROM staff);
+....
+
+=== UPDATE Usage
+
+The following example uses an uncorrelated fullselect to assign a set of workers the average salary in the company - plus two thousand dollars.
+
+.Use uncorrelated Full-Select to give workers company AVG salary (+$2000)
+[source,sql]
+....
+UPDATE staff a
+SET salary =
+    (SELECT AVG(salary)+ 2000
+     FROM staff)
+WHERE id < 60;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY BEFORE|SALARY AFTER
+|10|20  |18357.50     |18675.64
+|20|20  |78171.25     |18675.64
+|30|38  |77506.75     |18675.64
+|40|38  |18006.00     |18675.64
+|50|15  |20659.80     |18675.64
+|===
+
+The next statement uses a correlated fullselect to assign a set of workers the average salary for their department - plus two thousand dollars. Observe that when there is more than one worker in the same department, that they all get the same new salary. This is because the fullselect is resolved before the first update was done, not after each. 
+
+.Use correlated Full-Select to give workers department AVG salary (+$2000)
+[source,sql]
+....
+UPDATE staff a
+SET salary =
+    (SELECT AVG(salary) + 2000
+     FROM staff b
+     WHERE a.dept = b.dept)
+WHERE id < 60;
+....
+
+_ANSWER_
+|===
+|ID|DEPT|SALARY BEFORE|SALARY AFTER
+|10|20  |18357.50     |18071.52
+|20|20  |78171.25     |18071.52 
+|30|38  |77506.75     |17457.11
+|40|38  |18006.00     |17457.11
+|50|15  |20659.80     |17482.33
+|===
+
+NOTE: A fullselect is always resolved just once. If it is queried using a correlated expression, then the data returned each time may differ, but the table remains unchanged.
+
+The next update is the same as the prior, except that two fields are changed:
+
+.Update two fields by referencing Full-Select
+[source,sql]
+....
+UPDATE staff a
+SET (salary, years) =
+    (SELECT AVG(salary) + 2000
+          , MAX(years)
+     FROM staff b
+     WHERE a.dept = b.dept)
+WHERE id < 60;
+....
+
+[[declared.global.temporary.tables]]
+=== Declared Global Temporary Tables
+
+If we want to temporarily retain some rows for processing by subsequent SQL statements, we can use a Declared Global Temporary Table. A temporary table only exists until the thread is terminated (or sooner). It is not defined in the Db2 catalogue, and neither its definition nor its contents are visible to other users. Multiple users can declare the same temporary table at the same time. Each will be independently working with their own copy.
+
+*Usage Notes*
+
+For a complete description of this feature, see the SQL reference. Below are some key points:
+
+* The temporary table name can be any valid Db2 table name. The table qualifier, if provided, must be SESSION. If the qualifier is not provided, it is assumed to be SESSION.
+* If the temporary table has been previously defined in this session, the WITH REPLACE clause can be used to override it. Alternatively, one can DROP the prior instance. 
+* An index can be defined on a global temporary table. The qualifier (i.e. SESSION) must be explicitly provided. 
+* Any column type can be used in the table, except for: BLOB, CLOB, DBCLOB, LONG VARCHAR, LONG VARGRAPHIC, DATALINK, reference, and structured data types.
+* One can choose to preserve or delete (the default) the rows in the table when a commit occurs. Deleting the rows does not drop the table.
+* Standard identity column definitions can be used if desired. 
+* Changes are not logged. 
+
+==== Sample SQL
+
+Below is an example of declaring a global temporary table by listing the columns:
+
+.Declare Global Temporary Table - define columns
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.fred
+( dept       SMALLINT  NOT NULL
+, avg_salary DEC(7, 2) NOT NULL
+, num_emps   SMALLINT  NOT NULL)
+ON COMMIT DELETE ROWS;
+....
+
+In the next example, the temporary table is defined to have exactly the same columns as the existing STAFF table:
+
+.Declare Global Temporary Table - like another table
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.fred
+LIKE staff INCLUDING COLUMN DEFAULTS
+WITH REPLACE
+ON COMMIT PRESERVE ROWS;
+....
+
+In the next example, the temporary table is defined to have a set of columns that are returned by a particular select statement. The statement is not actually run at definition time, so any predicates provided are irrelevant:
+
+.Declare Global Temporary Table - like query output
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.fred AS
+(SELECT dept
+      , MAX(id) AS max_id
+      , SUM(salary) AS sum_sal
+ FROM staff
+ WHERE name <> 'IDIOT'
+ GROUP BY dept)
+DEFINITION ONLY
+WITH REPLACE;
+....
+
+Indexes can be added to temporary tables in order to improve performance and/or to enforce uniqueness:
+
+.Temporary table with index
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.fred
+LIKE staff
+INCLUDING COLUMN DEFAULTS
+WITH REPLACE ON COMMIT DELETE ROWS;
+
+CREATE UNIQUE INDEX session.fredx ON Session.fred (id);
+
+INSERT INTO session.fred
+SELECT *
+FROM staff
+WHERE id < 200;
+
+SELECT COUNT(*)
+FROM session.fred; --> Returns 19
+
+COMMIT;
+
+SELECT COUNT(*)
+FROM session.fred; --> Returns 0
+....
+
+A temporary table has to be dropped to reuse the same name:
+
+.Dropping a temporary table
+[source,sql]
+....
+DECLARE GLOBAL TEMPORARY TABLE session.fred
+( dept SMALLINT NOT NULL
+, avg_salary DEC(7, 2) NOT NULL
+, num_emps SMALLINT NOT NULL)
+ON COMMIT DELETE ROWS;
+
+INSERT INTO session.fred
+SELECT dept
+     , AVG(salary)
+     , COUNT(*)
+FROM staff
+GROUP BY dept;
+
+SELECT COUNT(*)
+FROM session.fred; --> Returns 8
+
+DROP TABLE session.fred;
+
+DECLARE GLOBAL TEMPORARY TABLE session.fred
+(dept SMALLINT NOT NULL)
+ON COMMIT DELETE ROWS;
+
+SELECT COUNT(*)
+FROM session.fred; --> Return 0
+....
+
+=== Tablespace
+
+Before a user can create a declared global temporary table, a USER TEMPORARY tablespace that they have access to, has to be created. A typical definition follows:
+
+.Create USER TEMPORARY tablespace
+[source,sql]
+....
+CREATE USER TEMPORARY TABLESPACE FRED
+MANAGED BY DATABASE
+USING (FILE 'C:\Db2\TEMPFRED\FRED1' 1000
+,FILE 'C:\Db2\TEMPFRED\FRED2' 1000
+,FILE 'C:\Db2\TEMPFRED\FRED3' 1000);
+
+GRANT USE OF TABLESPACE FRED TO PUBLIC;
+....
+
+=== Do NOT use to Hold Output
+
+In general, do not use a Declared Global Temporary Table to hold job output data, especially if the table is defined ON COMMIT PRESERVE ROWS.
+If the job fails halfway through, the contents of the temporary table will be lost. If, prior to the failure, the job had updated and then committed Production data, it may be impossible to recreate the lost output because the committed rows cannot be updated twice.
+
+

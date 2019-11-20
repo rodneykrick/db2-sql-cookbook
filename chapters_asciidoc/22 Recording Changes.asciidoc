@@ -1,0 +1,454 @@
+== Retaining a Record
+
+NOTE: This chapter was written back in the versions before V9.7. It is helpful showing how to use triggers for a specific use case but if you want to implement such a scenario in Db2 you should use the "Time Travel" feature. A chapter about the "Time Travel" will be written in one of the new versions of the book.
+
+This chapter will describe a rather complex table/view/trigger schema that will enable us to offer several features that are often asked for:
+
+* Record every change to the data in an application (auditing).
+* Show the state of the data, as it was, at any point in the past (historical analysis).
+* Follow the sequence of changes to any item (e.g. customer) in the database.
+* Do "what if" analysis by creating virtual copies of the real world, and then changing them as desired, without affecting the real-world data.
+
+Some sample code to illustrate the above concepts will be described below.
+
+=== Schema Design
+
+*Recording Changes*
+
+Below is a very simple table that records relevant customer data:
+
+.Customer table
+[source,sql]
+....
+CREATE TABLE customer
+( cust#     INTEGER NOT NULL
+, cust_name CHAR(10)
+, cust_mgr  CHAR(10)
+, PRIMARY KEY(cust#));
+....
+
+One can insert, update, and delete rows in the above table. The latter two actions destroy data, and so are incompatible with using this table to see all (prior) states of the data. One way to record all states of the above table is to create a related customer-history table, and then to use triggers to copy all changes in the main table to the history table. Below is one example of such a history table:
+
+.Customer-history table
+[source,sql]
+....
+CREATE TABLE customer_his
+( cust#     INTEGER     NOT NULL
+, cust_name CHAR(10)
+, cust_mgr  CHAR(10)
+, cur_ts    TIMESTAMP   NOT NULL
+, cur_actn  CHAR(1)     NOT NULL
+, cur_user  VARCHAR(10) NOT NULL
+, prv_cust# INTEGER
+, prv_ts    TIMESTAMP
+, PRIMARY KEY(cust#, cur_ts));
+
+CREATE UNIQUE INDEX customer_his_x1
+ON customer_his(cust#, prv_ts, cur_ts);
+....
+
+NOTE: The secondary index shown above will make the following view processing, which looks for a row that replaces the current, much more efficient.
+
+=== Table Design
+
+The history table has the same fields as the original Customer table, plus the following:
+
+* CUR-TS: The current timestamp of the change.
+* CUR-ACTN: The type of change (i.e. insert, update, or delete).
+* CUR-USER: The user who made the change (for auditing purposes).
+* PRV-CUST#: The previous customer number. This field enables one follow the sequence of changes for a given customer. The value is null if the action is an insert.
+* PRV-TS: The timestamp of the last time the row was changed (null for inserts).
+
+Observe that this history table does not have an end-timestamp. Rather, each row points back to the one that it (optionally) replaces. One advantage of such a schema is that there can be a many-to-one relationship between any given row, and the row, or rows, that replace it. When we add versions into the mix, this will become important. 
+
+=== Triggers
+
+Below is the relevant insert trigger. It replicates the new customer row in the history table, along with the new fields. Observe that the two "previous" fields are set to null:
+
+.Insert trigger
+[source,sql]
+....
+CREATE TRIGGER customer_ins
+AFTER INSERT ON customer
+REFERENCING NEW AS nnn
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO customer_his 
+VALUES (nnn.cust#
+      , nnn.cust_name
+      , nnn.cust_mgr
+      , CURRENT TIMESTAMP
+      , 'I'
+      , USER
+      , NULL
+      , NULL);
+....
+
+Below is the update trigger. Because the customer table does not have a record of when it was last changed, we have to get this value from the history table - using a sub-query to find the most recent row:
+
+.Update trigger
+[source,sql]
+....
+CREATE TRIGGER customer_upd
+AFTER UPDATE ON customer
+REFERENCING NEW AS nnn
+            OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO customer_his 
+VALUES (nnn.cust#
+      , nnn.cust_name
+      , nnn.cust_mgr
+      , CURRENT TIMESTAMP
+      , 'U'
+      , USER
+      , ooo.cust#
+      , (SELECT MAX(cur_ts)
+         FROM customer_his hhh
+         WHERE ooo.cust# = hhh.cust#));
+....
+
+Below is the delete trigger. It is similar to the update trigger, except that the action is different and we are under no obligation to copy over the old non-key-data columns - but we can if we wish:
+
+.Delete trigger
+[source,sql]
+....
+CREATE TRIGGER customer_del
+AFTER DELETE ON customer
+REFERENCING OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO customer_his 
+VALUES (ooo.cust#
+      , NULL
+      , NULL
+      , CURRENT TIMESTAMP
+      , 'D'
+      , USER
+      , ooo.cust#
+      , (SELECT MAX(cur_ts)
+         FROM customer_his hhh
+         WHERE ooo.cust# = hhh.cust#));
+....
+
+=== Views
+
+We are now going to define a view that will let the user query the customer-history table – as if it were the ordinary customer table, but to look at the data as it was at any point in the past. To enable us to hide all the nasty SQL that is required to do this, we are going to ask that the user first enter a row into a profile table that has two columns:
+
+* The user's Db2 USER value.
+* The point in time at which the user wants to see the customer data.
+
+Here is the profile table definition:
+
+.Profile table
+[source,sql]
+....
+CREATE TABLE profile
+( user_id VARCHAR(10) NOT NULL
+, bgn_ts TIMESTAMP NOT NULL DEFAULT '9999-12-31-24.00.00'
+, PRIMARY KEY(user_id));
+....
+
+Below is a view that displays the customer data, as it was at the point in time represented by the timestamp in the profile table. The view shows all customer-history rows, as long as:
+
+* The action was not a delete.
+* The current-timestamp is <= the profile timestamp.
+* There does not exist any row that "replaces" the current row (and that row has a current timestamp that is <= to the profile timestamp).
+
+Now for the code:
+
+.View of Customer history
+[source,sql]
+....
+CREATE VIEW customer_vw AS
+SELECT hhh.*
+     , ppp.bgn_ts
+FROM customer_his hhh
+    , profile ppp
+WHERE ppp.user_id = USER
+AND hhh.cur_ts <= ppp.bgn_ts
+AND hhh.cur_actn <> 'D' 
+AND NOT EXISTS 
+    (SELECT *
+     FROM customer_his nnn
+     WHERE nnn.prv_cust# = hhh.cust#
+     AND nnn.prv_ts = hhh.cur_ts
+     AND nnn.cur_ts <= ppp.bgn_ts);
+....
+
+The above sample schema shows just one table, but it can easily be extended to support every table is a very large application. One could even write some scripts to make the creation of the history tables, triggers, and views, all but automatic.
+
+=== Limitations
+
+The above schema has the following limitations:
+
+* Every data table has to have a unique key.
+* The cost of every insert, update, and delete, is essentially doubled.
+* Data items that are updated very frequently (e.g. customer daily balance) may perform poorly when queried because many rows will have to be processed in order to find the one that has not been replaced. 
+* The view uses the USER special register, which may not be unique per actual user.
+
+=== Multiple Versions of the World
+
+The next design is similar to the previous, but we are also going to allow users to both see and change the world - as it was in the past, and as it is now, without affecting the real-world data. These extra features require a much more complex design:
+
+* We cannot use a base table and a related history table, as we did above. Instead we have just the latter, and use both views and INSTEAD OF triggers to make the users think that they are really seeing and/or changing the former.
+* We need a version table - to record when the data in each version (i.e. virtual copy of the real world) separates from the real world data.
+* Data integrity features, like referential integrity rules, have to be hand-coded in triggers, rather that written using standard Db2 code.
+
+==== Version Table
+
+The following table has one row per version created:
+
+.Version table
+[source,sql]
+....
+CREATE TABLE version
+( vrsn INTEGER NOT NULL
+, vrsn_bgn_ts TIMESTAMP NOT NULL
+, CONSTRAINT version1 CHECK(vrsn >= 0)
+, CONSTRAINT version2 CHECK(vrsn < 1000000000)
+, PRIMARY KEY(vrsn));
+....
+
+The following rules apply to the above:
+
+* Each version has a unique number. Up to one billion can be created.
+* Each version must have a begin-timestamp, which records at what point in time it separates from the real world. This value must be <= the current time.
+* Rows cannot be updated or deleted in this table - only inserted. This rule is necessary to ensure that we can always trace all changes - in every version.
+* The real-world is deemed to have a version number of zero, and a begin-timestamp value of high-values.
+
+==== Profile Table
+
+The following profile table has one row per user (i.e. USER special register) that reads from or changes the data tables. It records what version the user is currently using (note: the version timestamp data is maintained using triggers):
+
+.Profile table
+[source,sql]
+....
+CREATE TABLE profile
+( user_id     VARCHAR(10) NOT NULL
+, vrsn        INTEGER     NOT NULL
+, vrsn_bgn_ts TIMESTAMP   NOT NULL
+, CONSTRAINT profile1 FOREIGN KEY(vrsn)
+      REFERENCES version(vrsn)
+      ON DELETE RESTRICT
+, PRIMARY KEY(user_id));
+....
+
+==== Customer (data) Table
+
+Below is a typical data table. This one holds customer data:
+
+.Customer table
+[source,sql]
+....
+CREATE TABLE customer_his
+( cust#     INTEGER     NOT NULL
+, cust_name CHAR(10)    NOT NULL
+, cust_mgr  CHAR(10)
+, cur_ts    TIMESTAMP   NOT NULL
+, cur_vrsn  INTEGER     NOT NULL
+, cur_actn  CHAR(1)     NOT NULL
+, cur_user  VARCHAR(10) NOT NULL
+, prv_cust# INTEGER
+, prv_ts    TIMESTAMP
+, prv_vrsn  INTEGER
+, CONSTRAINT customer1 FOREIGN KEY(cur_vrsn)
+      REFERENCES version(vrsn)
+      ON DELETE RESTRICT
+, CONSTRAINT customer2 CHECK(cur_actn IN ('I','U','D'))
+, PRIMARY KEY(cust#,cur_vrsn,cur_ts));
+
+CREATE INDEX customer_x2 
+ON customer_his(prv_cust#
+              , prv_ts
+              , prv_vrsn);
+....
+
+Note the following:
+
+* The first three fields are the only ones that the user will see.
+* The users will never update this table directly. They will make changes to a view of the table, which will then invoke INSTEAD OF triggers.
+* The foreign key check (on version) can be removed - if it is forbidden to ever delete any version. This check stops the removal of versions that have changed data.
+* The constraint on CUR_ACTN is just a double-check - to make sure that the triggers that will maintain this table do not have an error. It can be removed, if desired.
+* The secondary index will make the following view more efficient. 
+
+The above table has the following hidden fields:
+
+* CUR-TS: The current timestamp of the change.
+* CUR-VRSN: The version in which change occurred. Zero implies reality.
+* CUR-ACTN: The type of change (i.e. insert, update, or delete).
+* CUR-USER: The user who made the change (for auditing purposes).
+* PRV-CUST#: The previous customer number. This field enables one follow the sequence of changes for a given customer. The value is null if the action is an insert.
+* PRV-TS: The timestamp of the last time the row was changed (null for inserts).
+* PRV-VRNS: The version of the row being replaced (null for inserts).
+
+==== Views
+
+The following view displays the current state of the data in the above customer table – based on the version that the user is currently using:
+
+.Customer view - 1 of 2
+[source,sql]
+....
+CREATE VIEW customer_vw AS
+SELECT *
+FROM customer_his hhh
+   , profile ppp
+WHERE ppp.user_id = USER
+AND hhh.cur_actn <> 'D'
+AND  (  (ppp.vrsn = 0 AND hhh.cur_vrsn = 0)
+     OR (ppp.vrsn > 0 AND hhh.cur_vrsn = 0 AND hhh.cur_ts < ppp.vrsn_bgn_ts)
+     OR (ppp.vrsn > 0 AND hhh.cur_vrsn = ppp.vrsn)
+     )
+AND NOT EXISTS
+  (SELECT *
+   FROM customer_his nnn
+   WHERE nnn.prv_cust# = hhh.cust#
+   AND nnn.prv_ts = hhh.cur_ts
+   AND nnn.prv_vrsn = hhh.cur_vrsn
+   AND (  (ppp.vrsn = 0 AND nnn.cur_vrsn = 0)
+       OR (ppp.vrsn > 0 AND nnn.cur_vrsn = 0 AND nnn.cur_ts < ppp.vrsn_bgn_ts)
+       OR (ppp.vrsn > 0 AND nnn.cur_vrsn = ppp.vrsn)
+       )
+  );
+....
+
+The above view shows all customer rows, as long as:
+
+* The action was not a delete.
+* The version is either zero (i.e. reality), or the user's current version.
+* If the version is reality, then the current timestamp is < the version begin-timestamp (as duplicated in the profile table). 
+* There does not exist any row that "replaces" the current row (and that row has a current timestamp that is <= to the profile (version) timestamp).
+
+To make things easier for the users, we will create another view that sits on top of the above view. This one only shows the business fields:
+
+.Customer view - 2 of 2
+[source,sql]
+....
+CREATE VIEW customer AS
+SELECT cust#
+     , cust_name
+     , cust_mgr
+FROM customer_vw;
+....
+
+All inserts, updates, and deletes, are done against the above view, which then propagates down to the first view, whereupon they are trapped by INSTEAD OF triggers. The changes are then applied (via the triggers) to the underlying tables.
+
+==== Insert Trigger
+
+The following INSTEAD OF trigger traps all inserts to the first view above, and then applies the insert to the underlying table - with suitable modifications:
+
+.Insert trigger
+[source,sql]
+....
+CREATE TRIGGER customer_ins
+INSTEAD OF INSERT ON customer_vw
+REFERENCING NEW AS nnn
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO customer_his 
+VALUES(nnn.cust#
+     , nnn.cust_name
+     , nnn.cust_mgr
+     , CURRENT TIMESTAMP
+     , (SELECT vrsn
+        FROM profile
+        WHERE user_id = USER)
+     , CASE
+         WHEN 0 < (SELECT COUNT(*)
+                   FROM customer
+                   WHERE cust# = nnn.cust#)
+           THEN RAISE_ERROR('71001','ERROR: Duplicate cust#')
+         ELSE 'I'
+       END
+     , USER
+     , NULL
+     , NULL
+     , NULL);
+....
+
+Observe the following:
+
+* The basic customer data is passed straight through.
+* The current timestamp is obtained from Db2.
+* The current version is obtained from the user's profile-table row.
+* A check is done to see if the customer number is unique. One cannot use indexes to enforce such rules in this schema, so one has to code accordingly.
+* The previous fields are all set to null.
+
+==== Update Trigger
+
+The following INSTEAD OF trigger traps all updates to the first view above, and turns them into an insert to the underlying table - with suitable modifications:
+
+.Update trigger
+[source,sql]
+....
+CREATE TRIGGER customer_upd
+INSTEAD OF UPDATE ON customer_vw
+REFERENCING NEW AS nnn
+            OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO customer_his
+VALUES (nnn.cust#
+      , nnn.cust_name
+      , nnn.cust_mgr
+      , CURRENT TIMESTAMP
+      , ooo.vrsn
+      , CASE
+          WHEN nnn.cust# <> ooo.cust#
+            THEN RAISE_ERROR('72001','ERROR: Cannot change cust#')
+          ELSE 'U'
+        END
+      , ooo.user_id
+      , ooo.cust#
+      , ooo.cur_ts
+      , ooo.cur_vrsn);
+....
+
+In this particular trigger, updates to the customer number (i.e. business key column) are not allowed. This rule is not necessary, it simply illustrates how one would write such code if one so desired.
+
+==== Delete Trigger
+
+The following INSTEAD OF trigger traps all deletes to the first view above, and turns them into an insert to the underlying table - with suitable modifications:
+
+.Delete trigger
+[source,sql]
+....
+CREATE TRIGGER customer_del
+INSTEAD OF DELETE ON customer_vw
+REFERENCING OLD AS ooo
+FOR EACH ROW
+MODE Db2SQL
+INSERT INTO customer_his 
+VALUES (ooo.cust#
+      , ooo.cust_name
+      , ooo.cust_mgr
+      , CURRENT TIMESTAMP
+      , ooo.vrsn
+      , 'D'
+      , ooo.user_id
+      , ooo.cust#
+      , ooo.cur_ts
+      , ooo.cur_vrsn);
+....
+
+=== Summary
+
+The only thing that the user need see in the above schema in the simplified (second) view that lists the business data columns. They would insert, update, and delete the rows in this view as if they were working on a real table. Under the covers, the relevant INSTEAD OF trigger would convert whatever they did into a suitable insert to the underlying table.
+
+This schema supports the following:
+
+* To do "what if" analysis, all one need do is insert a new row into the version table – with a begin timestamp that is the current time. This insert creates a virtual copy of every table in the application, which one can then update as desired. 
+* To do historical analysis, one simply creates a version with a begin-timestamp that is at some point in the past. Up to
+one billion versions are currently supported.
+* To switch between versions, all one need do is update one's row in the profile table.
+* One can use recursive SQL (not shown here) to follow the sequence of changes to any particular item, in any particular version.
+
+This schema has the following limitations:
+
+* Every data table has to have a unique (business) key.
+* Data items that are updated very frequently (e.g. customer daily balance) may perform poorly when queried because many rows will have to be processed in order to find the one that has not been replaced.
+* The views use the USER special register, which may not be unique per actual user.
+* Data integrity features, like referential integrity rules, cascading deletes, and unique key checks, have to be hand-coded in the INSTEAD OF triggers.
+* Getting the triggers right is quite hard. If the target application has many tables, it might be worthwhile to first create a suitable data-dictionary, and then write a script that generates as much of the code as possible.
+
+
