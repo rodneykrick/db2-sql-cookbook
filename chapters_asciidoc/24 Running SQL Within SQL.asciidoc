@@ -154,7 +154,7 @@ At this point, I've got an interesting technical solution looking for a valid bu
 
 Imagine a relational database application where the table definitions are constantly changing. The programs using the data are able adapt accordingly, in which case the intermediate SQL queries have to also be equally adaptable. The application could maintain a data dictionary that was updated in sync with the table changes. Each query would reference the dictionary at the start of its processing, and then build the main body of the query (i.e. that which obtains the desired application data) as needed. I did some simple experiments using this concept. It worked, but I could see no overwhelming reason why one would use it, as opposed to building the query external to Db2, and then running it. 
 
-==== Adaptive Query
+==== ((Adaptive Query))
 
 One could write a query where the internal query logic changed – depending on what data was encountered along the way. I tested this concept, and found that it works, but one still needs to define the general processing logic of the query somewhere. It was often easier to code a series of optional joins (in the query) to get the same result.
 
@@ -490,7 +490,7 @@ _ANSWER_
 |E21 |200340|31840.00|6
 |===
 
-==== Tabular Functions
+==== ((Tabular Functions))
 
 So far, all we have done in this chapter is get single values from tables. Now we will retrieve sets of rows from tables. To do this we need to define a tabular function:
 
@@ -570,7 +570,7 @@ public class Graeme2 extends UDF {
 
 ==== Java Logic
 
-Java programs that send data to Db2 table functions use a particular type of CASE logic to return the output data. In particular, a row is returned at the end of every FETCH process.
+((Java)) programs that send data to Db2 table functions use a particular type of CASE logic to return the output data. In particular, a row is returned at the end of every FETCH process.
 
 *OPEN:*
 

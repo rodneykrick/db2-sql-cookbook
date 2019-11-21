@@ -6,7 +6,7 @@ This chapter contains a basic introduction to Db2 SQL. It also has numerous exam
 
 The original book has lots of syntax diagrams in it. We decided not to put them here anymore. Syntax diagrams can be found in the SQL Reference of Db2 (or your prefered RDBMS). We only give you lots of examples how to use SQL. When you master this stuff, you should learn more and improve your knowledge using the "real" manuals.
 
-=== SQL Comments
+=== ((SQL Comments))
 
 A comment in a SQL statement starts with two dashes and goes to the end of the line:
 
@@ -20,7 +20,7 @@ ORDER BY id;
 -- this is another comment.
 ....
 
-Some Db2 command processors (e.g. Db2BATCH on the PC, or SPUFI on the mainframe)can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
+Some ((Db2 command processors)) (e.g. Db2BATCH on the PC, or SPUFI on the mainframe)can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
 comment:
 
 .Set Delimiter example
@@ -38,7 +38,7 @@ When using the Db2 Command Processor (batch) script, the default statement termi
 
 NOTE: See the section titled <<special.character.usage>> for notes on how to refer to the statement delimiter in the SQL text.
 
-=== Statement Delimiter
+=== ((Statement Delimiter))
 
 Db2 SQL does not come with a designated statement delimiter
 (terminator), though a semicolon is often used. A semi-colon cannot be used when writing a compound SQL statement (see <<compound.sql.chapter>>) because that character is used to terminate the various subcomponents of the statement.
@@ -49,9 +49,9 @@ Db2 SQL does not come with a designated statement delimiter
 
 Db2 is a relational database that supports a variety of object types. In this section we shall overview those items which one can obtain data from using SQL.
 
-===== Table
+===== ((Table))
 
-A table is an organized set of columns and rows. The number, type, and relative position, of the various columns in the table is recorded in the Db2 catalogue. The number of rows in the table will fluctuate as data is inserted and deleted. The CREATE TABLE statement is used to define a table. The following example will define the EMPLOYEE table, which is found in the Db2 sample database.
+A table is an organized set of columns and rows. The number, type, and relative position, of the various columns in the table is recorded in the ((Db2 catalogue)). The number of rows in the table will fluctuate as data is inserted and deleted. The CREATE TABLE statement is used to define a table. The following example will define the EMPLOYEE table, which is found in the Db2 sample database.
 
 .Db2 sample table – EMPLOYEE
 [source,sql]

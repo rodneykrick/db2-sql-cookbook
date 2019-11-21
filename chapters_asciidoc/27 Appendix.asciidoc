@@ -1,6 +1,6 @@
 == Appendix
 
-===  Db2 Sample Tables
+===  ((Db2 Sample Tables))
 
 Sample table DDL follows.
 

@@ -123,7 +123,7 @@ _ANSWER_
 |4   |8998|0.8998|8
 |===
 
-==== Make Random Data - Varying Distribution
+==== ((Make Random Data)) - Varying Distribution
 
 In the real world, there is a tendency for certain data values to show up much more frequently than others. Likewise, separate fields in a table usually have independent semi-random data distribution patterns. In the next statement we create three independently random fields. The first has the usual 32K distinct values evenly distributed in the range of zero to one. The second and third have random numbers that are skewed towards the low end of the range, and have many more distinct values:
 
@@ -155,7 +155,7 @@ _ANSWER_
 
 ==== Make Random Data - Different Flavours
 
-The RAND function generates random numbers. To get random character data one has to convert the RAND output into a character. There are several ways to do this. The first method shown below uses the CHR function to convert a number in the range: 65 to 90 into the ASCII equivalent: "A" to "Z". The second method uses the CHAR function to translate a number into the character equivalent.
+The ((RAND)) function generates random numbers. To get random character data one has to convert the RAND output into a character. There are several ways to do this. The first method shown below uses the CHR function to convert a number in the range: 65 to 90 into the ASCII equivalent: "A" to "Z". The second method uses the CHAR function to translate a number into the character equivalent.
 
 .Converting RAND output from number to character
 [source,sql]
@@ -291,7 +291,7 @@ In order to illustrate some of the tricks that one can use when creating such da
 * The FIRST NAME is derived using seven independent invocation of the CHR function, each of which is going to give a somewhat different result.
 * The LAST NAME is (mostly) made by using the TRANSLATE function to convert a large random number into a corresponding character value. The output is skewed towards some of the vowels and the lower-range characters during the translation.
 
-==== Time-Series Processing
+==== ((Time-Series)) Processing
 
 The following table holds data for a typical time-series application. Observe is that each row has both a beginning and ending date, and that there are three cases where there is a gap between the end-date of one row and the begin-date of the next (with the same key).
 
@@ -373,7 +373,7 @@ The first predicate in the above sub-query joins the rows together by matching k
 
 The above query relies on the sample table data being valid (as defined by the CHECK constraints in the DDL on <<sample.table.ddl.time.series>>. This means that the END_DT is always greater than or equal to the BGN_DT, and each KYY, BGN_DT combination is unique. 
 
-===== Find Gaps in Time-Series
+===== Find ((Gaps in Time-Series))
 
 We want to find all those cases in the TIME_SERIES table when the ending of one row is not exactly one day less than the beginning of the next (if there is a next). The following query will answer this question. It consists of both a join and a sub-query. In the join (which is done first), we match each row with every other row that has the same key and a BGN_DT that is more than one day greater than the current END_DT. Next, the sub-query excludes from the result those join-rows where there is an intermediate third row.
 
@@ -518,7 +518,7 @@ One can use the TABLESAMPLE schema to randomly sample rows for subsequent analys
 
 * The table-name must refer to a real table. This can include a declared global temporary table, or a materialized query table. It cannot be a nested table expression.
 * The sampling is an addition to any predicates specified in the where clause. Under the covers, sampling occurs before any other query processing, such as applying predicates or doing a join.
-* The BERNOUL option checks each row individually.
+* The ((BERNOULLI)) option checks each row individually.
 * The SYSTEM option lets Db2 find the most efficient way to sample the data. This may mean that all rows on each page that qualifies are included. For small tables, this method often results in a misleading percentage of rows selected. 
 * The "percent" number must be equal to or less than 100, and greater than zero. It determines what percentage of the rows processed are returns.
 * The REPEATABLE option and number is used if one wants to get the same result every time the query is run (assuming no data changes). Without this option, each run will be both random and different.
@@ -547,7 +547,7 @@ WHERE ee.empno = ea.empno
 ORDER BY ee.empno;
 ....
 
-Sample a declared global temporary table, and also apply other predicates:
+Sample a ((declared global temporary table)), and also apply other predicates:
 
 .Sample Views used in Join Examples
 [source,sql]
@@ -1488,7 +1488,9 @@ WHERE w# = (SELECT MAX(w#)
 ORDER BY dept;
 ....
 
-If there are no suitable indexes, the above query may be horribly inefficient. If this is the case, one can create a user-defined function to string together the names in a department(IMPORTANT: This example uses an "!" as the stmt delimiter):
+If there are no suitable indexes, the above query may be horribly inefficient. If this is the case, one can create a user-defined function to string together the names in a department:
+
+IMPORTANT: This example uses an "!" as the stmt delimiter
 
 .Creating a function to denormalize names
 [source,sql]
@@ -1712,7 +1714,9 @@ Db2 lacks a simple function for reversing the contents of a data field. Fortunat
 
 ==== Input vs. Output
 
-Before we do any data reversing, we have to define what the reversed output should look like relative to a given input value. For example, if we have a four-digit numeric field, the reverse of the number 123 could be 321, or it could be 3210. The latter value implies that the input has a leading zero. It also assumes that we really are working with a four digit field. Likewise, the reverse of the number 123.45 might be 54.321, or 543.21. Another interesting problem involves reversing negative numbers. If the value "-123" is a string, then the reverse is probably "321-". If it is a number, then the desired reverse is more likely to be "-321". Trailing blanks in character strings are a similar problem. Obviously, the reverse of "ABC" is "CBA", but what is the reverse of "ABC "? There is no general technical answer to any of these questions. The correct answer depends upon the business needs of the application. Below is a user defined function that can reverse the contents of a character field (IMPORTANT: This example uses an "!" as the stmt delimiter):
+Before we do any data reversing, we have to define what the reversed output should look like relative to a given input value. For example, if we have a four-digit numeric field, the reverse of the number 123 could be 321, or it could be 3210. The latter value implies that the input has a leading zero. It also assumes that we really are working with a four digit field. Likewise, the reverse of the number 123.45 might be 54.321, or 543.21. Another interesting problem involves reversing negative numbers. If the value "-123" is a string, then the reverse is probably "321-". If it is a number, then the desired reverse is more likely to be "-321". Trailing blanks in character strings are a similar problem. Obviously, the reverse of "ABC" is "CBA", but what is the reverse of "ABC "? There is no general technical answer to any of these questions. The correct answer depends upon the business needs of the application. Below is a user defined function that can reverse the contents of a character field:
+
+IMPORTANT: This example uses an "!" as the stmt delimiter
 
 .Reversing character field
 [source,sql]
@@ -1771,7 +1775,7 @@ _ANSWER_
 
 Simple CASE logic can be used to deal with negative values (i.e. to move the sign to the front of the string, before converting back to numeric), if they exist.
 
-=== Fibonacci Series
+=== ((Fibonacci)) Series
 
 A Fibonacci Series is a series of numbers where each value is the sum of the previous two. Regardless of the two initial (seed) values, if run for long enough, the division of any two adjacent numbers will give the value 0.618 or inversely 1.618.  The following user defined function generates a Fibonacci series using three input values:
 
@@ -1779,7 +1783,9 @@ A Fibonacci Series is a series of numbers where each value is the sum of the pre
 * Second seed value.
 * Number values to generate in series.
 
-Observe that that the function code contains a check to stop series generation if there is not enough space in the output field for more numbers (IMPORTANT: This example uses an "!" as the stmt delimiter):
+Observe that that the function code contains a check to stop series generation if there is not enough space in the output field for more numbers:
+
+IMPORTANT: This example uses an "!" as the stmt delimiter
 
 .Fibonacci Series function
 [source,sql]
@@ -2402,7 +2408,7 @@ _ANSWER_
 * The above function won't work on the HEX representation of packed-decimal or floatingpoint data.
 * One could have three different flavors of the above function - one for each type of integer value. The input value length would determine the output type.
 
-=== Endianness
+=== ((Endianness))
 
 Most computers use one of two internal formats to store binary data. In big-endian, which is used on z/OS, the internal representation equals the HEX value. So the four-byte integer value 1,234,567,890 is stored as "49 96 02 D2". In little-endian, which is used on all Intel chips, the bytes are reversed, so the above value is stored internally as "D2 02 96 49". This is why the above function transposed every two-byte block before converting the HEX value to numeric. 
 
