@@ -26,7 +26,7 @@ One can insert into a table, view, nickname, or SQL expression. For views and SQ
 * There must be no GROUP BY or HAVING acting on the select list.
 * The list of columns selected must include all those needed to insert a new row.
 * The list of columns selected cannot include one defined from a constant, expression, or a scalar function.
-* Sub-queries, and other predicates, are fine, but are ignored (see figure 153).
+* Sub-queries, and other predicates, are fine, but are ignored (see <<insert.into.a.fullselect>>).
 * The query cannot be a join, nor (plain) union.
 * A "union all" is permitted - as long as the underlying tables on either side of the union have check constraints such that a row being inserted is valid for one, and only one, of the tables in the union.
 
@@ -86,6 +86,7 @@ VALUES
 
 The next statement inserts a row into a fullselect that just happens to have a predicate which, if used in a subsequent query, would not find the row inserted. The predicate has no impact on the insert itself:
 
+[[insert.into.a.fullselect]]
 .Insert into a fullselect
 [source,sql]
 ....
