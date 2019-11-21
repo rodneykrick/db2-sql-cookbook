@@ -9,7 +9,7 @@ Imagine that one has an INVOICE table that records invoices generated. Also imag
 
 You may need to know what values were generated during each insert. There are several ways to do this:
 
-* For all of the above techniques, embed the insert inside a select statement (see figure 795 and/or page 71). This is probably the best solution.
+* For all of the above techniques, embed the insert inside a select statement (see <<selecting.identity.column.values.inserted>>). This is probably the best solution.
 * For identity columns, use the IDENTITY_VAL_LOCAL function (see <<identity_val_local.function>>).
 * For sequences, make a NEXTVAL or PREVVAL call (see <<nextval.and.prevval.usage.notes>>).
 
@@ -445,7 +445,7 @@ _ANSWER_
 
 There are two ways to find out what values were generated when one inserted a row into a table with an identity column:
 
-* Embed the insert within a select statement (see figure 795).
+* Embed the insert within a select statement (see <<selecting.identity.column.values.inserted>>).
 * Call the IDENTITY_VAL_LOCAL function.
 
 Certain rules apply to IDENTITY_VAL_LOCAL function usage:
@@ -463,6 +463,7 @@ Certain rules apply to IDENTITY_VAL_LOCAL function usage:
 
 If the above sounds unduly complex, it is because it is. It is often much easier to simply get the values by embedding the insert inside a select:
 
+[[selecting.identity.column.values.inserted]]
 .Selecting identity column values inserted
 [source,sql]
 ....
