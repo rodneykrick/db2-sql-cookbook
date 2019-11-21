@@ -82,7 +82,7 @@ ORDER BY nm.id;
 
 _ANSWER_
 
-[cols=",",options="header",]
+[options="header",]
 |===
 | ID | NAME    | JOB 
 | 10 | Sanders | Sales
