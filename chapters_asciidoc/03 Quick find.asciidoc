@@ -484,7 +484,7 @@ When a table is created, various Db2 features can be used to ensure that the dat
 relationships between tables.
 * Triggers can be defined to enforce more complex integrity rules, and also to do things (e.g. populate an audit trail) whenever data is changed.
 
-See the Db2 manuals for documentation or page 341 for more information about the above.
+See the Db2 manuals for documentation or <<protecting.your.data>> for more information about the above.
 
 ==== Hide Complex SQL
 

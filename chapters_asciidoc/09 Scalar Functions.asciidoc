@@ -192,7 +192,7 @@ There are five BIT functions:
 
 The arguments can be SMALLINT (16 bits), INTEGER (32 bits), BIGINT (64 bits), or DECFLOAT (113 bits). The result is the same as the argument with the largest data type.
 
-Negative numbers can be used in bit manipulation. For example the SMALLINT value -1 will have all 16 bits set to "1" (see example on page: 131). As their name implies, the BIT functions can be used to do bit-by-bit comparisons between two numbers:
+Negative numbers can be used in bit manipulation. For example the SMALLINT value -1 will have all 16 bits set to "1" (see example on <<updating.bit.values>>). As their name implies, the BIT functions can be used to do bit-by-bit comparisons between two numbers:
 
 .BIT functions examples
 [source,sql]
@@ -314,6 +314,7 @@ _ANSWER_
 |-32768|0080|1000000000000000
 |===
 
+[[updating.bit.values]]
 ===== Updating BIT Values
 
 Use the BITXOR function to toggle targeted bits in a value. Use the BITANDNOT function to clear the same targeted bits. To illustrate, the next query uses these two functions to toggle and clear the last four bits, because the second parameter is 15, which is b"1111":
@@ -1675,7 +1676,7 @@ Converts the input (1st argument) to a graphic data type. The output length (2nd
 
 ==== GREATEST
 
-See MAX scalar function on page 156.
+See <<max.function>> scalar function.
 
 ==== HASHEDVALUE
 
@@ -1996,7 +1997,7 @@ _ANSWER_
 
 ==== LEAST
 
-See MIN scalar function on page 158.
+See <<min.function>> scalar function.
 
 ==== LEFT
 
@@ -2185,6 +2186,7 @@ _ANSWER_
 |ABC|ABC|5
 |===
 
+[[max.function]]
 ==== MAX
 
 Returns the largest item from a list that must be at least two items long:
@@ -2288,8 +2290,9 @@ _ANSWER_
 |86338|23:58:58
 |===
 
-NOTE: The following two identical timestamp values: "2005-07-15.24.00.00" and "2005-07-16.00.00.00" will return different MIDNIGHT_SECONDS results. See the chapter titled "Quirks in SQL" on page 427 for a detailed discussion of this issue.
+NOTE: The following two identical timestamp values: "2005-07-15.24.00.00" and "2005-07-16.00.00.00" will return different MIDNIGHT_SECONDS results. See the chapter titled <<quirks.in.sql.chapter>> for a detailed discussion of this issue.
 
+[[min.function]]
 ==== MIN
 
 Returns the smallest item from a list that must be at least two items long:
@@ -3506,6 +3509,7 @@ _ANSWER_
 |2.000|1.414
 |===
 
+[[strip.function]]
 ==== STRIP
 
 Removes leading, trailing, or both (the default), characters from a string. If no strip character is provided, leading and/or trailing blank characters are removed.
@@ -3985,7 +3989,7 @@ _ANSWER_
 
 ==== TRIM
 
-See STRIP function on page 173.
+See <<strip.function>> function.
 
 ==== TRUNC or TRUNCATE
 

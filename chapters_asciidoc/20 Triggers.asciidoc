@@ -1,3 +1,4 @@
+[[triggers.chapter]]
 == Triggers
 
 A trigger initiates an action whenever a row, or set of rows, is changed. The change can be either an insert, update or delete. 
@@ -10,7 +11,7 @@ NOTE: The Db2 Application Development Guide: Programming Server Applications is 
 * An *AFTER* trigger is run after the row is changed. It can do everything a before trigger can do, plus modify data in other tables or systems (e.g. it can insert a row into an audit table after an update).
 * An *INSTEAD OF* trigger is used in a view to do something instead of the action that the user intended (e.g. do an insert instead of an update). There can be only one instead of trigger per possible DML type on a given view.
 
-NOTE: See the chapter titled "Retaining a Record" on page 351 for a sample application that uses INSTEAD OF triggers to record all changes to the data in a set of tables.
+NOTE: See the chapter titled <<retaining.a.record>> for a sample application that uses INSTEAD OF triggers to record all changes to the data in a set of tables.
 
 === Action Type
 

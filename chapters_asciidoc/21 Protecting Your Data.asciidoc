@@ -1,3 +1,4 @@
+[[protecting.your.data]]
 == Protecting Your Data
 
 There is no use having a database if the data in it is not valid. This chapter introduces some of the tools that exist in Db2 to enable one to ensure the validity of the data in your application.
@@ -210,7 +211,7 @@ AND ROW CHANGE TIMESTAMP for us_sales = '2007-11-10-01.02.03';
 
 ==== Triggers
 
-Triggers can sometimes be quite complex little programs. If coded incorrectly, they can do an amazing amount of damage. As such, it pays to learn quite a lot before using them. Below are some very brief notes, but please refer to the official Db2 documentation for a more detailed description. See also page 333 for a brief chapter on triggers. Individual triggers are defined on a table, and for a particular type of DML statement:
+Triggers can sometimes be quite complex little programs. If coded incorrectly, they can do an amazing amount of damage. As such, it pays to learn quite a lot before using them. Below are some very brief notes, but please refer to the official Db2 documentation for a more detailed description. See also <<triggers.chapter>> for a brief chapter on triggers. Individual triggers are defined on a table, and for a particular type of DML statement:
 
 * Insert
 * Update

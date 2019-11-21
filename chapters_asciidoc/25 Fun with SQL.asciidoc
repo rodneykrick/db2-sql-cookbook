@@ -42,7 +42,7 @@ _ANSWER_
 |etc
 |===
 
-Instead of coding a recursion join every time, we use the table function described on page 196 to create the required rows. Assuming that the function exists, one would write the following:
+Instead of coding a recursion join every time, we use the table function described on <<generating.numbers>> to create the required rows. Assuming that the function exists, one would write the following:
 
 .Use user-defined-function to get list of 100 numbers
 [source,sql]
@@ -196,6 +196,7 @@ So far, all we have done in this chapter is use SQL to select sets of rows. Now 
 
 Several other fields must be within certain numeric ranges.
 
+[[production.like.test.table.ddl]]
 .Production-like test table DDL
 [source,sql]
 ....
@@ -281,7 +282,7 @@ Some sample data follows:
 In order to illustrate some of the tricks that one can use when creating such data, each field above was calculated using a different schema:
 
 * The EMP# is a simple ascending number.
-* The SOCSEC# field presented three problems: It had to be unique, it had to be random with respect to the current employee number, and it is a character field with special layout constraints (see the DDL on page 392).
+* The SOCSEC# field presented three problems: It had to be unique, it had to be random with respect to the current employee number, and it is a character field with special layout constraints (see the DDL on <<Production-like test table DDL>>).
 * To make it random, the first five digits were defined using two of the temporary random number fields. To try and ensure that it was unique, the last four digits contain part of the employee number with some digit-flipping done to hide things. Also, the first random number used is the one with lots of unique values. The special formatting that this field required is addressed by making everything in pieces and then concatenating.
 * The JOB FUNCTION is determined using the fourth (highly skewed) random number. This ensures that we get many more workers than managers.
 * The DEPT is derived from another, somewhat skewed, random number with a range of values from one to ninety nine. 
@@ -294,6 +295,7 @@ In order to illustrate some of the tricks that one can use when creating such da
 
 The following table holds data for a typical time-series application. Observe is that each row has both a beginning and ending date, and that there are three cases where there is a gap between the end-date of one row and the begin-date of the next (with the same key).
 
+[[sample.table.ddl.time.series]]
 .Sample Table DDL - Time Series
 [source,sql]
 ....
@@ -369,7 +371,7 @@ _ANSWER_:
 
 The first predicate in the above sub-query joins the rows together by matching key value. The second predicate makes sure that one row does not match against itself. The final two predicates look for overlapping date ranges.
 
-The above query relies on the sample table data being valid (as defined by the CHECK constraints in the DDL on page 394. This means that the END_DT is always greater than or equal to the BGN_DT, and each KYY, BGN_DT combination is unique. 
+The above query relies on the sample table data being valid (as defined by the CHECK constraints in the DDL on <<sample.table.ddl.time.series>>. This means that the END_DT is always greater than or equal to the BGN_DT, and each KYY, BGN_DT combination is unique. 
 
 ===== Find Gaps in Time-Series
 
@@ -633,6 +635,7 @@ Now for the code:
 
 IMPORTANT: This example uses an "!" as the stmt delimiter
 
+[[check.numeric.function]]
 .Check Numeric function
 [source,sql]
 ....
@@ -777,6 +780,7 @@ The DIGITS function discards both the sign indicator and the decimal point, whil
 
 Below are three user-defined functions that convert integer data from numeric to character, displaying the output right-justified, and with a sign indicator if negative. There is one function for each flavor of integer that is supported in Db2:
 
+[[user.defined.functions.convert.integer.to.character]]
 .User-defined functions - convert integer to character
 [source,sql]
 ....
@@ -1093,7 +1097,7 @@ _ANSWER_
 
 ==== Multiple Counts in One Pass
 
-The STATS table that is defined on page 116 has a SEX field with just two values, 'F' (for female) and 'M' (for male). To get a count of the rows by sex we can write the following:
+Suppose we have a STATS table that has a SEX field with just two values, 'F' (for female) and 'M' (for male). To get a count of the rows by sex we can write the following:
 
 .Use GROUP BY to get counts
 [source,sql]
@@ -1524,8 +1528,8 @@ Even the above might have unsatisfactory performance - if there is no index on d
 
 In this section we will turn rows of numeric data into columns. This cannot be done directly in SQL because the language does not support queries where the output columns are unknown at query start. We will get around this limitation by sending the transposed output to a suitably long VARCHAR field. Imagine that we want to group the data in the STAFF sample table by DEPT and JOB to get the SUM salary for each instance, but not in the usual sense with one output row per DEPT and JOB value. Instead, we want to generate one row per DEPT, with a set of "columns" (in a VARCHAR field) that hold the SUM salary values for each JOB in the department. We will also put column titles on the first line of output. To make the following query simpler, three simple scalar functions will be used to convert data from one type to another: 
 
-* Convert decimal data to character - similar to the one on page 401.
-* Convert smallint data to character - same as the one page 401.
+* Convert decimal data to character - similar to the one on <<user.defined.functions.convert.integer.to.character>>.
+* Convert smallint data to character - same as the one on <<user.defined.functions.convert.integer.to.character>>.
 * Right justify and add leading blanks to character data.
 
 Now for the functions:
@@ -1917,6 +1921,7 @@ _ANSWER_
 
 Observe that the CURRENT TIMESTAMP special register is not used above. It is not appropriate for this situation, because it always returns the same value for each invocation within a single query. 
 
+[[function.to.pause.for.n.seconds]]
 === Function to Pause for "n" Seconds
 
 We can take the above query and convert it into a user-defined function that will loop for "n" seconds, where "n" is the value passed to the function. However, there are several caveats:
@@ -1970,6 +1975,7 @@ _ANSWER_
 |30|55.068930|206101|55.068923
 |===
 
+[[sort.character.field.contents]]
 === Sort Character Field Contents
 
 The following user-defined scalar function will sort the contents of a character field in either ascending or descending order. There are two input parameters:

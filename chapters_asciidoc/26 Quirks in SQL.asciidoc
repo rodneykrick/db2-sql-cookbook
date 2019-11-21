@@ -1,3 +1,4 @@
+[[quirks.in.sql.chapter]]
 == Quirks in SQL
 
 One might have noticed by now that not all SQL statements are easy to comprehend. Unfortunately, the situation is perhaps a little worse than you think. In this section we will discuss some SQL statements that are correct, but which act just a little funny.
@@ -1179,7 +1180,7 @@ In conclusion, a floating-point number is, in many ways, only an approximation o
 
 === DECFLOAT Usage
 
-We can avoid the problems described above if we use a DECFLOAT value. To illustrate, the following query is exactly the same as that shown on page 442, except that base value is now of type DECFLOAT: 
+We can avoid the problems described above if we use a DECFLOAT value. To illustrate, the following query is exactly the same as that shown on <<floating.point.numbers>>, except that base value is now of type DECFLOAT: 
 
 .Multiply DECFLOAT number by ten
 [source,sql]

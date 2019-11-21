@@ -4,7 +4,7 @@ This chapter contains a basic introduction to Db2 SQL. It also has numerous exam
 
 === Syntax Diagram
 
-The original book has lots of syntax diagrams in it. We decided not to put them here anymore. Syntax diagrams can be found in the SQL Reference of Db2 (or your prefered RDBMS). We only give you lots of examples how to use SQL. When you master this stuff, you should learn more and improve your knowledge using the “real” manuals.
+The original book has lots of syntax diagrams in it. We decided not to put them here anymore. Syntax diagrams can be found in the SQL Reference of Db2 (or your prefered RDBMS). We only give you lots of examples how to use SQL. When you master this stuff, you should learn more and improve your knowledge using the "real" manuals.
 
 === SQL Comments
 
@@ -36,7 +36,7 @@ staff WHERE id = 20;
 
 When using the Db2 Command Processor (batch) script, the default statement terminator can be set using the "-tdx" option, where "x" is the value have chosen. 
 
-NOTE: See the section titled Special Character Usage on page 44 for notes on how to refer to the statement delimiter in the SQL text.
+NOTE: See the section titled <<special.character.usage>> for notes on how to refer to the statement delimiter in the SQL text.
 
 === Statement Delimiter
 
@@ -950,7 +950,7 @@ _ANSWER_
 |10   |Quill |290
 |===
 
-WARNING: Getting the first "n" rows from a query is actually quite a complicated problem. Refer to page 114 for a more complete discussion.
+WARNING: Getting the first "n" rows from a query is actually quite a complicated problem. Refer to <<selecting.n.or.more.rows>> for a more complete discussion.
 
 *Correlation Name*
 
@@ -1281,7 +1281,7 @@ _ANSWER_
 |20| 20  | Sales
 |===
 
-See the sub-query chapter on page 245 for more data on this predicate type.
+See the sub-query chapter on <<subquery.chapter>> for more data on this predicate type.
 
 ==== BETWEEN Predicate
 
@@ -1338,7 +1338,7 @@ _ANSWER_
 |===
 
 ....
-NOTE: See the sub-query chapter on page 245 for more data on this predicate type.
+NOTE: See the sub-query chapter on <<subquery.chapter>> for more data on this predicate type.
 ....
 
 ==== IN Predicate
@@ -1395,7 +1395,7 @@ _ANSWER_
 |000270| PEREZ
 |===
 
-NOTE: See the sub-query chapter on page 245 for more data on this statement type.
+NOTE: See the sub-query chapter on <<subquery.chapter>> for more data on this statement type.
 
 ==== LIKE Predicate
 
@@ -1473,6 +1473,7 @@ _ANSWER_
 |10
 |===
 
+[[like.column.function]]
 ==== LIKE_COLUMN Function
 
 The LIKE predicate cannot be used to compare one column against another.
@@ -1582,6 +1583,7 @@ ANSWER
 
 NOTE: Use the COALESCE function to convert null values into something else.
 
+[[special.character.usage]]
 ==== Special Character Usage
 
 To refer to a special character in a predicate, or anywhere else in a SQL statement, use the "X" notation to substitute with the ASCII hex value. For example, the following query will list all names in the STAFF table that have an "a" followed by a semicolon:
