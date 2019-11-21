@@ -11,6 +11,11 @@ Version 1.0, Rodney Krick, November 2019
 
 :sectnums:                                                          
 :toc: left
+
+++++
+<link rel="stylesheet"  href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.1.0/css/font-awesome.min.css">
+++++
+
 :icons: font
 :toclevels: 4                                                       
 :toc-title: Content                                                                                        
