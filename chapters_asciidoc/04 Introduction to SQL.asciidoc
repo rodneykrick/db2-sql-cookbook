@@ -1725,7 +1725,7 @@ WARNING: The omission of necessary parenthesis surrounding OR operators is a ver
 
 The various parts of a SQL statement are always executed in a specific sequence in order to avoid semantic ambiguity: FROM clause JOIN ON clause WHERE clause GROUP BY and aggregate HAVING clause SELECT list ORDER BY clause FETCH FIRST.
 
-Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join (see figure 633). Likewise, a function that is referenced in the SELECT section of a query (e.g. row-number) is applied after the set of matching rows has been identified, but before the data has been ordered.
+Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join (see <<on.and.where.usage>>). Likewise, a function that is referenced in the SELECT section of a query (e.g. row-number) is applied after the set of matching rows has been identified, but before the data has been ordered.
 
 === CAST Expression
 
