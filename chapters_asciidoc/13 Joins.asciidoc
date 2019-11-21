@@ -195,7 +195,7 @@ ORDER BY clause
 FETCH FIRST
 ....
 
-Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join - see figure 633.
+Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join - see <<on.and.where.usage>>.
 
 [[on-vs-where]]
 ==== ON vs. WHERE
