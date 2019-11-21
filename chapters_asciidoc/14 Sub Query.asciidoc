@@ -201,6 +201,7 @@ _TABLE2_
 ....
 
 When an ANY or ALL sub-query check is used with a "greater than" or similar expression (as opposed to an "equal" or a "not equal" expression) then the check can be considered similar to evaluating the MIN or the MAX of the sub-query result set. The following table shows what type of sub-query check equates to what type of column function:
+.ANY and ALL vs. column functions
 |===
 |SUB-QUERY CHECK |EQUIVALENT COLUMN FUNCTION
 | > ANY(sub-query) | > MINIMUM(sub-query results)
@@ -208,7 +209,7 @@ When an ANY or ALL sub-query check is used with a "greater than" or similar expr
 | > ALL(sub-query) | > MAXIMUM(sub-query results)
 | < ALL(sub-query) | < MINIMUM(sub-query results)
 |===
-_Figure 691, ANY and ALL vs. column functions_
+
 
 [[all.keyword.sub.query]]
 ==== All Keyword Sub-Query
