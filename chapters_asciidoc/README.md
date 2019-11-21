@@ -21,4 +21,8 @@ If the output of your statements renders as a table, align all the columns to gi
     |ValueVeryLong  |Val    |-
     |===
   
+If you want a concept, a word to come to the index, just put write it in double parenthesis: 
+    
+    This is a  ((word)) to index. 
+
 ... more to come  
