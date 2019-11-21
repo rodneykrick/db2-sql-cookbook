@@ -1,6 +1,6 @@
 :source-highlighter: rouge
 = Db2 SQL Cookbook +
-Grame Birchal (until Version 9.7, 2011) 
+Graeme Birchal (until Version 9.7, 2011) 
 
 Version 1.0, Rodney Krick, November 2019
 
