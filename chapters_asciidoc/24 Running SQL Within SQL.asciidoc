@@ -1182,6 +1182,7 @@ I had two matching tables that needed to be refreshed, so I got the following an
 
 Observe above that the set of matching tables to be refreshed was defined in a common-tableexpression, and then joined to the table function. It is very important that one always code thus, because in an ordinary join it is possible for the table function to be called before all of the predicates have been applied. To illustrate this concept, the next query is supposed to make a copy of two matching tables. The answer indicates that it did just this. But what it actually did was make copies of many more tables - because the table function was called before all of the predicates on SYSCAT.TABLES were applied. The other tables that were created don't show up in the query output, because they were filtered out later in the query processing:
 
+[[create.copies.of.tables.wrong]]
 .Create copies of tables - wrong
 [source,sql]
 ....
@@ -1294,6 +1295,6 @@ In order to explain the above, we need to understand in what sequence the variou
 * ORDER BY clause
 * FETCH FIRST
 
-Observe above that the FROM clause is resolved before any WHERE predicates are applied. This is why the query in figure 988 did the wrong thing.
+Observe above that the FROM clause is resolved before any WHERE predicates are applied. This is why the query in <<create.copies.of.tables.wrong>> did the wrong thing.
 
 
