@@ -938,7 +938,7 @@ First to compare the two types of sequences:
 * Sequences can be dropped and created independent of any tables that they might be used to maintain values in. Identity columns are part of the table definition.
 * Identity columns are supported by the load utility. Trigger induced sequences are not.
 
-For both types of sequence, one can get the current value by embedding the DML statement inside a select (e.g. see figure 795). Alternatively, one can use the relevant expression to get the current status. These differ as follows:
+For both types of sequence, one can get the current value by embedding the DML statement inside a select (e.g. see <<selecting.identity.column.values.inserted>>). Alternatively, one can use the relevant expression to get the current status. These differ as follows:
 
 * The *IDENTITY_VAL_LOCAL* function returns null if no inserts to tables with identity columns have been done by the current user. In an equivalent situation, the PREVVAL expression gets a nasty SQL error.
 * The *IDENTITY_VAL_LOCAL* function ignores multi-row inserts (without telling you). In a similar situation, the PREVVAL expression returns the last value generated.
