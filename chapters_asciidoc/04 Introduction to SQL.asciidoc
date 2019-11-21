@@ -20,8 +20,6 @@ ORDER BY id;
 -- this is another comment.
 ....
 
-
-
 Some Db2 command processors (e.g. Db2BATCH on the PC, or SPUFI on the mainframe)can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
 comment:
 
@@ -35,7 +33,6 @@ staff WHERE id = 10!
 SELECT name FROM
 staff WHERE id = 20;
 ....
-
 
 When using the Db2 Command Processor (batch) script, the default statement terminator can be set using the "-tdx" option, where "x" is the value have chosen. 
 
@@ -510,6 +507,7 @@ When one date/time value is subtracted from another date/time value the result i
 
 Below is an example of date duration generation:
 
+[[date.duration.generation]]
 .Date Duration Generation
 [source,sql]
 ....
@@ -557,7 +555,7 @@ _ANSWER_
 
 ===== Date/Time Subtraction
 
-One date/time can be subtracted (only) from another valid date/time value. The result is a date/time duration value. Figure 37 above has an example.
+One date/time can be subtracted (only) from another valid date/time value. The result is a date/time duration value. <<date.duration.generation>> above has an example.
 
 ===== Db2 Special Registers
 
