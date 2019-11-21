@@ -327,7 +327,7 @@ INPUT DATA
 
 [options="header",]
 |===
-|TEXT LINE#
+|TEXT |LINE#
 |Some |1
 |silly|2 
 |text |3 
