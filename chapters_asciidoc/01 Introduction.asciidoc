@@ -9,7 +9,7 @@ Somethings that I decided to change in this book, comparing to the original vers
 
 * I've migrated the text to asciidoc and opened a project in GitHub (https://github.com/rodneykrick/db2-sql-cookbook). As the people at *_Asciidoc_* use to say: "It’s just text, mate!" I believe with this format the community will be able to contribute and improve the content.  
 * Graham tryed to keep syntax diagrams in his book. I'll try to follow a more practical approach in this version of the book. You won't find syntax diagrams, just sample code that was tested in Db2 (some will work in other RDBMS, it would be great and helpful if we manage to check and document this). If you want to learn more about the statement and the syntax, you should use the SQL reference book of your RDBMS, in the version you are using. 
-* To publish the result (the last version of the book) I reserved a new domain (http://db2-sql-cookbook.org). I'll try to generate a HTML Version of the book and upload it as frequently as possible.
+* To publish the result (the last version of the book) I reserved a new domain (http://db2-sql-cookbook.org). I'll try to generate a HTML Version of the book and upload it as frequently as possible. The PDF version can be found here: http://db2-sql-cookbook.org/pdf/Db2_SQL_Cookbook.pdf. It will be generated together with the HTML version.
 
 Some notes: 
 
