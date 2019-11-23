@@ -20,22 +20,21 @@ ORDER BY id;
 -- this is another comment.
 ....
 
-
-
-Some Db2 command processors (e.g. Db2BATCH on the PC, or SPUFI on the mainframe)can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
+Some Db2 command processors (e.g. db2batch on the PC, or SPUFI on the mainframe) can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
 comment:
 
 .Set Delimiter example
 [source,sql]
 ....
 --#SET DELIMITER !
-SELECT name FROM
-staff WHERE id = 10!
+SELECT name
+FROM staff
+WHERE id = 10!
 --#SET DELIMITER ;
-SELECT name FROM
-staff WHERE id = 20;
+SELECT name
+FROM staff
+WHERE id = 20;
 ....
-
 
 When using the Db2 Command Processor (batch) script, the default statement terminator can be set using the "-tdx" option, where "x" is the value have chosen. 
 
@@ -60,22 +59,22 @@ A table is an organized set of columns and rows. The number, type, and relative 
 [source,sql]
 ....
 CREATE TABLE employee
-( empno     CHARACTER  (00006) NOT NULL
-, firstnme  VARCHAR    (00012) NOT NULL
-, midinit   CHARACTER  (00001) NOT NULL
-, lastname  VARCHAR    (00015) NOT NULL
-, workdept  CHARACTER  (00003)
-, phoneno   CHARACTER  (00004)
+( empno     CHARACTER  (6) NOT NULL
+, firstnme  VARCHAR   (12) NOT NULL
+, midinit   CHARACTER  (1) NOT NULL
+, lastname  VARCHAR   (15) NOT NULL
+, workdept  CHARACTER  (3)
+, phoneno   CHARACTER  (4)
 , hiredate  DATE
-, job       CHARACTER  (00008)
-, edlevel   SMALLINT           NOT NULL
-, sex       CHARACTER  (00001) 
+, job       CHARACTER  (8)
+, edlevel   SMALLINT       NOT NULL
+, sex       CHARACTER  (1) 
 , birthdate DATE 
-, salary    DECIMAL    (00009,02)
-, bonus     DECIMAL    (00009,02)
-, comm      DECIMAL    (00009,02)
+, salary    DECIMAL    (9,02)
+, bonus     DECIMAL    (9,02)
+, comm      DECIMAL    (9,02)
 )
-DATA CAPTURE NONE;
+;
 ....
 
 [[view.definition]]
@@ -94,8 +93,7 @@ SELECT a.empno
 FROM employee a
 WHERE a.salary >=
 (SELECT AVG(b.salary)
- FROM
- employee b
+ FROM employee b
  WHERE a.workdept = b.workdept
 );
 ....
@@ -119,12 +117,12 @@ Selecting from the above view works the same as selecting from a table:
 ....
 SELECT c1, c2, c3
 FROM silly
-ORDER BY c1 aSC;
+ORDER BY c1 ASC;
 ....
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |C1 |C2 | C3
 |11 |AAA| 22
@@ -139,11 +137,11 @@ We can go one step further and define a view that begins with a single value tha
 ....
 CREATE VIEW test_data AS
 WITH temp1 (num1) AS
-(VALUES (1)
-UNION ALL
-SELECT num1 + 1
-FROM temp1
-WHERE num1 < 10000)
+ (VALUES (1)
+  UNION ALL
+ SELECT num1 + 1
+ FROM temp1
+ WHERE num1 < 10000)
 SELECT *
 FROM temp1;
 ....
@@ -158,7 +156,7 @@ An alias is an alternate name for a table or a view. Unlike a view, an alias can
 CREATE ALIAS employee_al1 FOR employee;
 COMMIT;
 
-CREATE ALIAS employee_al2 fOR employee_al1;
+CREATE ALIAS employee_al2 FOR employee_al1;
 COMMIT;
 
 CREATE ALIAS employee_al3 FOR employee_al2;
