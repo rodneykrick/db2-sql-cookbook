@@ -1,2 +1,4 @@
 [index]
 == Index
+
+Note: For technical reasons the index is only shown in the PDF output of this book.

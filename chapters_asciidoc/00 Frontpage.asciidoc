@@ -1,7 +1,8 @@
 :source-highlighter: rouge
-= Db2 SQL Cookbook +
-Graeme Birchal (until Version 9.7, 2011) 
+= Db2 SQL Cookbook 
 
+
+Graeme Birchal (until Version 9.7, 2011) +
 Version 1.0, Rodney Krick, November 2019
 
 
@@ -10,13 +11,13 @@ Version 1.0, Rodney Krick, November 2019
 
 
 :sectnums:                                                          
-:toc: left
 
 ++++
 <link rel="stylesheet"  href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.1.0/css/font-awesome.min.css">
 ++++
 
 :icons: font
+:toc: left
 :toclevels: 4                                                       
 :toc-title: Content                                                                                        
 :description: Overview of SQL in Db2 Linux, Windows and Unix (LUW)
