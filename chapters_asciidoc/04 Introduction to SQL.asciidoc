@@ -209,24 +209,22 @@ Below is a simple table definition that uses some of the above data types:
 [source,sql]
 ....
 CREATE TABLE sales_record
-(sales#         INTEGER NOT NULL
+(sales#         INTEGER       NOT NULL
                 GENERATED ALWAYS AS IDENTITY
-                (START WITH 1
-                , INCREMENT BY 1
-                , NO MAXVALUE
-                , NO CYCLE)
-, sale_ts       TIMESTAMP NOT NULL
-, num_items     SMALLINT NOT NULL
-, payment_type  CHAR(2) NOT NULL
+                (START WITH 1, INCREMENT BY 1)
+, sale_ts       TIMESTAMP     NOT NULL
+, num_items     SMALLINT      NOT NULL
+, payment_type  CHAR(2)       NOT NULL
 , sale_value    DECIMAL(12,2) NOT NULL
 , sales_tax     DECIMAL(12,2) 
-, employee#     INTEGER NOT NULL
-,CONSTRAINT sales1 CHECK(payment_type IN ('CS','CR'))
-,CONSTRAINT sales2 CHECK(sale_value > 0)
-,CONSTRAINT sales3 CHECK(num_items > 0)
-,CONSTRAINT sales4 FOREIGN KEY(employee#)
-REFERENCES staff(id) ON DELETE RESTRICT
-,PRIMARY KEY(sales#));
+, employee#     INTEGER       NOT NULL
+, CONSTRAINT sales1 CHECK (payment_type IN ('CS','CR'))
+, CONSTRAINT sales2 CHECK (sale_value > 0)
+, CONSTRAINT sales3 CHECK (num_items > 0)
+, CONSTRAINT sales4 FOREIGN KEY (employee#)
+  REFERENCES staff (id) ON DELETE RESTRICT
+, PRIMARY KEY (sales#)
+);
 ....
 
 In the above table, we have listed the relevant columns, and added various checks to ensure that the data is always correct. In particular, we have included the following:
