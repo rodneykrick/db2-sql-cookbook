@@ -416,18 +416,67 @@ The valid labeled durations are listed below:
 .Labeled Durations and Date/Time Types
 [cols="",options="header",]
 |===
+
 2+|LABELED DURATIONS      
 .2+|ITEM FIXED SIZE
 2+|WORKS WITH DATE/TIME
 
-|SINGULAR   | PLURAL      |                |DATE |TIME|TIMESTAMP
-|YEAR       | YEARS       |N               |Y    |-   |Y
-|MONTH      | MONTHS      |N               |Y    |-   |Y 
-|DAY        | DAYS        |Y               |Y    |-   |Y 
-|HOUR       | HOURS       |Y               |-    |Y   |Y 
-|MINUTE     | MINUTES     |Y               |-    |Y   |Y 
-|SECOND     | SECONDS     |Y               |-    |Y   |Y
-|MICROSECOND| MICROSECONDS|Y               |-    |Y   |Y
+|SINGULAR   
+| PLURAL      
+|                
+|DATE 
+|TIME
+|TIMESTAMP
+
+|YEAR       
+| YEARS       
+|N               
+|Y    
+|-   
+|Y
+
+|MONTH      
+| MONTHS      
+|N               
+|Y    
+|-   
+|Y 
+
+|DAY        
+| DAYS        
+|Y               
+|Y    
+|-   
+|Y 
+
+|HOUR       
+| HOURS       
+|Y               
+|-    
+|Y   
+|Y 
+
+|MINUTE     
+| MINUTES     
+|Y               
+|-    
+|Y   
+|Y 
+
+|SECOND     
+| SECONDS     
+|Y               
+|-    
+|Y   
+|Y
+
+|MICROSECOND
+| MICROSECONDS
+|Y               
+|-    
+|Y   
+|Y
+
 |===
 
 *Usage Notes*
