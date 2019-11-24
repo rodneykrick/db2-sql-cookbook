@@ -58,22 +58,21 @@ A ((table)) is an organized set of columns and rows. The number, type, and relat
 [source,sql]
 ....
 CREATE TABLE employee
-( empno     CHARACTER  (6) NOT NULL
-, firstnme  VARCHAR   (12) NOT NULL
-, midinit   CHARACTER  (1) NOT NULL
-, lastname  VARCHAR   (15) NOT NULL
-, workdept  CHARACTER  (3)
-, phoneno   CHARACTER  (4)
+( empno     CHARACTER(6) NOT NULL
+, firstnme  VARCHAR(12)  NOT NULL
+, midinit   CHARACTER(1) NOT NULL
+, lastname  VARCHAR(15)  NOT NULL
+, workdept  CHARACTER(3)
+, phoneno   CHARACTER(4)
 , hiredate  DATE
-, job       CHARACTER  (8)
-, edlevel   SMALLINT       NOT NULL
-, sex       CHARACTER  (1) 
+, job       CHARACTER(8)
+, edlevel   SMALLINT     NOT NULL
+, sex       CHARACTER(1) 
 , birthdate DATE 
-, salary    DECIMAL    (9,02)
-, bonus     DECIMAL    (9,02)
-, comm      DECIMAL    (9,02)
-)
-;
+, salary    DECIMAL(9,02)
+, bonus     DECIMAL(9,02)
+, comm      DECIMAL(9,02)
+);
 ....
 
 [[view.definition]]
@@ -210,8 +209,7 @@ Below is a simple table definition that uses some of the above data types:
 ....
 CREATE TABLE sales_record
 (sales#         INTEGER       NOT NULL
-                GENERATED ALWAYS AS IDENTITY
-                (START WITH 1, INCREMENT BY 1)
+                GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)
 , sale_ts       TIMESTAMP     NOT NULL
 , num_items     SMALLINT      NOT NULL
 , payment_type  CHAR(2)       NOT NULL
@@ -355,7 +353,7 @@ FROM temp1;
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |TOTALORDER
 |1
@@ -387,11 +385,11 @@ _ANSWER_
 
 [cols="",options="header",]
 |===
-|D1   | HEX_D1           | D2| HEX_D2
-|0    | 0000000000003822 | 0 | 0000000000003822
-|0.0  | 0000000000003422 | 0 | 0000000000003822
-|0.00 | 0000000000003022 | 0 | 0000000000003822
-|0.000| 0000000000002C22 | 0 | 0000000000003822
+|D1    | HEX_D1           | D2| HEX_D2
+|     0| 0000000000003822 | 0 | 0000000000003822
+|   0.0| 0000000000003422 | 0 | 0000000000003822
+|  0.00| 0000000000003022 | 0 | 0000000000003822
+| 0.000| 0000000000002C22 | 0 | 0000000000003822
 |===
 
 ===== DECFLOAT Scalar Functions
