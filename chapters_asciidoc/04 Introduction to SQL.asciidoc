@@ -383,7 +383,7 @@ FROM temp1;
 
 _ANSWER_
 
-[cols="",options="header",]
+[cols=">,,>,",options="header",]
 |===
 |D1    | HEX_D1           | D2| HEX_D2
 |     0| 0000000000003822 | 0 | 0000000000003822
