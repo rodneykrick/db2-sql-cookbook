@@ -413,6 +413,8 @@ What follows is a brief introduction to the subject. The basic rules are:
 
 The valid labeled durations are listed below:
 
+// Angoca: I have tried to arrange the table as the original one, but for the moment I have not found a solution.
+
 .Labeled Durations and Date/Time Types
 [options="header",]
 |===
@@ -506,7 +508,7 @@ AND  sales_date = '1995-12-31';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |sales_date|d1        |d2        |d3        |d4        |d5
 |1995-12-31|1995-12-21|1995-11-30|2094-12-31|1994-04-24|1996-01-10
@@ -521,7 +523,7 @@ SELECT sales_date
      , sales_date + 2 MONTH           AS d1
      , sales_date + 3 MONTHS          AS d2
      , sales_date + 2 MONTH + 1 MONTH AS d3
-     , sales_date + (2+1) MONTHS         AS d4
+     , sales_date + (2+1) MONTHS      AS d4
 FROM sales
 WHERE sales_person = 'GOUNOT'
 AND sales_date = '1995-12-31';
@@ -529,7 +531,7 @@ AND sales_date = '1995-12-31';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |sales_date|d1        |d2        |d3        |d4
 |1995-12-31|1996-02-29|1996-03-31|1996-03-29|1996-03-31
@@ -540,7 +542,7 @@ _ANSWER_
 When one date/time value is subtracted from another date/time value the result is a date, time,or timestamp duration. This decimal value expresses the difference thus:
 
 .Date/Time Durations
-[cols="",options="header",]
+[options="header",]
 |===
 |DURATION-TYPE|FORMAT       |NUMBER-REPRESENTS    |USE-WITH-D-TYPE 
 |DATE         |DECIMAL(8,0) |yyyymmdd             |TIMESTAMP, DATE
@@ -566,7 +568,7 @@ ORDER BY empno;
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |EMPNO  |HIREDATE  | BIRTHDATE | - 
 |000150 |1972-02-12| 1947-05-17| 240826
@@ -590,7 +592,7 @@ WHERE empno = '000150';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |HIREDATE  |-         |-
 |1972-02-12|0733-03-26|0733-03-26
