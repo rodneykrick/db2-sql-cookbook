@@ -414,16 +414,14 @@ What follows is a brief introduction to the subject. The basic rules are:
 The valid labeled durations are listed below:
 
 .Labeled Durations and Date/Time Types
-[cols="",options="header",]
+[options="header",]
 |===
-
 2+|LABELED DURATIONS      
 .2+|ITEM FIXED SIZE
-2+|WORKS WITH DATE/TIME
+3+|WORKS WITH DATE/TIME
 
 |SINGULAR   
 | PLURAL      
-|                
 |DATE 
 |TIME
 |TIMESTAMP
