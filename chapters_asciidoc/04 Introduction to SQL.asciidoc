@@ -383,13 +383,13 @@ FROM temp1;
 
 _ANSWER_
 
-[cols=">,,>,",options="header",]
+[cols=">,<,>,<",options="header",]
 |===
 |D1    | HEX_D1           | D2| HEX_D2
-|     0| 0000000000003822 | 0 | 0000000000003822
-|   0.0| 0000000000003422 | 0 | 0000000000003822
-|  0.00| 0000000000003022 | 0 | 0000000000003822
-| 0.000| 0000000000002C22 | 0 | 0000000000003822
+|0     | 0000000000003822 | 0 | 0000000000003822
+|0.0   | 0000000000003422 | 0 | 0000000000003822
+|0.00  | 0000000000003022 | 0 | 0000000000003822
+|0.000 | 0000000000002C22 | 0 | 0000000000003822
 |===
 
 ===== DECFLOAT Scalar Functions
@@ -413,14 +413,14 @@ What follows is a brief introduction to the subject. The basic rules are:
 
 The valid labeled durations are listed below:
 
-....
-LABELED DURATIONS                                  WORKS WITH DATE/TIME
-....
-
 .Labeled Durations and Date/Time Types
 [cols="",options="header",]
 |===
-|SINGULAR   | PLURAL      |ITEM FIXED SIZE |DATE |TIME|TIMESTAMP
+2+|LABELED DURATIONS      
+.2+|ITEM FIXED SIZE
+2+|WORKS WITH DATE/TIME
+
+|SINGULAR   | PLURAL      |                |DATE |TIME|TIMESTAMP
 |YEAR       | YEARS       |N               |Y    |-   |Y
 |MONTH      | MONTHS      |N               |Y    |-   |Y 
 |DAY        | DAYS        |Y               |Y    |-   |Y 
