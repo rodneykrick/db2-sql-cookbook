@@ -1,3 +1,4 @@
+[[retaining.a.record]]
 == Retaining a Record
 
 NOTE: This chapter was written back in the versions before V9.7. It is helpful showing how to use triggers for a specific use case but if you want to implement such a scenario in Db2 you should use the "Time Travel" feature. A chapter about the "Time Travel" will be written in one of the new versions of the book.
@@ -61,7 +62,7 @@ The history table has the same fields as the original Customer table, plus the f
 
 Observe that this history table does not have an end-timestamp. Rather, each row points back to the one that it (optionally) replaces. One advantage of such a schema is that there can be a many-to-one relationship between any given row, and the row, or rows, that replace it. When we add versions into the mix, this will become important. 
 
-=== Triggers
+=== ((Triggers))
 
 Below is the relevant insert trigger. It replicates the new customer row in the history table, along with the new fields. Observe that the two "previous" fields are set to null:
 
@@ -335,7 +336,7 @@ All inserts, updates, and deletes, are done against the above view, which then p
 
 ==== Insert Trigger
 
-The following INSTEAD OF trigger traps all inserts to the first view above, and then applies the insert to the underlying table - with suitable modifications:
+The following ((INSTEAD OF trigger)) traps all inserts to the first view above, and then applies the insert to the underlying table - with suitable modifications:
 
 .Insert trigger
 [source,sql]

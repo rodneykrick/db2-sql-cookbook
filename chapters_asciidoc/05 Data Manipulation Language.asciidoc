@@ -1,10 +1,10 @@
 == Data Manipulation Language
 
-The chapter has a very basic introduction to the DML (Data Manipulation Language) statements. See the Db2 manuals for more details.
+The chapter has a very basic introduction to the ((DML)) (Data Manipulation Language) statements. See the Db2 manuals for more details.
 
 === Insert
 
-The INSERT statement is used to insert rows into a table, view, or fullselect. To illustrate how it is used, this section will use a copy of the EMP_ACT sample table:
+The ((INSERT)) statement is used to insert rows into a table, view, or fullselect. To illustrate how it is used, this section will use a copy of the EMP_ACT sample table:
 
 .EMP_ACT_COPY sample table - DDL
 [source,sql]
@@ -26,7 +26,7 @@ One can insert into a table, view, nickname, or SQL expression. For views and SQ
 * There must be no GROUP BY or HAVING acting on the select list.
 * The list of columns selected must include all those needed to insert a new row.
 * The list of columns selected cannot include one defined from a constant, expression, or a scalar function.
-* Sub-queries, and other predicates, are fine, but are ignored (see figure 153).
+* Sub-queries, and other predicates, are fine, but are ignored (see <<insert.into.a.fullselect>>).
 * The query cannot be a join, nor (plain) union.
 * A "union all" is permitted - as long as the underlying tables on either side of the union have check constraints such that a row being inserted is valid for one, and only one, of the tables in the union.
 
@@ -86,6 +86,7 @@ VALUES
 
 The next statement inserts a row into a fullselect that just happens to have a predicate which, if used in a subsequent query, would not find the row inserted. The predicate has no impact on the insert itself:
 
+[[insert.into.a.fullselect]]
 .Insert into a fullselect
 [source,sql]
 ....
@@ -380,7 +381,7 @@ SET comm = 10000;
 WARNING: The above statement may update five random rows – if there is more than one row with the ordering value. To prevent this, ensure that the list of columns provided in the ORDER BY identify each matching row uniquely.
 
 ==== Use OLAP Function
-
+(((OLAP)))
 Imagine that we want to set the employee-time for a particular row in the EMP_ACT table to the MAX time for that employee. Below is one way to do it:
 
 .Set employee-time in row to MAX - for given employee
@@ -411,8 +412,7 @@ WHERE empno   = '000010'
 AND   projno  = 'MA2100';
 ....
 
-The above statement has the advantage of only accessing the EMP_ACT table once. If there were many rows per employee, and no suitable index (i.e. on EMPNO and EMPTIME), it would be much faster than the prior update. The next update is similar to the prior - but it does the wrong update! In this case, the scope of the OLAP function is constrained by
-the predicate on PROJNO, so it no longer gets the MAX time for the employee:
+The above statement has the advantage of only accessing the EMP_ACT table once. If there were many rows per employee, and no suitable index (i.e. on EMPNO and EMPTIME), it would be much faster than the prior update. The next update is similar to the prior - but it does the wrong update! In this case, the scope of the OLAP function is constrained by the predicate on PROJNO, so it no longer gets the MAX time for the employee:
 
 .Use OLAP function to get max-time, then apply (wrong)
 [source,sql]
@@ -442,8 +442,7 @@ SET (actno, emptime)
 WHERE EMPNO LIKE '800%';
 ....
 
-In the next example, the ACTNO will be updated to be values 1, 2, 3, etc, in order that the rows are updated. In this example, the sub-query that calculates the row-number is uncorrelated, so all of the matching rows are first resolved, and then referred to in the next, correlated,
-step:
+In the next example, the ACTNO will be updated to be values 1, 2, 3, etc, in order that the rows are updated. In this example, the sub-query that calculates the row-number is uncorrelated, so all of the matching rows are first resolved, and then referred to in the next, correlated, step:
 
 .Update with uncorrelated query
 [source,sql]
@@ -465,7 +464,7 @@ WHERE empno LIKE '900%';
 
 === Delete
 
-The DELETE statement is used to remove rows from a table, view, or fullselect. The set of rows deleted depends on the scope of the predicates used. The following example would delete a single row from the EMP_ACT sample table:
+The ((DELETE)) statement is used to remove rows from a table, view, or fullselect. The set of rows deleted depends on the scope of the predicates used. The following example would delete a single row from the EMP_ACT sample table:
 
 .Single-row delete
 [source,sql]
@@ -594,7 +593,7 @@ This is allowed for an insert and an update.
 * Only one of the above tables can be listed in the FROM statement.
 * The table listed in the FROM statement cannot be given a correlation name.
 * No other table can be listed (i.e. joined to) in the FROM statement.
-One can reference another table in the SELECT list (see example page 73), or by using a sub-query in the predicate section of the statement.
+One can reference another table in the SELECT list (see example <<join.result.to.another.table>>), or by using a sub-query in the predicate section of the statement.
 * The SELECT statement cannot be embedded in a nested-table expression.
 * The SELECT statement cannot be embedded in an insert statement.
 * To retrieve (generated) columns that are not in the target table, list them in an INCLUDE phrase in the DML statement. This technique can be used to, for example, assign row numbers to the set of rows entered during an insert.
@@ -674,9 +673,9 @@ ORDER BY INPUT SEQUENCE;
 
 _ANSWER_
 |===
-|EMPNO | PRJ| ACT| R#
-|400000| ZZZ| 999| 1
-|400000| VVV| 111| 2
+|EMPNO |PRJ|ACT|R#
+|400000|ZZZ|999|1
+|400000|VVV|111|2
 |===
 
 NOTE: The INPUT SEQUENCE phrase only works in an insert statement. It can be listed in the ORDER BY part of the statement, but not in the SELECT part. The only way to display the row number of each row inserted is to explicitly assign row numbers.
@@ -710,10 +709,10 @@ ORDER BY INPUT SEQUENCE;
 _ANSWER_
 
 |===
-|EMPNO | PRJ| ACT| R#
-|600010| 1  | 59 | 1
-|600020| 563| 59 | 2
-|600030| 193| 59 | 3
+|EMPNO |PRJ|ACT|R#
+|600010|1  |59 |1
+|600020|563|59 |2
+|600030|193|59 |3
 |===
 
 ==== Update Examples
@@ -735,9 +734,9 @@ ORDER BY projno;
 
 _ANSWER_
 |===
-|EMPNO | PRJ| ETIME
-|200000| ABC| 1.00
-|200000| DEF| 1.00
+|EMPNO |PRJ|ETIME
+|200000|ABC|1.00
+|200000|DEF|1.00
 |===
 
 The next statement updates the matching EMPTIME values by random amount.
@@ -761,9 +760,9 @@ ORDER BY 1;
 
 _ANSWER_
 |===
-|PRJ| OLD_T| NEW_T
-|ABC| 2.00 | 0.02
-|DEF| 2.00 | 11.27
+|PRJ|OLD_T|NEW_T
+|ABC|2.00 |0.02
+|DEF|2.00 |11.27
 |===
 
 ==== Delete Examples
@@ -786,9 +785,9 @@ ORDER BY 1,2;
 _ANSWER_
 
 |===
-|PRJ| ACT
-|VVV| 111
-|ZZZ| 999
+|PRJ|ACT
+|VVV|111
+|ZZZ|999
 |===
 
 The next query deletes a set of rows, and assigns row-numbers (to the included field) as the rows are deleted. The subsequent query selects every second row:
@@ -813,16 +812,17 @@ ORDER BY 1, 2, 3;
 
 _ANSWER_
 |===
-|EMPNO | PROJNO| ACT| R#
-|000260| AD3113| 70 | 2
-|000260| AD3113| 80 | 4
-|000260| AD3113| 180| 6
+|EMPNO |PROJNO|ACT|R#
+|000260|AD3113|70 |2
+|000260|AD3113|80 |4
+|000260|AD3113|180|6
 |===
 
 NOTE: Predicates (in the select result phrase) have no impact on the range of rows changed by the underlying DML, which is determined by its own predicates.
 
 One cannot join the table generated by a DML statement to another table, nor include it in a nested table expression, but one can join in the SELECT phrase. The following delete illustrates this concept by joining to the EMPLOYEE table:
 
+[[join.result.to.another.table]]
 .Join result to another table
 [source,sql]
 ....
@@ -846,18 +846,18 @@ FETCH FIRST 5 ROWS ONLY;
 
 _ANSWER_
 |===
-|EMPNO | LASTNAME| PROJNO| ACT
-|000010| HAAS    | AD3100| 10
-|000010| HAAS    | MA2100| 10
-|000010| HAAS    | MA2110| 10
-|000020| THOMPSON| PL2100| 30
-|000030| KWAN    | IF1000| 10
+|EMPNO |LASTNAME|PROJNO|ACT
+|000010|HAAS    |AD3100|10
+|000010|HAAS    |MA2100|10
+|000010|HAAS    |MA2110|10
+|000020|THOMPSON|PL2100|30
+|000030|KWAN    |IF1000|10
 |===
 Observe above that the EMPNO field in the EMPLOYEE table was be renamed (before doing the join) using a nested table expression. This was necessary because one cannot join on two fields that have the same name, without using correlation names. A correlation name cannot be used on the OLD TABLE, so we had to rename the field to get around this problem.
 
 === Merge
 
-The MERGE statement is a combination insert and update, or delete, statement on steroids. It can be used to take the data from a source table, and combine it with the data in a target table.
+The ((MERGE)) statement is a combination insert and update, or delete, statement on steroids. It can be used to take the data from a source table, and combine it with the data in a target table.
 
 The qualifying rows in the source and target tables are first matched by unique key value, and then evaluated:
 
@@ -969,10 +969,10 @@ WHEN NOT MATCHED THEN
 
 [cols=",,",options="header",]
 |===
-|ID |JOB   |SALARY
-|20 |Sales |78171.25
-|30 |Mgr   |77506.75
-|40 |Sales |78006.00
+|ID |JOB  |SALARY
+|20 |Sales|78171.25
+|30 |Mgr  |77506.75
+|40 |Sales|78006.00
 |===
 
 *NEW_STAFF*
@@ -987,11 +987,11 @@ WHEN NOT MATCHED THEN
 
 *AFTER-MERGE*
 |===
-|ID| JOB  | SALARY
-|20| Sales| 78171.25
-|30| Mgr  | 7750.67
-|40| Sales| 7800.60
-|50| ?    | 8065.98
+|ID|JOB  |SALARY
+|20|Sales|78171.25
+|30|Mgr  |7750.67
+|40|Sales|7800.60
+|50|?    |8065.98
 |===
 
 ==== Delete-only Merge
@@ -1010,8 +1010,8 @@ WHEN MATCHED THEN
 
 *AFTER-MERGE*
 |===
-|ID| JOB| SALARY
-|20| Sales| 78171.25
+|ID|JOB  |SALARY
+|20|Sales|78171.25
 |===
 
 ==== Complex Merge
@@ -1098,11 +1098,11 @@ WHEN NOT MATCHED THEN
 
 *AFTER-MERGE*
 |===
-|ID| JOB  | SALARY
-|20| Sales| 78171.25
-|30| Mgr  | 77506.75
-|40| Sales| 78006.00
-|41| Sales| 78171.25
+|ID|JOB  |SALARY
+|20|Sales|78171.25
+|30|Mgr  |77506.75
+|40|Sales|78006.00
+|41|Sales|78171.25
 |===
 
 Here is the same thing written as a plain on insert:
@@ -1144,10 +1144,10 @@ WHEN NOT MATCHED THEN
 
 [cols=",,",options="header",]
 |===
-|ID |JOB   |SALARY
-|20 |Sales |78171.25
-|30 |Mgr   |77506.75
-|40 |Sales |78006.00
+|ID |JOB  |SALARY
+|20 |Sales|78171.25
+|30 |Mgr  |77506.75
+|40 |Sales|78006.00
 |===
 
 *NEW_STAFF*
@@ -1162,10 +1162,10 @@ WHEN NOT MATCHED THEN
 
 *AFTER-MERGE*
 |===
-|ID| JOB  | SALARY
-|20| Sales| 78171.25
-|40| ?    | 7800.60
-|40| Sales| 78006.00
+|ID|JOB  |SALARY
+|20|Sales|78171.25
+|40|?    |7800.60
+|40|Sales|78006.00
 |===
 
 Observe that the above merge did the following:
@@ -1195,11 +1195,11 @@ WHEN NOT MATCHED THEN
 
 *AFTER-MERGE*
 |===
-|ID| JOB  | SALARY
-|20| Sales| 78171.25
-|30| ?    | 1234.00
-|40| ?    | 1234.00
-|50| ?    | 5678.90
+|ID|JOB  |SALARY
+|20|Sales|78171.25
+|30|?    |1234.00
+|40|?    |1234.00
+|50|?    |5678.90
 |===
 
 

@@ -2,12 +2,12 @@
 
 In this section we will describe some simple functions that are generally useful, and that people have asked for over the years. In addition to the functions listed here, there are also the following elsewhere in this book:
 
-* Check character input is a numeric value - page 399
-* Convert numeric data to character (right justified) - page 401.
-* Like-column predicate evaluation - page 43.
-* Locate string in input, a block at a time - page 322.
-* Pause SQL statement (by looping) for "n" seconds - page 419.
-* Sort character field contents - page 418.
+* Check character input is a numeric value - <<check.numeric.function>>
+* Convert numeric data to character (right justified) - <<user.defined.functions.convert.integer.to.character>>.
+* Like-column predicate evaluation - <<like.column.function>>.
+* Locate string in input, a block at a time - <<locate.block.user.defined.function>>.
+* Pause SQL statement (by looping) for "n" seconds - <<function.to.pause.for.n.seconds>>.
+* <<sort.character.field.contents>>.
 
 === Julian Date Functions
 
@@ -168,6 +168,7 @@ _ANSWER_
 |2005-01-12|Wed|3 |2 |104565|104565
 |===
 
+[[generating.numbers]]
 ==== Generating Numbers
 
 The next function returns a table of rows. Each row consists of a single integer value , starting at zero, and going up to the number given in the input. At least one row is always returned. If the input value is greater than zero, the number of rows returned equals the input value plus one:

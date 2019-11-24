@@ -3,7 +3,7 @@
 === Index of Concepts
 
 ==== Join rows
-
+(((join rows)))
 To combine matching rows in multiple tables, use a join (see <<join.chapter>>).
 
 EMP_NM
@@ -41,14 +41,14 @@ _ANSWER_
 
 [options="header",]
 |===
-| ID | NAME    | JOB 
-| 10 | Sanders | Sales 
-| 20 | Pernal  |Clerk
+|ID |NAME    |JOB 
+|10 |Sanders |Sales 
+|20 |Pernal  |Clerk
 |===
 
 
 ==== Outer Join
-
+(((outer join)))
 To get all of the rows from one table, plus the matching rows from another table (if there are any), use an outer join (see <<join.types>>).
 
 EMP_NM
@@ -84,17 +84,17 @@ _ANSWER_
 
 [options="header",]
 |===
-| ID | NAME    | JOB 
-| 10 | Sanders | Sales
-| 20 | Pernal  | Clerk 
-| 50 | Hanes   | - 
+|ID |NAME    |JOB 
+|10 |Sanders |Sales
+|20 |Pernal  |Clerk 
+|50 |Hanes   |- 
 |===
 
 
 To get rows from either side of the join, regardless of whether they match (the join) or not, use a full outer join (see <<full.outer.joins>>).
 
 [[null-values--replace]]
-==== Null Values – Replace
+==== Null Values & Replace
 
 Use the COALESCE function (see <<coalesce.function>>) to replace a null value (e.g. generated in an outer join) with a non-null value.
 
@@ -116,9 +116,9 @@ EMP_JB
 
 [options="header",]
 |===
-| ID | JOB 
-| 10 | Sales 
-| 20 | Clerk 
+|ID |JOB 
+|10 |Sales 
+|20 |Clerk 
 |===
 
 .Sub-query example
@@ -179,11 +179,11 @@ _ANSWER_
 
 [options="header",]
 |===
-|ID| 2
-|10| Sales 
-|20 |Clerk 
-|20 |Pernal 
-|50 |Hanes
+|ID|2
+|10|Sales 
+|20|Clerk 
+|20|Pernal 
+|50|Hanes
 |===
 
 
@@ -214,9 +214,9 @@ _ANSWER_
 
 [options="header",]
 |===
-|ID | JOB  | R 
-|20 | Clerk| 1 
-|10 | Sales| 2 
+|ID |JOB  |R 
+|20 |Clerk|1 
+|10 |Sales|2 
 |===
 
 
@@ -252,9 +252,9 @@ _ANSWER_
 
 [options="header",]
 |===
-|ID | JOB | STATUS 
-|10 | Sales | Fire 
-|20 | Clerk | Demote |
+|ID |JOB  |STATUS 
+|10 |Sales|Fire 
+|20 |Clerk|Demote |
 |===
 
 
@@ -266,11 +266,11 @@ FAMILY
 
 [options="header",]
 |===
-| PARNT | CHILD 
-| GrDad | Dad 
-| Dad   | Dghtr 
-| Dghtr | GrSon 
-| Dghtr | GrDtr 
+|PARNT |CHILD 
+|GrDad |Dad 
+|Dad   |Dghtr 
+|Dghtr |GrSon 
+|Dghtr |GrDtr 
 |===
 
 .Recursion example
@@ -291,11 +291,11 @@ _ANSWER_
 
 [options="header",]
 |===
-| PERSN | LVL
-| Dad   | 1 
-| Dghtr | 2 
-| GrSon | 3 
-| GrDtr | 3 
+|PERSN |LVL
+|Dad   |1 
+|Dghtr |2 
+|GrSon |3 
+|GrDtr |3 
 |===
 
 
@@ -312,9 +312,9 @@ _ANSWER_
 [options="header",]
 |===
 |TEXT  |LINE#
-|Some  | 1 
-|silly | 2
-|text  | 3
+|Some  |1 
+|silly |2
+|text  |3
 |===
 
 Be warned - in many cases, the code is not pretty.
@@ -363,9 +363,9 @@ _ANSWER_
 
 [options="header",]
 |===
-|ID | NAME
-|50 | Hanes 
-|20 | Pernal
+|ID |NAME
+|50 |Hanes 
+|20 |Pernal
 |===
 
 Another way to do the same thing is to assign row numbers to the output, and then fetch those rows where the row-number is less than "n" (see <<selecting.n.rows>>).
@@ -382,10 +382,10 @@ EMP_NM
 
 [options="header",]
 |===
-|ID| NAME
-|10| Sanders
-|20| Pernal
-|50| Hanes
+|ID|NAME
+|10|Sanders
+|20|Pernal
+|50|Hanes
 |===
 
 .Fetch WITH UR example
@@ -401,8 +401,8 @@ _ANSWER_
 
 [options="header",]
 |===
-|ID| NAME
-|10| Sanders
+|ID|NAME
+|10|Sanders
 |===
 
 
@@ -484,7 +484,7 @@ When a table is created, various Db2 features can be used to ensure that the dat
 relationships between tables.
 * Triggers can be defined to enforce more complex integrity rules, and also to do things (e.g. populate an audit trail) whenever data is changed.
 
-See the Db2 manuals for documentation or page 341 for more information about the above.
+See the Db2 manuals for documentation or <<protecting.your.data>> for more information about the above.
 
 ==== Hide Complex SQL
 

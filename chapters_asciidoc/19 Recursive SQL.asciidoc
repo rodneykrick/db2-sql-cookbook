@@ -113,10 +113,11 @@ CKEY > | BBB | CCC | DDD |     | EEE |     | EEE | FFF |     | GGG |
 * The output of a recursive SQL is a temporary table (usually).
 Therefore, all temporary table usage restrictions also apply to recursive SQL output. See the section titled "Common Table Expression" for details.
 * The output of one recursive expression can be used as input to another recursive expression in the same SQL statement. This can be very handy if one has multiple logical hierarchies to traverse (e.g. First find all of the states in the USA, then final all of the cities in each state). 
-* Any recursive coding, in any language, can get into an infinite loop - either because of bad coding, or because the data being processed has a recursive value structure. To prevent your SQL running forever, see the section titled "Halting Recursive Processing" on page 320.
+* Any recursive coding, in any language, can get into an infinite loop - either because of bad coding, or because the data being processed has a recursive value structure. To prevent your SQL running forever, see the section titled <<halting.recursive.processing>>.
 
 ==== Sample Table DDL & DML
 
+[[sample.table.ddl.recursion]]
 .Sample Table DDL - Recursion
 [source,sql]
 ....
@@ -149,7 +150,7 @@ COMMIT;
 
 === Introductory Recursion
 
-This section will use recursive SQL statements to answer a series of simple business questions using the sample HIERARCHY table described on page 311. Be warned that things are going to get decidedly more complex as we proceed.
+This section will use recursive SQL statements to answer a series of simple business questions using the sample HIERARCHY table described on <<sample.table.ddl.recursion>>. Be warned that things are going to get decidedly more complex as we proceed.
 
 ==== List all Children #1
 
@@ -725,7 +726,7 @@ One has to be very careful when resolving a convergent hierarchy to get the answ
 
 ==== Recursive Hierarchy
 
-WARNING: Recursive data hierarchies will cause poorly written recursive SQL statements to run forever. See the section titled "Halting Recursive Processing" on page 320 for details on how to prevent this, and how to check that a hierarchy is not recursive.
+WARNING: Recursive data hierarchies will cause poorly written recursive SQL statements to run forever. See the section titled <<halting.recursive.processing>> for details on how to prevent this, and how to check that a hierarchy is not recursive.
 
 In this flavour of hierarchy, each object can have none, one, or more than one parent. Also, each object can be a parent and/or a child of itself via another object, or via itself directly. In the business world, this type of hierarchy is almost always wrong. When it does exist, it is often because a standard convergent hierarchy has gone a bit haywire. This database design is exactly the same as the one for a convergent hierarchy. Two tables are (usually) required in order to represent the hierarchy in a fully normalized form. One table describes the object, and the other describes the relationships between the objects.
 
@@ -927,6 +928,7 @@ A far better way to stop recursive processing is to halt when, and only when, we
 
 Below is the definition code for a user-defined Db2 function that is very similar to the standard LOCATE function. It searches for one string in another, block by block. For example, if one was looking for the string "ABC", this function would search the first three bytes, then the next three bytes, and so on. If a match is found, the function returns the relevant block number, else zero.
 
+[[locate.block.user.defined.function]]
 .LOCATE_BLOCK user defined function
 [source,sql]
 ....

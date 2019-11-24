@@ -1,3 +1,4 @@
+[[quirks.in.sql.chapter]]
 == Quirks in SQL
 
 One might have noticed by now that not all SQL statements are easy to comprehend. Unfortunately, the situation is perhaps a little worse than you think. In this section we will discuss some SQL statements that are correct, but which act just a little funny.
@@ -258,7 +259,7 @@ _ANSWER_: 0006-05-24
 Why the 2,000 year difference in the above results? When the DATE function gets a character string as input, it assumes that it is valid character representation of a Db2 date, and converts it accordingly. By contrast, when the input is numeric, the function assumes that it represents the number of days minus one from the start of the current era (i.e. 0001-01-01). In the above query the input was 2001-09-22, which equals (2001-9)-22, which equals 1970 days.
 
 [[rand.in.predicate]]
-=== RAND in Predicate
+=== ((RAND)) in Predicate
 
 The following query was written with intentions of getting a single random row out of the matching set in the STAFF table. Unfortunately, it returned two rows:
 
@@ -280,7 +281,7 @@ _ANSWER_
 |60|Quigley
 |===
 
-The above SQL returned more than one row because the RAND function was reevaluated for each matching row. Thus the RAND predicate was being dynamically altered as rows were being fetched. To illustrate what is going on above, consider the following query. The results of the RAND function are displayed in the output. Observe that there are multiple rows where the function output (suitably massaged) matched the ID value.
+The above SQL returned more than one row because the ((RAND)) function was reevaluated for each matching row. Thus the RAND predicate was being dynamically altered as rows were being fetched. To illustrate what is going on above, consider the following query. The results of the RAND function are displayed in the output. Observe that there are multiple rows where the function output (suitably massaged) matched the ID value.
 In theory, anywhere between zero and all rows could match:
 
 .Get random rows - Explanation
@@ -368,7 +369,7 @@ The above query works as follows:
 There are some problems with the above query:
 
 * If more than a small number of random rows are required, the random values cannot be defined using the VALUES phrase. Some recursive code can do the job.
-* In the extremely unlikely event that the RAND function returns the value "one", no row will match. CASE logic can be used to address this issue.
+* In the extremely unlikely event that the ((RAND)) function returns the value "one", no row will match. CASE logic can be used to address this issue.
 * Ignoring the problem just mentioned, the above query will always return three rows, but the rows may not be different rows. Depending on what the three RAND calls generate, the query may even return just one row - repeated three times. 
 
 In contrast to the above query, the following will always return three different random rows:
@@ -460,7 +461,7 @@ When one has a fractional date/time value (e.g. 5.1 days, 4.2 hours, or 3.1 seco
 * 5.1 days times 86,400 returns the equivalent number of seconds.
 * 6.2 seconds times 1,000,000 returns the equivalent number of microseconds.
 
-=== Use of LIKE on VARCHAR
+=== Use of ((LIKE)) on VARCHAR
 
 Sometimes one value can be EQUAL to another, but is not LIKE the same. To illustrate, the following SQL refers to two fields of interest, one CHAR, and the other VARCHAR. Observe below that both rows in these two fields are seemingly equal:
 
@@ -590,7 +591,7 @@ _ANSWER_
 |583633|583647
 |===
 
-If one must do scalar conversions before the column function, use the ROUND function to improve the accuracy of the result: 
+If one must do scalar conversions before the column function, use the ((ROUND)) function to improve the accuracy of the result: 
 
 .Db2 data rounding
 [source,sql]
@@ -1179,7 +1180,7 @@ In conclusion, a floating-point number is, in many ways, only an approximation o
 
 === DECFLOAT Usage
 
-We can avoid the problems described above if we use a DECFLOAT value. To illustrate, the following query is exactly the same as that shown on page 442, except that base value is now of type DECFLOAT: 
+We can avoid the problems described above if we use a DECFLOAT value. To illustrate, the following query is exactly the same as that shown on <<floating.point.numbers>>, except that base value is now of type DECFLOAT: 
 
 .Multiply DECFLOAT number by ten
 [source,sql]

@@ -1272,6 +1272,7 @@ _ANSWER_
 |190| Sneider |1
 |===
 
+[[selecting.n.or.more.rows]]
 ==== Selecting "n" or more Rows
 
 Imagine that one wants to fetch the first "n" rows in a query. This is easy to do, and has been illustrated above. But imagine that one also wants to keep on fetching if the following rows have the same value as the "nth". In the next example, we will get the first three matching rows in the STAFF table, ordered by years of service. However, if the 4th row, or any of the following rows, has the same YEAR as the 3rd row, then we also want to fetch them.
