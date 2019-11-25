@@ -607,9 +607,9 @@ One date/time can be subtracted (only) from another valid date/time value. The r
 A ((special register)) is a ((Db2 variable)) that contains information about the state of the system. The complete list follows:
 
 .Db2 Special Registers
-[cols="60%,10%,30%",options="header",]
+[options="header",]
 |===
-|Special Register                               |Update? | Data type 
+|Special Register                               |Updatable | Data type 
 |CURRENT CLIENT_ACCTNG                          |no      |VARCHAR(255) 
 |CURRENT CLIENT_APPLNAME                        |no      |VARCHAR(255)
 |CURRENT CLIENT_USERID                          |no      |VARCHAR(255) 
@@ -668,6 +668,7 @@ FROM sysibm.sysdummy1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |CUR_TIME |CUR_ISO |CUR_ID
 |12:15:16 |RR      |ABC
@@ -678,9 +679,11 @@ _ANSWER_
 
 A distinct data type is a field type that is derived from one of the base Db2 field types. It is used when one wants to prevent users from combining two separate columns that should never be manipulated together (e.g. adding US dollars to Japanese Yen).
 
-NOTE: The following source types do not support distinct types: LOB, LONG VARCHAR, LONG VARGRAPHIC and DATALINK.
+// Angoca: LONG VARCHAR were deprecated in V9.5, DataLinks were deprecated in version 9.1. LOB are allowed. XML and Array are not - https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.1.0/com.ibm.db2.luw.sql.ref.doc/doc/r0000913.html
 
-The creation of a distinct type, under the covers, results in the creation two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, < =, >, and > =` ) is also provided. Below is a typical create and drop statement:
+NOTE: The following source type do not support distinct types: XML, Array.
+
+The creation of a distinct type, under the covers, results in the creation of two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, < =, >, and > =` ) is also provided. Below is a typical create and drop statement:
 
 .Create and drop distinct type
 [source,sql]
@@ -699,11 +702,11 @@ Imagine that we had the following customer table:
 [source,sql]
 ....
 CREATE TABLE customer
-( id             INTEGER
-, fname          VARCHAR(00010) NOT NULL
-, lname          VARCHAR(00015) NOT NULL WITH DEFAULT ''
+( id             INTEGER      NOT NULL
+, fname          VARCHAR(10)  NOT NULL WITH DEFAULT '' 
+, lname          VARCHAR(15)  NOT NULL WITH DEFAULT ''
 , date_of_birth  DATE
-, citizenship    CHAR(03) NOT NULL WITH DEFAULT ''
+, citizenship    CHAR(3)
 , usa_sales      DECIMAL(9,2)
 , eur_sales      DECIMAL(9,2)
 , sales_office#  SMALLINT
@@ -736,11 +739,11 @@ Now we can define the customer table thus:
 [source,sql]
 ....
 CREATE TABLE customer
-( id            INTEGER NOT NULL
-, fname         VARCHAR(00010) NOT NULL WITH DEFAULT '' 
-, lname         VARCHAR(00015) NOT NULL WITH DEFAULT ''
+( id            INTEGER     NOT NULL
+, fname         VARCHAR(10) NOT NULL WITH DEFAULT '' 
+, lname         VARCHAR(15) NOT NULL WITH DEFAULT ''
 , date_of_birth DATE
-, citizenship   CHAR(03)
+, citizenship   CHAR(3)
 , usa_sales     USA_DOLLARS
 , eur_sales     EUROS
 , sales_office# SMALLINT
@@ -797,9 +800,9 @@ WITH get_matching_rows AS
 ....
 
 .Query components
-* The structure from WITH until the last parenthesis is a ((COMMON TABLE EXPRESSION))
-* Each select block is called a ((SUBSELECT))
-* The block inside the WITH with two SUBSELECTS is a ((FULLSELECT))
+* The structure from WITH until the last parenthesis is a ((COMMON TABLE EXPRESSION)).
+* Each select block is called a ((SUBSELECT)).
+* The block inside the WITH with two SUBSELECTS is a ((FULLSELECT)).
 
 ==== Query Components
 
