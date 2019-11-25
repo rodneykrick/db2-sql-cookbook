@@ -20,18 +20,19 @@ ORDER BY id;
 -- this is another comment.
 ....
 
-Some ((Db2 command processors)) (e.g. Db2BATCH on the PC, or SPUFI on the mainframe)can process intelligent comments. These begin the line with a `--#SET`  phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent
-comment:
+Some ((Db2 command processors)) (e.g. db2batch on the PC, or SPUFI on the mainframe) can process intelligent comments. These begin the line with a `--#SET` phrase, and then identify the value to be set. In the following example, the statement delimiter is changed using an intelligent comment:
 
 .Set Delimiter example
 [source,sql]
 ....
 --#SET DELIMITER !
-SELECT name FROM
-staff WHERE id = 10!
+SELECT name
+FROM staff
+WHERE id = 10!
 --#SET DELIMITER ;
-SELECT name FROM
-staff WHERE id = 20;
+SELECT name
+FROM staff
+WHERE id = 20;
 ....
 
 When using the Db2 Command Processor (batch) script, the default statement terminator can be set using the "-tdx" option, where "x" is the value have chosen. 
@@ -57,22 +58,21 @@ A ((table)) is an organized set of columns and rows. The number, type, and relat
 [source,sql]
 ....
 CREATE TABLE employee
-( empno     CHARACTER  (00006) NOT NULL
-, firstnme  VARCHAR    (00012) NOT NULL
-, midinit   CHARACTER  (00001) NOT NULL
-, lastname  VARCHAR    (00015) NOT NULL
-, workdept  CHARACTER  (00003)
-, phoneno   CHARACTER  (00004)
+( empno     CHARACTER(6) NOT NULL
+, firstnme  VARCHAR(12)  NOT NULL
+, midinit   CHARACTER(1) NOT NULL
+, lastname  VARCHAR(15)  NOT NULL
+, workdept  CHARACTER(3)
+, phoneno   CHARACTER(4)
 , hiredate  DATE
-, job       CHARACTER  (00008)
-, edlevel   SMALLINT           NOT NULL
-, sex       CHARACTER  (00001) 
+, job       CHARACTER(8)
+, edlevel   SMALLINT     NOT NULL
+, sex       CHARACTER(1) 
 , birthdate DATE 
-, salary    DECIMAL    (00009,02)
-, bonus     DECIMAL    (00009,02)
-, comm      DECIMAL    (00009,02)
-)
-DATA CAPTURE NONE;
+, salary    DECIMAL(9,02)
+, bonus     DECIMAL(9,02)
+, comm      DECIMAL(9,02)
+);
 ....
 
 [[view.definition]]
@@ -91,8 +91,7 @@ SELECT a.empno
 FROM employee a
 WHERE a.salary >=
 (SELECT AVG(b.salary)
- FROM
- employee b
+ FROM employee b
  WHERE a.workdept = b.workdept
 );
 ....
@@ -116,12 +115,12 @@ Selecting from the above view works the same as selecting from a table:
 ....
 SELECT c1, c2, c3
 FROM silly
-ORDER BY c1 aSC;
+ORDER BY c1 ASC;
 ....
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |C1 |C2 | C3
 |11 |AAA| 22
@@ -136,11 +135,11 @@ We can go one step further and define a view that begins with a single value tha
 ....
 CREATE VIEW test_data AS
 WITH temp1 (num1) AS
-(VALUES (1)
-UNION ALL
-SELECT num1 + 1
-FROM temp1
-WHERE num1 < 10000)
+ (VALUES (1)
+  UNION ALL
+ SELECT num1 + 1
+ FROM temp1
+ WHERE num1 < 10000)
 SELECT *
 FROM temp1;
 ....
@@ -155,7 +154,7 @@ An ((alias)) is an alternate name for a table or a view. Unlike a view, an alias
 CREATE ALIAS employee_al1 FOR employee;
 COMMIT;
 
-CREATE ALIAS employee_al2 fOR employee_al1;
+CREATE ALIAS employee_al2 FOR employee_al1;
 COMMIT;
 
 CREATE ALIAS employee_al3 FOR employee_al2;
@@ -209,24 +208,21 @@ Below is a simple table definition that uses some of the above data types:
 [source,sql]
 ....
 CREATE TABLE sales_record
-(sales#         INTEGER NOT NULL
-                GENERATED ALWAYS AS IDENTITY
-                (START WITH 1
-                , INCREMENT BY 1
-                , NO MAXVALUE
-                , NO CYCLE)
-, sale_ts       TIMESTAMP NOT NULL
-, num_items     SMALLINT NOT NULL
-, payment_type  CHAR(2) NOT NULL
+(sales#         INTEGER       NOT NULL
+                GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)
+, sale_ts       TIMESTAMP     NOT NULL
+, num_items     SMALLINT      NOT NULL
+, payment_type  CHAR(2)       NOT NULL
 , sale_value    DECIMAL(12,2) NOT NULL
 , sales_tax     DECIMAL(12,2) 
-, employee#     INTEGER NOT NULL
-,CONSTRAINT sales1 CHECK(payment_type IN ('CS','CR'))
-,CONSTRAINT sales2 CHECK(sale_value > 0)
-,CONSTRAINT sales3 CHECK(num_items > 0)
-,CONSTRAINT sales4 FOREIGN KEY(employee#)
-REFERENCES staff(id) ON DELETE RESTRICT
-,PRIMARY KEY(sales#));
+, employee#     INTEGER       NOT NULL
+, CONSTRAINT sales1 CHECK (payment_type IN ('CS','CR'))
+, CONSTRAINT sales2 CHECK (sale_value > 0)
+, CONSTRAINT sales3 CHECK (num_items > 0)
+, CONSTRAINT sales4 FOREIGN KEY (employee#)
+  REFERENCES staff (id) ON DELETE RESTRICT
+, PRIMARY KEY (sales#)
+);
 ....
 
 In the above table, we have listed the relevant columns, and added various checks to ensure that the data is always correct. In particular, we have included the following:
@@ -357,7 +353,7 @@ FROM temp1;
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |TOTALORDER
 |1
@@ -387,13 +383,13 @@ FROM temp1;
 
 _ANSWER_
 
-[cols="",options="header",]
+[cols=">,<,>,<",options="header",]
 |===
-|D1   | HEX_D1           | D2| HEX_D2
-|0    | 0000000000003822 | 0 | 0000000000003822
-|0.0  | 0000000000003422 | 0 | 0000000000003822
-|0.00 | 0000000000003022 | 0 | 0000000000003822
-|0.000| 0000000000002C22 | 0 | 0000000000003822
+|D1    | HEX_D1           | D2| HEX_D2
+|0     | 0000000000003822 | 0 | 0000000000003822
+|0.0   | 0000000000003422 | 0 | 0000000000003822
+|0.00  | 0000000000003022 | 0 | 0000000000003822
+|0.000 | 0000000000002C22 | 0 | 0000000000003822
 |===
 
 ===== DECFLOAT Scalar Functions
@@ -417,21 +413,70 @@ What follows is a brief introduction to the subject. The basic rules are:
 
 The valid labeled durations are listed below:
 
-....
-LABELED DURATIONS                                  WORKS WITH DATE/TIME
-....
+// Angoca: I have tried to arrange the table as the original one, but for the moment I have not found a solution.
 
 .Labeled Durations and Date/Time Types
-[cols="",options="header",]
+[options="header",]
 |===
-|SINGULAR   | PLURAL      |ITEM FIXED SIZE |DATE |TIME|TIMESTAMP
-|YEAR       | YEARS       |N               |Y    |-   |Y
-|MONTH      | MONTHS      |N               |Y    |-   |Y 
-|DAY        | DAYS        |Y               |Y    |-   |Y 
-|HOUR       | HOURS       |Y               |-    |Y   |Y 
-|MINUTE     | MINUTES     |Y               |-    |Y   |Y 
-|SECOND     | SECONDS     |Y               |-    |Y   |Y
-|MICROSECOND| MICROSECONDS|Y               |-    |Y   |Y
+2+|LABELED DURATIONS      
+.2+|ITEM FIXED SIZE
+3+|WORKS WITH DATE/TIME
+
+|SINGULAR   
+| PLURAL      
+|DATE 
+|TIME
+|TIMESTAMP
+
+|YEAR       
+| YEARS       
+|N               
+|Y    
+|-   
+|Y
+
+|MONTH      
+| MONTHS      
+|N               
+|Y    
+|-   
+|Y 
+
+|DAY        
+| DAYS        
+|Y               
+|Y    
+|-   
+|Y 
+
+|HOUR       
+| HOURS       
+|Y               
+|-    
+|Y   
+|Y 
+
+|MINUTE     
+| MINUTES     
+|Y               
+|-    
+|Y   
+|Y 
+
+|SECOND     
+| SECONDS     
+|Y               
+|-    
+|Y   
+|Y
+
+|MICROSECOND
+| MICROSECONDS
+|Y               
+|-    
+|Y   
+|Y
+
 |===
 
 *Usage Notes*
@@ -463,7 +508,7 @@ AND  sales_date = '1995-12-31';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |sales_date|d1        |d2        |d3        |d4        |d5
 |1995-12-31|1995-12-21|1995-11-30|2094-12-31|1994-04-24|1996-01-10
@@ -478,7 +523,7 @@ SELECT sales_date
      , sales_date + 2 MONTH           AS d1
      , sales_date + 3 MONTHS          AS d2
      , sales_date + 2 MONTH + 1 MONTH AS d3
-     , sales_date + (2+1) MONTHS         AS d4
+     , sales_date + (2+1) MONTHS      AS d4
 FROM sales
 WHERE sales_person = 'GOUNOT'
 AND sales_date = '1995-12-31';
@@ -486,7 +531,7 @@ AND sales_date = '1995-12-31';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |sales_date|d1        |d2        |d3        |d4
 |1995-12-31|1996-02-29|1996-03-31|1996-03-29|1996-03-31
@@ -497,7 +542,7 @@ _ANSWER_
 When one date/time value is subtracted from another date/time value the result is a date, time,or timestamp duration. This decimal value expresses the difference thus:
 
 .Date/Time Durations
-[cols="",options="header",]
+[options="header",]
 |===
 |DURATION-TYPE|FORMAT       |NUMBER-REPRESENTS    |USE-WITH-D-TYPE 
 |DATE         |DECIMAL(8,0) |yyyymmdd             |TIMESTAMP, DATE
@@ -523,7 +568,7 @@ ORDER BY empno;
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |EMPNO  |HIREDATE  | BIRTHDATE | - 
 |000150 |1972-02-12| 1947-05-17| 240826
@@ -547,7 +592,7 @@ WHERE empno = '000150';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |HIREDATE  |-         |-
 |1972-02-12|0733-03-26|0733-03-26
@@ -562,9 +607,9 @@ One date/time can be subtracted (only) from another valid date/time value. The r
 A ((special register)) is a ((Db2 variable)) that contains information about the state of the system. The complete list follows:
 
 .Db2 Special Registers
-[cols="60%,10%,30%",options="header",]
+[options="header",]
 |===
-|Special Register                               |Update? | Data type 
+|Special Register                               |Updatable | Data type 
 |CURRENT CLIENT_ACCTNG                          |no      |VARCHAR(255) 
 |CURRENT CLIENT_APPLNAME                        |no      |VARCHAR(255)
 |CURRENT CLIENT_USERID                          |no      |VARCHAR(255) 
@@ -623,6 +668,7 @@ FROM sysibm.sysdummy1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |CUR_TIME |CUR_ISO |CUR_ID
 |12:15:16 |RR      |ABC
@@ -633,9 +679,11 @@ _ANSWER_
 
 A distinct data type is a field type that is derived from one of the base Db2 field types. It is used when one wants to prevent users from combining two separate columns that should never be manipulated together (e.g. adding US dollars to Japanese Yen).
 
-NOTE: The following source types do not support distinct types: LOB, LONG VARCHAR, LONG VARGRAPHIC and DATALINK.
+// Angoca: LONG VARCHAR were deprecated in V9.5, DataLinks were deprecated in version 9.1. LOB are allowed. XML and Array are not - https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.1.0/com.ibm.db2.luw.sql.ref.doc/doc/r0000913.html
 
-The creation of a distinct type, under the covers, results in the creation two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, < =, >, and > =` ) is also provided. Below is a typical create and drop statement:
+NOTE: The following source type do not support distinct types: XML, Array.
+
+The creation of a distinct type, under the covers, results in the creation of two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, < =, >, and > =` ) is also provided. Below is a typical create and drop statement:
 
 .Create and drop distinct type
 [source,sql]
@@ -654,11 +702,11 @@ Imagine that we had the following customer table:
 [source,sql]
 ....
 CREATE TABLE customer
-( id             INTEGER
-, fname          VARCHAR(00010) NOT NULL
-, lname          VARCHAR(00015) NOT NULL WITH DEFAULT ''
+( id             INTEGER      NOT NULL
+, fname          VARCHAR(10)  NOT NULL WITH DEFAULT '' 
+, lname          VARCHAR(15)  NOT NULL WITH DEFAULT ''
 , date_of_birth  DATE
-, citizenship    CHAR(03) NOT NULL WITH DEFAULT ''
+, citizenship    CHAR(3)
 , usa_sales      DECIMAL(9,2)
 , eur_sales      DECIMAL(9,2)
 , sales_office#  SMALLINT
@@ -691,11 +739,11 @@ Now we can define the customer table thus:
 [source,sql]
 ....
 CREATE TABLE customer
-( id            INTEGER NOT NULL
-, fname         VARCHAR(00010) NOT NULL WITH DEFAULT '' 
-, lname         VARCHAR(00015) NOT NULL WITH DEFAULT ''
+( id            INTEGER     NOT NULL
+, fname         VARCHAR(10) NOT NULL WITH DEFAULT '' 
+, lname         VARCHAR(15) NOT NULL WITH DEFAULT ''
 , date_of_birth DATE
-, citizenship   CHAR(03)
+, citizenship   CHAR(3)
 , usa_sales     USA_DOLLARS
 , eur_sales     EUROS
 , sales_office# SMALLINT
@@ -752,9 +800,9 @@ WITH get_matching_rows AS
 ....
 
 .Query components
-* The structure from WITH until the last parenthesis is a ((COMMON TABLE EXPRESSION))
-* Each select block is called a ((SUBSELECT))
-* The block inside the WITH with two SUBSELECTS is a ((FULLSELECT))
+* The structure from WITH until the last parenthesis is a ((COMMON TABLE EXPRESSION)).
+* Each select block is called a ((SUBSELECT)).
+* The block inside the WITH with two SUBSELECTS is a ((FULLSELECT)).
 
 ==== Query Components
 
