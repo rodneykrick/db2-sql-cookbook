@@ -418,65 +418,15 @@ The valid labeled durations are listed below:
 .Labeled Durations and Date/Time Types
 [options="header",]
 |===
-2+|LABELED DURATIONS      
-.2+|ITEM FIXED SIZE
-3+|WORKS WITH DATE/TIME
-
-|SINGULAR   
-| PLURAL      
-|DATE 
-|TIME
-|TIMESTAMP
-
-|YEAR       
-| YEARS       
-|N               
-|Y    
-|-   
-|Y
-
-|MONTH      
-| MONTHS      
-|N               
-|Y    
-|-   
-|Y 
-
-|DAY        
-| DAYS        
-|Y               
-|Y    
-|-   
-|Y 
-
-|HOUR       
-| HOURS       
-|Y               
-|-    
-|Y   
-|Y 
-
-|MINUTE     
-| MINUTES     
-|Y               
-|-    
-|Y   
-|Y 
-
-|SECOND     
-| SECONDS     
-|Y               
-|-    
-|Y   
-|Y
-
-|MICROSECOND
-| MICROSECONDS
-|Y               
-|-    
-|Y   
-|Y
-
+2+|       LABELED DURATIONS | 3+|  WORKS WITH DATE/TIME
+|SINGULAR   | PLURAL      |ITEM FIXED SIZE |DATE |TIME|TIMESTAMP
+|YEAR       | YEARS       |N               |Y    |-   |Y
+|MONTH      | MONTHS      |N               |Y    |-   |Y 
+|DAY        | DAYS        |Y               |Y    |-   |Y 
+|HOUR       | HOURS       |Y               |-    |Y   |Y 
+|MINUTE     | MINUTES     |Y               |-    |Y   |Y 
+|SECOND     | SECONDS     |Y               |-    |Y   |Y
+|MICROSECOND| MICROSECONDS|Y               |-    |Y   |Y
 |===
 
 *Usage Notes*
@@ -607,7 +557,7 @@ One date/time can be subtracted (only) from another valid date/time value. The r
 A ((special register)) is a ((Db2 variable)) that contains information about the state of the system. The complete list follows:
 
 .Db2 Special Registers
-[options="header",]
+[cols="60%,10%,30%",options="header",]
 |===
 |Special Register                               |Updatable | Data type 
 |CURRENT CLIENT_ACCTNG                          |no      |VARCHAR(255) 
@@ -706,7 +656,7 @@ CREATE TABLE customer
 , fname          VARCHAR(10)  NOT NULL WITH DEFAULT '' 
 , lname          VARCHAR(15)  NOT NULL WITH DEFAULT ''
 , date_of_birth  DATE
-, citizenship    CHAR(3)
+, citizenship    CHAR(3) NOT NULL WITH DEFAULT ''
 , usa_sales      DECIMAL(9,2)
 , eur_sales      DECIMAL(9,2)
 , sales_office#  SMALLINT
