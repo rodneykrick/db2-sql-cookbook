@@ -20,7 +20,8 @@
 :keywords: Db2, SQL, Query Language
 
 Graeme Birchal (until Version 9.7, 2011) +
-Version 1.0, Rodney Krick, November 2019
+Version 1.0, Rodney Krick, November 2019 +
+Contributors: Andres Gomez Casanova
 
 ++++
 <center>
