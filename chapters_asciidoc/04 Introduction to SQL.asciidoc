@@ -814,11 +814,11 @@ WITH get_matching_rows AS
 
 A ((SELECT)) statement is used to query the database. It has the following components, not all of which need be used in any particular query:
 
-* *SELECT* clause. One of these is required, and it must return at least one item, be it a column, a literal, the result of a function, or something else. One must also access at least one table, be that a true table, a temporary table, a view, or an alias.
+* *SELECT* clause. One of these is required, and it must return at least one item, be it a column, a literal, the result of a function, or something else. One must also access at least one table, be that a true table, a temporary table, a view, an alias or a table function.
 * *WITH* clause. This clause is optional. Use this phrase to include independent SELECT statements that are subsequently accessed in a final SELECT (see <<common.table.expression>>).
 * *ORDER BY* clause. Optionally, order the final output (see <<order.by.chapter>>).
 * *FETCH FIRST* clause. Optionally, stop the query after "n" rows (see <<fetch.first.clause>>). If an optimize-for value is also provided, both values are used independently by the optimizer.
-* *READ-ONLY* clause. Optionally, state that the query is read-only.Some queries are inherently read-only, in which case this option has no effect.
+* *READ-ONLY* clause. Optionally, state that the query is read-only. Some queries are inherently read-only, in which case this option has no effect.
 * *FOR UPDATE* clause. Optionally, state that the query will be used to update certain columns that are returned during fetch processing.
 * *OPTIMIZE FOR n ROWS* clause. Optionally, tell the optimizer to tune the query assuming that not all of the matching rows will be retrieved. If a first-fetch value is also provided, both values are used independently by the optimizer.
 
@@ -843,6 +843,7 @@ Every query must have at least one SELECT statement, and it must return at least
 * *View*: A standard Db2 view.
 * *Alias*: A Db2 alias that points to a table, view, or another alias.
 * *Full Select*: An embedded SELECT statement that returns a set of rows.
+* *Table function*: A kind of function that returns a table.
 
 *Sample SQL*
 
@@ -859,6 +860,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |DEPTNO| ADMRDEPT |ABC 
 |B01   | A00      |ABC 
@@ -867,7 +869,7 @@ _ANSWER_
 
 To select all of the columns in a table (or tables) one can use the "*" notation:
 
-.Use "_" to select all columns in table
+.Use "*" to select all columns in table
 [source,sql]
 ....
 SELECT *
@@ -876,15 +878,16 @@ WHERE deptname LIKE '%ING%'
 ORDER BY 1;
 ....
 
-ANSWER (part of)
+_ANSWER (part of)_
 
+[options="header",]
 |===
 |DEPTNO |etc... 
 |B01 |PLANNING
 |D11| MANUFACTU
 |===
 
-To select both individual columns, and all of the columns (using the "\_" notation), in a single SELECT statement, one can still use the "_", but it must fully-qualified using either the object name, or a correlation name:
+To select both individual columns, and all of the columns (using the "*" notation), in a single SELECT statement, one can still use the "*", but it must fully-qualified using either the object name, or a correlation name:
 
 .Select an individual column, and all columns
 [source,sql]
@@ -896,8 +899,9 @@ WHERE deptname LIKE '%ING%'
 ORDER BY 1;
 ....
 
-ANSWER (part of)
+_ANSWER (part of)_
 
+[options="header",]
 |===
 |DEPTNO |DEPTNO | etc... 
 |B01    | B01   | PLANNING 
@@ -916,6 +920,9 @@ WHERE eptname LIKE '%NING%'
 ORDER BY 1;
 ....
 
+_ANSWER (part of)_
+
+[options="header",]
 |===
 |DEPTNO | etc...   |...|DEPTNO |etc...   |...
 |B01    | PLANNING |...|B01    |PLANNING |... 
