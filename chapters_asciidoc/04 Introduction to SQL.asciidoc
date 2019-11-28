@@ -947,6 +947,7 @@ FETCH FIRST 3 ROWS ONLY;
 
 _ANSWER_
 
+[options="header",]
 |===
 |YEARS| NAME   |ID 
 |7    |Sanders |10 
@@ -973,6 +974,7 @@ FETCH FIRST 3 ROWS ONLY;
 
 _ANSWER_
 
+[options="header",]
 |===
 |YEARS|NAME  |ID 
 |13   |Graham|310 
@@ -998,6 +1000,7 @@ FETCH FIRST 3 ROWS ONLY;
 
 _ANSWER_
 
+[options="header",]
 |===
 |YEARS|NAME  |ID 
 |13   |Graham|310 
