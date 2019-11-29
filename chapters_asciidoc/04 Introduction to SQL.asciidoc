@@ -1027,12 +1027,13 @@ WHERE a.empno = b.empno;
 
 _ANSWER_
 
+[options="header",]
 |===
 |EMPNO |LASTNAME
 |000340|GOUNOT
 |===
 
-.Correlation name usage example_
+.Correlation name usage example
 [source,sql]
 ....
 SELECT a.empno
@@ -1050,6 +1051,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |EMPNO |LASTNAME |DEPT 
 |000090|HENDERSON|E11
@@ -1076,6 +1078,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |E_NUM |M INT|...
 |000010|I    |3978
@@ -1103,6 +1106,7 @@ SELECT * FROM emp2 WHERE "..." = '3978';
 
 _ANSWER_
 
+[options="header",]
 |===
 |E_NUM| M INT |...
 |000010 |I |3978
@@ -1124,6 +1128,7 @@ WHERE id < 100;
 
 _ANSWER_
 
+[options="header",]
 |===
 |A1      |A2
 |796.025 |530.68
@@ -1142,6 +1147,7 @@ WHERE firstnme = 'FRED';
 
 ANSWER
 
+[options="header",]
 |===
 |NUM|MAX 
 |0  |-
@@ -1168,12 +1174,13 @@ AND comm IS NOT NULL;
 
 _ANSWER_
 
+[options="header",]
 |===
 |A1     | A2
 |796.025| 796.02
 |===
 
-_Quotes and Double-quotes_
+==== Quotes and Double-quotes
 
 To write a string, put it in quotes. If the string contains quotes, each quote is represented by a pair of quotes:
 
@@ -1190,6 +1197,7 @@ WHERE id = 10;
 
 _ANSWER_
 
+[options="header",]
 |===
 |J1   | J2    | J3      | J4
 |JOHN |JOHN'S |'JOHN'S' |"JOHN'S"
@@ -1212,6 +1220,7 @@ ORDER BY "USER ID";
 
 _ANSWER_
 
+[options="header",]
 |===
 |USER ID|D# |#Y|'TXT'|"quote" fld 
 |10     |20 |7 |ABC  |" 
