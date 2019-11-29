@@ -1260,6 +1260,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID |JOB| DEPT
 |10 |Mgr| 20
@@ -1283,6 +1284,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| DEPT |JOB
 |30| 38   | Mgr
@@ -1303,6 +1305,7 @@ ORDER BY 1;
 
 ANSWER
 
+[options="header",]
 |===
 |ID| DEPT |JOB
 |30| 38   | Mgr
@@ -1324,6 +1327,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| JOB
 |10| Mgr
@@ -1343,6 +1347,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| DEPT| JOB
 |20| 20  | Sales
@@ -1369,6 +1374,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| JOB
 |10| Mgr
@@ -1396,6 +1402,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| JOB
 |10| Mgr
@@ -1404,9 +1411,7 @@ _ANSWER_
 |40| Sales
 |===
 
-....
 NOTE: See the sub-query chapter on <<subquery.chapter>> for more data on this predicate type.
-....
 
 ==== IN Predicate
 
@@ -1430,6 +1435,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID|JOB
 |10|Mgr
@@ -1454,6 +1460,7 @@ WHERE (empno, 'AD3113') IN
 ORDER BY 1;
 ....
 
+[options="header",]
 _ANSWER_
 
 |===
@@ -1488,6 +1495,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID | NAME
 |130| Yamaguchi
@@ -1499,6 +1507,8 @@ _ANSWER_
 The ((escape)) character in a LIKE statement enables one to check for percent signs and/or underscores in the search string. When used, it precedes the '%' or '_' in the search string indicating that it is the actual value and not the special character which is to be checked for.
 When processing the LIKE pattern, Db2 works thus: Any pair of escape characters is treated as the literal value (e.g. "++" means the string "+"). Any single occurrence of an escape character followed by either a "%" or a "_" means the literal "%" or "_" (e.g. "+%" means the string
 "%"). Any other "%" or "_" is used as in a normal LIKE pattern.
+
+// Angoca: The like escape is not shown correctly
 
 .LIKE and ESCAPE examples
 |===
@@ -1534,7 +1544,7 @@ AND 'A_$' LIKE 'A$_$$' ESCAPE '$';
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |ID
 |10
