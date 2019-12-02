@@ -2,8 +2,8 @@
 
 This chapter describes how to use SQL to make SQL. For example, one might want to make DDL statements to create views on a set of tables.
 
-=== ((Export)) Command
-
+=== Export Command
+(((Export command)))
 The following query will generate a set of queries that will count the rows in each of the selected Db2 catalogue views:
 
 .Generate SQL to count rows

@@ -123,8 +123,8 @@ _ANSWER_
 |4   |8998|0.8998|8
 |===
 
-==== ((Make Random Data)) - Varying Distribution
-
+==== Make Random Data - Varying Distribution
+(((Make random data)))
 In the real world, there is a tendency for certain data values to show up much more frequently than others. Likewise, separate fields in a table usually have independent semi-random data distribution patterns. In the next statement we create three independently random fields. The first has the usual 32K distinct values evenly distributed in the range of zero to one. The second and third have random numbers that are skewed towards the low end of the range, and have many more distinct values:
 
 .Create RAND data with different distributions
@@ -291,8 +291,8 @@ In order to illustrate some of the tricks that one can use when creating such da
 * The FIRST NAME is derived using seven independent invocation of the CHR function, each of which is going to give a somewhat different result.
 * The LAST NAME is (mostly) made by using the TRANSLATE function to convert a large random number into a corresponding character value. The output is skewed towards some of the vowels and the lower-range characters during the translation.
 
-==== ((Time-Series)) Processing
-
+==== Time-Series Processing
+(((Time-series)))
 The following table holds data for a typical time-series application. Observe is that each row has both a beginning and ending date, and that there are three cases where there is a gap between the end-date of one row and the begin-date of the next (with the same key).
 
 [[sample.table.ddl.time.series]]
@@ -1775,8 +1775,8 @@ _ANSWER_
 
 Simple CASE logic can be used to deal with negative values (i.e. to move the sign to the front of the string, before converting back to numeric), if they exist.
 
-=== ((Fibonacci)) Series
-
+=== Fibonacci Series
+(((Fibonacci)))
 A Fibonacci Series is a series of numbers where each value is the sum of the previous two. Regardless of the two initial (seed) values, if run for long enough, the division of any two adjacent numbers will give the value 0.618 or inversely 1.618.  The following user defined function generates a Fibonacci series using three input values:
 
 * First seed value.
@@ -2408,8 +2408,8 @@ _ANSWER_
 * The above function won't work on the HEX representation of packed-decimal or floatingpoint data.
 * One could have three different flavors of the above function - one for each type of integer value. The input value length would determine the output type.
 
-=== ((Endianness))
-
+=== Endianness
+(((Endianness)))
 Most computers use one of two internal formats to store binary data. In big-endian, which is used on z/OS, the internal representation equals the HEX value. So the four-byte integer value 1,234,567,890 is stored as "49 96 02 D2". In little-endian, which is used on all Intel chips, the bytes are reversed, so the above value is stored internally as "D2 02 96 49". This is why the above function transposed every two-byte block before converting the HEX value to numeric. 
 
 
