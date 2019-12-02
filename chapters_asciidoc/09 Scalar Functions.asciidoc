@@ -1,5 +1,5 @@
 == Scalar Functions
-
+(((Scalar function)))
 === Introduction
 
 Scalar functions act on a single row at a time. In this section we shall list all of the ones that come with Db2 and look in detail at some of the more interesting ones. Refer to the SQL Reference for information on those functions not fully described here.
@@ -49,7 +49,7 @@ Below are the view contents:
 === Scalar Functions, Definitions
 
 ==== ABS or ABSVAL
-
+(((ABS))) (((ABSVAL)))
 Returns the absolute value of a number (e.g. -0.4 returns + 0.4). The output field type will equal the input field type (i.e. double input returns double output).
 
 .ABS function examples
@@ -72,11 +72,11 @@ _ANSWER (float output shortened)_
 |===
 
 ==== ACOS
-
+(((ACOS)))
 Returns the arccosine of the argument as an angle expressed in radians. The output format is double.
 
 ==== ASCII
-
+(((ASCII)))
 Returns the ASCII code value of the leftmost input character. Valid input types are any valid character type up to 1 MEG. The output type is integer.
 
 .ASCII function examples
@@ -99,23 +99,23 @@ _ANSWER_
 *The CHR function is the inverse of the ASCII function.*
 
 ==== ASIN
-
+(((ASIN)))
 Returns the arcsine of the argument as an angle expressed in radians. The output format is double.
 
 ==== ATAN
-
+(((ATAN)))
 Returns the arctangent of the argument as an angle expressed in radians. The output format is double.
 
 ==== ATAN2
-
+(((ATAN2)))
 Returns the arctangent of x and y coordinates, specified by the first and second arguments, as an angle, expressed in radians. The output format is double.
 
 ==== ATANH
-
+(((ATANH)))
 Returns the hyperbolic acrctangent of the argument, where the argument is and an angle expressed in radians. The output format is double.
 
 ==== BIGINT
-
+(((BIGINT)))
 Converts the input value to bigint (big integer) format. The input can be either numeric or character. If character, it must be a valid representation of a number.
 
 .BIGINT function example
@@ -181,7 +181,7 @@ FROM temp;
 See <<floating.point.numbers>> for a discussion on floating-point number manipulation.
 
 ==== BIT Functions
-
+(((BIT Functions)))
 There are five BIT functions:
 
 * *BITAND* 1 if both arguments are 1.
@@ -395,15 +395,15 @@ Below is the answer:
 |===
 
 ==== BLOB
-
+(((BLOB)))
 Converts the input (1st argument) to a blob. The output length (2nd argument) is optional.
 
 ==== CARDINALITY
-
+(((CARDINALITY)))
 Returns a value of type BIGINT that is the number of elements in an array.
 
 ==== CEIL or CEILING
-
+(((CEIL))) (((CEILING)))
 Returns the next smallest integer value that is greater than or equal to the input (e.g. 5.045 returns 6.000). The output field type will equal the input field type.
 
 .CEIL function examples
@@ -428,7 +428,7 @@ _ANSWER (float output shortened)_
 NOTE: Usually, when Db2 converts a number from one format to another, any extra digits on the right are truncated, not rounded. For example, the output of INTEGER(123.9) is 123. Use the CEIL or ROUND functions to avoid truncation.
 
 ==== CHAR
-
+(((CHAR)))
 The CHAR function has a multiplicity of uses. The result is always a fixed-length character value, but what happens to the input along the way depends upon the input type:
 
 * For character input, the CHAR function acts a bit like the SUBSTR function, except that it can only truncate starting from the left-most character. The optional length parameter, if provided, must be a constant or keyword.
@@ -529,7 +529,7 @@ _ANSWER_
 Both the I2 and D2 fields above will have a trailing blank on all negative values - that was added during the concatenation operation. The RTRIM function can be used to remove it.
 
 ===== DATE-TIME Conversion
-
+(((DATE-TIME Conversion)))
 The CHAR function can be used to convert a date-time value to character. If the input is not a timestamp, the output layout can be controlled using the format option:
 
 * *ISO*: International Standards Organization.
@@ -620,8 +620,8 @@ _ANSWER_
 
 NOTE: Neither the DIGITS nor the CHAR function do a great job of converting numbers to characters. See <<convert.number.to.character>> for some user-defined functions that can be used instead.
 
-==== CHARACTER_LENGTH
-
+=== CHARACTER_LENGTH
+(((CHARACTER_LENGTH)))
 This function is similar to the LENGTH function, except that it works with different encoding schemas. The result is an integer value that is the length of the input string.
 
 .CHARACTER_LENGTH function example
@@ -646,7 +646,7 @@ _ANSWER_
 |===
 
 ==== CHR
-
+(((CHR)))
 Converts integer input in the range 0 through 255 to the equivalent ASCII character value. An input value above 255 returns 255. The ASCII function (see above) is the inverse of the CHR function.
 
 .CHR function examples
@@ -669,7 +669,7 @@ _ANSWER_
 NOTE: At present, the CHR function has a bug that results in it not returning a null value when the input value is greater than 255.
 
 ==== CLOB
-
+(((CLOB)))
 Converts the input (1st argument) to a CLOB. The output length (2nd argument) is optional. If the input is truncated during conversion, a warning message is issued. For example, in the following example the second CLOB statement will induce a warning for the first two lines of input because they have non-blank data after the third byte:
 
 .CLOB function examples
@@ -693,7 +693,7 @@ NOTE: The Db2BATCH command processor dies a nasty death whenever it encounters a
 
 [[coalesce.function]]
 ==== COALESCE
-
+(((COALESCE)))
 Returns the first non-null value in a list of input expressions (reading from left to right). Each expression is separated from the prior by a comma. All input expressions must be compatible. VALUE is a synonym for
 COALESCE.
 
@@ -759,7 +759,7 @@ _ANSWER_
 |===
 
 ==== COLLATION_KEY_BIT
-
+(((COLLATION_KEY_BIT)))
 Returns a VARCHAR FOR BIT DATA string that is the collation sequence of the first argument in the function. There three parameters:
 
 * String to be evaluated.
@@ -798,7 +798,7 @@ Below is the answer:
 |===
 
 ==== COMPARE_DECFLOAT
-
+(((COMPARE_DECFLOAT)))
 Compares two DECFLOAT expressions and returns a SMALLINT number:
 
 * *0* if both values exactly equal (i.e. no trailing-zero differences)
@@ -845,7 +845,7 @@ _ANSWER_
 NOTE: Several values that compare as "less than" or "greater than" above are equal in the usual sense. See the section on DECFLOAT arithmetic for details (see <<decfloat.arithmetic>>).
 
 ==== CONCAT
-
+(((CONCAT)))
 Joins two strings together. The CONCAT function has both "infix" and "prefix" notations. In the former case, the verb is placed between the two strings to be acted upon. In the latter case, the two strings come after the verb. Both syntax flavours are illustrated below:
 
 .CONCAT function examples
@@ -925,7 +925,7 @@ _ANSWER_
 WARNING: Never do an ORDER BY on a concatenated set of variable length fields. The resulting row sequence is probably not what the user intended (see above).
 
 ==== COS
-
+(((COS)))
 Returns the cosine of the argument where the argument is an angle expressed in radians. The output format is double.
 
 .RADIAN, COS, and SIN functions example
@@ -961,19 +961,19 @@ _ANSWER_
 |===
 
 ==== COSH
-
+(((COSH)))
 Returns the hyperbolic cosine for the argument, where the argument is an angle expressed in radians. The output format is double.
 
 ==== COT
-
+(((COT)))
 Returns the cotangent of the argument where the argument is an angle expressed in radians. The output format is double.
 
 ==== DATAPARTITIONNUM
-
+(((DATAPARTITIONNUM)))
 Returns the sequence number of the partition in which the row resides.
 
 ==== DATE
-
+(((DATE)))
 Converts the input into a date value. The nature of the conversion process depends upon the input type and length:
 
 * Timestamp and date input have the date part extracted.
@@ -1022,7 +1022,7 @@ _ANSWER_
 |===
 
 ==== DAY
-
+(((DAY)))
 Returns the day (as in day of the month) part of a date (or equivalent) value. The output format is integer.
 
 .DAY function examples
@@ -1065,7 +1065,7 @@ __ANSWER__
 NOTE: A date-duration is what one gets when one subtracts one date from another. The field is of type decimal(8), but the value is not really a number. It has digits in the format: YYYYMMDD, so in the above query the value "315" represents 3 months, 15 days.
 
 ==== DAYNAME
-
+(((DAYNAME)))
 Returns the name of the day (e.g. Friday) as contained in a date (or equivalent) value. The output format is varchar(100).
 
 .DAYNAME function example
@@ -1088,7 +1088,7 @@ _ANSWER_
 |===
 
 ==== DAYOFWEEK
-
+(((DAYOFWEEK)))
 Returns a number that represents the day of the week (where Sunday is 1 and Saturday is 7) from a date (or equivalent) value. The output format is integer.
 
 .DAYOFWEEK function example
@@ -1111,7 +1111,7 @@ _ANSWER_
 |===
 
 ==== DAYOFWEEK_ISO
-
+(((DAYOFWEEK_ISO)))
 Returns an integer value that represents the day of the "ISO" week. An ISO week differs from an ordinary week in that it begins on a Monday (i.e. day-number = 1) and it neither ends nor begins at the exact end of the year. Instead, the final ISO week of the prior year will continue into the new year. This often means that the first days of the year have an ISO week number of 52, and that one gets more than seven days in a week for ISO week 52.
 
 .DAYOFWEEK_ISO function example
@@ -1169,7 +1169,7 @@ _ANSWER_
 |===
 
 ==== DAYOFYEAR
-
+(((DAYOFYEAR)))
 Returns a number that is the day of the year (from 1 to 366) from a date (or equivalent) value. The output format is integer.
 
 .DAYOFYEAR function example
@@ -1190,7 +1190,7 @@ _ANSWER_
 |===
 
 ==== DAYS
-
+(((DAYS)))
 Converts a date (or equivalent) value into a number that represents the number of days since the date "0001-01-01" inclusive. The output format is INTEGER.
 
 .DAYS function example
@@ -1214,11 +1214,11 @@ _ANSWER_
 The DATE function can act as the inverse of the DAYS function. It can convert the DAYS output back into a valid date.
 
 ==== DBCLOB
-
+(((DBCLOB)))
 Converts the input (1st argument) to a dbclob. The output length (2nd argument) is optional.
 
 ==== DBPARTITIONNUM
-
+(((DBPARTITIONNUM)))
 Returns the partition number of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
 
 .DBPARTITIONNUM function example
@@ -1240,7 +1240,7 @@ _ANSWER_
 The DBPARTITIONNUM function will generate a SQL error if the column/row used can not be related directly back to specific row in a real table. Therefore, one can not use this function on fields in GROUP BY statements, nor in some views. It can also cause an error when used in an outer join, and the target row failed to match in the join.
 
 ==== DECFLOAT
-
+(((DECFLOAT)))
 Converts a character or numeric expression to DECFLOAT.
 
 The first parameter is the input expression. The second is the number of digits of precision (default = 34). And the third is the decimal character value (default = '.').
@@ -1269,7 +1269,7 @@ _ANSWER_
 WARNING: The function does not always precisely convert floating-point numeric values to their DECFLOAT equivalent (see example above). Use character conversion instead.
 
 ==== DEC or DECIMAL
-
+(((DEC))) (((DECIMAL)))
 Converts either character or numeric input to decimal. When the input is of type character, the decimal point format can be specified.
 
 .DECIMAL function examples
@@ -1295,7 +1295,7 @@ _ANSWER_
 WARNING: Converting a floating-point number to decimal may get different results from converting the same number to integer. See <<floating.point.numbers>> for a discussion of this issue.
 
 ==== DECODE
-
+(((DECODE)))
 The DECODE function is a simplified form of the CASE expression. The first parameter is the expression to be evaluated. This is followed by pairs of "before" and "after" expressions. At the end is the "else" result:
 
 .DECODE function example
@@ -1322,7 +1322,7 @@ _ANSWER_
 |===
 
 ==== DECRYPT_BIN and DECRYPT_CHAR
-
+(((DECRYPT_BIN))) (((DECRYPT_CHAR)))
 Decrypts data that has been encrypted using the ENCRYPT function. Use the BIN function to decrypt binary data (e.g. BLOBS, CLOBS) and the CHAR function to do character data. Numeric data cannot be encrypted.
 
 If the password is null or not supplied, the value of the encryption password special register will be used. If it is incorrect, a SQL error will be generated.
@@ -1346,15 +1346,15 @@ ORDER BY id;
 ....
 
 ==== DEGREES
-
+(((DEGREES)))
 Returns the number of degrees converted from the argument as expressed in radians. The output format is double.
 
 ==== DEREF
-
+(((DEREF)))
 Returns an instance of the target type of the argument.
 
 ==== DIFFERENCE
-
+(((DIFFERENCE)))
 Returns the difference between the sounds of two strings as determined using the SOUNDEX function. The output (of type integer) ranges from 4 (good match) to zero (poor match).
 
 .DIFFERENCE function example
@@ -1391,7 +1391,7 @@ _ANSWER_
 NOTE: The difference function returns one of five possible values. In many situations, it would be imprudent to use a value with such low granularity to rank values.
 
 ==== DIGITS
-
+(((DIGITS)))
 Converts an integer or decimal value into a character string with leading zeros. Both the sign indicator and the decimal point are lost in the translation.
 
 .DIGITS function examples
@@ -1415,9 +1415,9 @@ _ANSWER_
 The CHAR function can sometimes be used as alternative to the DIGITS function. Their output differs slightly - see <<convert.number.to.character>> for a comparison.
 
 NOTE: Neither the DIGITS nor the CHAR function do a great job of converting numbers to characters. See <<convert.number.to.character>> for some user-defined functions that can be used instead.
-
+[[double.function]]
 ==== DOUBLE or DOUBLE_PRECISION
-
+(((DOUBLE))) (((DOUBLE_PRECISION)))
 Converts numeric or valid character input to type double. This function is actually two with the same name. The one that converts numeric input is a SYSIBM function, while the other that handles character input is a SYSFUN function. The keyword DOUBLE_PRECISION has not been defined for the latter.
 
 .DOUBLE function examples
@@ -1446,7 +1446,7 @@ _ANSWER (output shortened)_
 See <<floating.point.numbers>> for a discussion on floating-point number manipulation.
 
 ===== ENCRYPT
-
+(((ENCRYPT)))
 Returns a encrypted rendition of the input string. The input must be char or varchar. The output is varchar for bit data.
 
 The input values are defined as follows:
@@ -1472,11 +1472,11 @@ ORDER BY id;
 ....
 
 ==== EVENT_MON_STATE
-
+(((EVENT_MON_STATE)))
 Returns an operational state of a particular event monitor.
 
 ==== EXP
-
+(((EXP)))
 Returns the exponential function of the argument. The output format is double.
 
 .EXP function examples
@@ -1512,11 +1512,11 @@ _ANSWER_
 |===
 
 ==== FLOAT
-
-Same as DOUBLE.
+(((FLOAT)))
+Same as <<double.function>>.
 
 ==== FLOOR
-
+(((FLOOR)))
 Returns the next largest integer value that is smaller than or equal to the input (e.g. 5.945 returns 5.000). The output field type will equal the input field type.
 
 .FLOOR function examples
@@ -1539,7 +1539,7 @@ _ANSWER (float output shortened)_
 
 [[generate.unique.function]]
 ==== GENERATE_UNIQUE
-
+(((GENERATE_UNIQUE)))
 Uses the system clock and node number to generate a value that is guaranteed unique (as long as one does not reset the clock). The output is of type CHAR(13) FOR BIT DATA. There are no arguments. The result is essentially a timestamp (set to universal time, not local time), with the node number appended to the back.
 
 .GENERATE_UNIQUE function examples. Note that the second field is unprintable
@@ -1644,7 +1644,7 @@ ORDER BY U2;
 ....
 
 ==== GETHINT
-
+(((GETHINT)))
 Returns the password hint, if one is found in the encrypted data.
 
 -GETHINT function example
@@ -1671,15 +1671,15 @@ _ANSWER_
 |===
 
 ==== GRAPHIC
-
+(((GRAPHIC)))
 Converts the input (1st argument) to a graphic data type. The output length (2nd argument) is optional.
 
 ==== GREATEST
-
+(((GREATEST)))
 See <<max.function>> scalar function.
 
 ==== HASHEDVALUE
-
+(((HASHEDVALUE)))
 Returns the partition number of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
 
 .HASHEDVALUE function example
@@ -1701,7 +1701,7 @@ _ANSWER_
 The DBPARTITIONNUM function will generate a SQL error if the column/row used can not be related directly back to specific row in a real table. Therefore, one can not use this function on fields in GROUP BY statements, nor in some views. It can also cause an error when used in an outer join, and the target row failed to match in the join.
 
 ==== HEX
-
+(((HEX)))
 Returns the hexadecimal representation of a value. All input types are supported.
 
 .HEX function examples, numeric data
@@ -1769,7 +1769,7 @@ _ANSWER_
 |===
 
 ==== HOUR
-
+(((HOUR)))
 Returns the hour (as in hour of day) part of a time value. The output format is integer.
 
 .HOUR function example
@@ -1791,7 +1791,7 @@ _ANSWER_
 
 [[identity_val_local.function]]
 ==== IDENTITY_VAL_LOCAL
-
+(((IDENTITY_VAL_LOCAL)))
 Returns the most recently assigned value (by the current user) to an identity column. The result type is decimal (31,0), regardless of the field type of the identity column. See <<find.gaps.in.values>> for detailed notes on using this function.
 
 .IDENTITY_VAL_LOCAL function usage
@@ -1820,7 +1820,7 @@ _ANSWER_
 |===
 
 ==== INSERT
-
+(((INSERT)))
 Insert one string in the middle of another, replacing a portion of what was already there. If the value to be inserted is either longer or shorter than the piece being replaced, the remainder of the data (on the right) is shifted either left or right accordingly in order to make a good fit.
 
 *Usage Notes*
@@ -1847,7 +1847,7 @@ _ANSWER (4K output fields shortened)_
 |===
 
 ==== INT or INTEGER
-
+(((INT))) (((INTEGER)))
 The INTEGER or INT function converts either a number or a valid character value into an integer. The character input can have leading and/or trailing blanks, and a sign indictor, but it can not contain a decimal point. Numeric decimal input works just fine.
 
 .INTEGER function examples
@@ -1870,7 +1870,7 @@ _ANSWER_
 |===
 
 ==== JULIAN_DAY
-
+(((JULIAN_DAY)))
 Converts a date value into a number that represents the number of days since January the 1st, 4,713 BC. The output format is integer.
 
 .JULIAN_DAY function example
@@ -1975,7 +1975,7 @@ _ANSWER_
 WARNING: Db2 does not make allowances for the days that were not used when Englishspeaking countries converted from the Julian to the Gregorian calendar in 1752.
 
 ==== LCASE or LOWER
-
+(((LCASE))) (((LOWER)))
 Converts a mixed or upper-case string to lower case. The output is the same data type and length as the input.
 
 .LCASE function example
@@ -1996,11 +1996,11 @@ _ANSWER_
 |===
 
 ==== LEAST
-
+(((LEAST)))
 See <<min.function>> scalar function.
 
 ==== LEFT
-
+(((LEFT)))
 The LEFT function has two arguments: The first is an input string of type char, varchar, clob, or blob. The second is a positive integer value. The output is the left most characters in the string. Trailing blanks are not removed.
 
 .LEFT function examples
@@ -2028,7 +2028,7 @@ _ANSWER_
 If the input is either char or varchar, the output is varchar(4000). A column this long is a nuisance to work with. Where possible, use the SUBSTR function to get around this problem.
 
 ==== LENGTH
-
+(((LENGTH)))
 Returns an integer value with the internal length of the expression (except for double-byte string types, which return the length in characters). The value will be the same for all fields in a column, except for columns containing varying-length strings.
 
 .LENGTH function examples
@@ -2051,7 +2051,7 @@ _ANSWER_
 |===
 
 ==== LN or LOG
-
+(((LN))) (((LOG)))
 Returns the natural logarithm of the argument (same as LOG). The output format is double.
 
 .LOG function example
@@ -2081,7 +2081,7 @@ _ANSWER_
 
 [[locate.function]]
 ==== LOCATE
-
+(((LOCATE)))
 Returns an integer value with the absolute starting position of the first occurrence of the first string within the second string. If there is no match, the result is zero. The optional third parameter indicates where to start the search.
 
 The result, if there is a match, is always the absolute position (i.e. from the start of the string), not the relative position (i.e. from the starting position).
@@ -2116,11 +2116,11 @@ _ANSWER_
 When a special character like "Á" is encountered before the find-string (see last line) the plain LOCATE returns the number of bytes searched, not the number of characters.
 
 ==== LOG or LN
-
+(((LOG))) (((LN)))
 See the description of the LN function.
 
 ==== LOG10
-
+(((LOG10)))
 Returns the base ten logarithm of the argument. The output format is double.
 
 .LOG10 function example
@@ -2149,19 +2149,19 @@ _ANSWER_
 |===
 
 ==== LONG_VARCHAR
-
+(((LONG_VARCHAR)))
 Converts the input (1st argument) to a long_varchar data type. The output length (2nd argument) is optional.
 
 ==== LONG_VARGRAPHIC
-
+(((LONG_VARGRAPHIC)))
 Converts the input (1st argument) to a long_vargraphic data type. The output length (2nd argument) is optional.
 
 ==== LOWER
-
+(((LOWER)))
 See the description for the LCASE function.
 
 ==== LTRIM
-
+(((LTRIM)))
 Remove leading blanks, but not trailing blanks, from the argument.
 
 .LTRIM function example
@@ -2188,7 +2188,7 @@ _ANSWER_
 
 [[max.function]]
 ==== MAX
-
+(((MAX)))
 Returns the largest item from a list that must be at least two items long:
 
 .MAX scalar function
@@ -2217,11 +2217,11 @@ Db2 knows which function is which because the MAX scalar value must have at leas
 The MAX and MIN scalar functions return null if any one of the input list items is null. The MAX and MIN column functions ignore null values. They do however return null when no rows match.
 
 ==== MAX_CARDINALITY
-
+(((MAX_CARDINALITY)))
 Returns a BIGINT value that is the maximum number of values that an array can contain.
 
 ==== MICROSECOND
-
+(((MICROSECOND)))
 Returns the microsecond part of a timestamp (or equivalent) value. The output is integer.
 
 .MICROSECOND function example
@@ -2242,7 +2242,7 @@ _ANSWER_
 |===
 
 ==== MIDNIGHT_SECONDS
-
+(((MIDNIGHT_SECONDS)))
 Returns the number of seconds since midnight from a timestamp, time or equivalent value. The output format is integer.
 
 .MIDNIGHT_SECONDS function example
@@ -2294,7 +2294,7 @@ NOTE: The following two identical timestamp values: "2005-07-15.24.00.00" and "2
 
 [[min.function]]
 ==== MIN
-
+(((MIN)))
 Returns the smallest item from a list that must be at least two items long:
 
 .MIN scalar function
@@ -2308,7 +2308,7 @@ _ANSWER_ => 4
 Null is returned if any one of the list items is null.
 
 ==== MINUTE
-
+(((MINUTE)))
 Returns the minute part of a time or timestamp (or equivalent) value. The output is integer.
 
 .MINUTE function example
@@ -2329,7 +2329,7 @@ _ANSWER_
 |===
 
 ==== MOD
-
+(((MOD)))
 Returns the remainder (modulus) for the first argument divided by the second. In the following example the last column uses the MOD function to get the modulus, while the second to last column obtains the same result using simple arithmetic.
 
 .MOD function example
@@ -2366,11 +2366,11 @@ _ANSWER_
 |===
 
 ==== MONTH
-
+(((MONTH)))
 Returns an integer value in the range 1 to 12 that represents the month part of a date or timestamp (or equivalent) value.
 
 ===== MONTHNAME
-
+(((MONTHNAME)))
 Returns the name of the month (e.g. October) as contained in a date (or equivalent) value. The output format is varchar(100).
 
 .MONTH and MONTHNAME functions example
@@ -2392,7 +2392,7 @@ _ANSWER_
 |===
 
 ==== MULTIPLY_ALT
-
+(((MULTIPLY_ALT)))
 Returns the product of two arguments as a decimal value. Use this function instead of the multiplication operator when you need to avoid an overflow error because Db2 is putting aside too much space for the scale (i.e. fractional part of number) Valid input is any exact numeric type: decimal, integer, bigint, or smallint (but not float).
 
 .Multiplying numbers - examples
@@ -2429,7 +2429,7 @@ When doing ordinary multiplication of decimal values, the output precision and t
 |===
 
 ==== NORMALIZE_DECFLOAT
-
+(((NORMALIZE_DECFLOAT)))
 Removes any trailing zeros from a DECFLOAT value.
 
 .NORMALIZE_DECFLOAT function examples
@@ -2468,9 +2468,8 @@ _ANSWER_
 |===
 
 ==== NULLIF
-
-Returns null if the two values being compared are equal, otherwise
-returns the first value.
+(((NULLIF)))
+Returns null if the two values being compared are equal, otherwise returns the first value.
 
 .NULLIF function examples
 [source,sql]
@@ -2492,11 +2491,11 @@ _ANSWER_
 |===
 
 ==== NVL
-
+(((NVL)))
 Same as COALESCE.
 
 ==== OCTET_LENGTH
-
+(((OCTET_LENGTH)))
 Returns the length of the input expression in octets (bytes).
 
 .OCTET_LENGTH example
@@ -2521,7 +2520,7 @@ _ANSWER_
 |===
 
 ==== OVERLAY
-
+(((OVERLAY)))
 Overlay (i.e. replace) some part of a string with another string. There
 are five parameters:
 
@@ -2558,7 +2557,7 @@ _ANSWER_
 |===
 
 ==== PARTITION
-
+(((PARTITION)))
 Returns the partition map index of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
 
 .PARTITION function example
@@ -2578,7 +2577,7 @@ _ANSWER_
 |===
 
 ==== POSITION
-
+(((POSITION)))
 Returns an integer value with the absolute starting position of the first occurrence of the first string within the second string. If there is no match, the result is zero. The third parameter indicates what code-unit to use.
 
 When a special character like "Á" is encountered before the find-string (see last two lines in next example) the plain OCTETS search returns the number of bytes searched, not the number of characters:
@@ -2612,7 +2611,7 @@ _ANSWER_
 The LOCATE function (see <<locate.function>>) is very similar to the POSITION function. It has the additional capability of being able to start the search at any position in the search string.
 
 ==== POSSTR
-
+(((POSSTR)))
 Returns the position at which the second string is contained in the first string. If there is no match the value is zero. The test is case sensitive. The output format is integer.
 
 POSSTR function example
@@ -2663,7 +2662,7 @@ _ANSWER_
 |===
 
 ==== POWER
-
+(((POWER)))
 Returns the value of the first argument to the power of the second argument
 
 .POWER function examples
@@ -2690,7 +2689,7 @@ _ANSWER_
 |===
 
 ==== QUANTIZE
-
+(((QUANTIZE)))
 Convert the first input parameter to DECFLOAT, using the second parameter as a mask. The specific value of the second parameter is irrelevant. But the precision (i.e. number of digits after the decimal point) defines the precision of the DECFLOAT result:
 
 .QUANTIZE function examples
@@ -2748,15 +2747,15 @@ _ANSWER_
 |===
 
 ==== QUARTER
-
+(((QUARTER)))
 Returns an integer value in the range 1 to 4 that represents the quarter of the year from a date or timestamp (or equivalent) value.
 
 ==== RADIANS
-
+(((RADIANS)))
 Returns the number of radians converted from the input, which is expressed in degrees. The output format is double.
 
 ==== RAISE_ERROR
-
+(((RAISE_ERROR)))
 Causes the SQL statement to stop and return a user-defined error message when invoked. There are a lot of usage restrictions involving this function, see the SQL Reference for details.
 
 .RAISE_ERROR function example
@@ -2781,7 +2780,7 @@ _ANSWER_
 The SIGNAL statement (see <<signal.statement>>) is the statement equivalent of this function.
 
 ==== RAND
-
+(((RAND)))
 WARNING: Using the RAND function in a predicate can result in unpredictable results. See <<rand.in.predicate>> for a detailed description of this issue. To randomly sample the rows in a table reliably and efficiently, use the TABLESAMPLE feature. See <<randomly.sample.data>> for details.
 
 Returns a pseudo-random floating-point value in the range of zero to one inclusive. An optional seed value can be provided to get reproducible random results. This function is especially useful when one is trying to create somewhat realistic sample data.
@@ -3026,7 +3025,7 @@ WHERE id < 50;
 ....
 
 ==== REAL
-
+(((REAL)))
 Returns a single-precision floating-point representation of a number.
 
 .REAL and other numeric function examples
@@ -3050,7 +3049,7 @@ _ANSWER_
 |===
 
 ==== REPEAT
-
+(((REPEAT)))
 Repeats a character string "n" times.
 
 .REPEAT function example
@@ -3072,7 +3071,7 @@ _ANSWER_
 |===
 
 ==== REPLACE
-
+(((REPLACE)))
 Replaces all occurrences of one string with another. The output is of type varchar(4000).
 
 .REPLACE function examples
@@ -3117,7 +3116,7 @@ _ANSWER_
 |===
 
 ==== RID
-
+(((RID)))
 Returns the RID (i.e. row identifier - of type BIGINT) for the matching row. The row identifier contains the page number, and the row number within the page. A unique table identifier must be provided.
 
 .RID function example
@@ -3142,7 +3141,7 @@ _ANSWER_
 The RID function is similar to the RID_BIT function, but less useful (e.g. does not work in a DPF environment). All subsequent examples will refer to the RID_BIT function.
 
 ==== RID_BIT
-
+(((RID_BIT)))
 Returns the row identifier, of type VARCHAR(16) FOR BIT DATA, for the row. The row identifier contains the page number, and the row number within the page. The only input value, which must be provided, is the (unique) table identifier. The table must be listed in the subsequent FROM statement.
 
 .RID_BIT function example – single table
@@ -3224,7 +3223,7 @@ AND ROW CHANGE TOKEN FOR staff = 3999250443959009280;
 * The ROW CHANGE TOKEN is unique per page, not per row. So if any other row in the same page is changed, the prior update will not match. This is called a "false negative". To avoid, define a ROW CHANGE TIMESTAMP column for the table, as the value in this field is unique per row. 
 
 ==== RIGHT
-
+(((RIGHT)))
 Has two arguments: The first is an input string of type char, varchar, clob, or blob. The second is a positive integer value. The output, of type varchar(4000), is the right most characters in the string.
 
 .RIGHT function examples
@@ -3250,7 +3249,7 @@ _ANSWER_
 |===
 
 ==== ROUND
-
+(((ROUND)))
 Rounds the rightmost digits of number (1st argument). If the second argument is positive, it rounds to the right of the decimal place. If the second argument is negative, it rounds to the left. A second argument of zero results rounds to integer. The input and output types are the same, except for decimal where the precision will be increased by one - if possible. Therefore, a DEC(5,2)field will be returned as DEC(6,2), and a DEC(31,2) field as DEC(31,2). To truncate instead of round, use the TRUNCATE function.
 
 .ROUND function examples
@@ -3280,7 +3279,7 @@ _ANSWER_
 |===
 
 ==== RTRIM
-
+(((RTRIM)))
 Trims the right-most blanks of a character string.
 
 .RTRIM function example
@@ -3302,15 +3301,15 @@ _ANSWER_
 |===
 
 ==== SECLABEL Functions
-
+(((SECLABEL)))
 The SECLABEL, SECLABEL_BY_NAME, and SECLABEL_BY_CHAR functions are used to process security labels. See the SQL Reference for more details.
 
 ==== SECOND
-
+(((SECOND)))
 Returns the second (of minute) part of a time or timestamp (or equivalent) value.
 
 ==== SIGN
-
+(((SIGN)))
 Returns -1 if the input number is less than zero, 0 if it equals zero, and +1 if it is greater than zero. The input and output types will equal, except for decimal which returns double.
 
 .SIGN function examples
@@ -3332,7 +3331,7 @@ _ANSWER (float output shortened)_
 |===
 
 ==== SIN
-
+(((SIN)))
 Returns the SIN of the argument where the argument is an angle expressed in radians. The output format is double. 
 
 .SIN function example
@@ -3367,11 +3366,11 @@ _ANSWER_
 |===
 
 ==== SINH
-
+(((SINH)))
 Returns the hyperbolic sin for the argument, where the argument is an angle expressed in radians. The output format is double.
 
 ==== SMALLINT
-
+(((SMALLINT)))
 Converts either a number or a valid character value into a smallint value.
 
 .SMALLINT function examples
@@ -3394,11 +3393,11 @@ _ANSWER_
 |===
 
 ==== SNAPSHOT Functions
-
+(((SNAPSHOT)))
 The various SNAPSHOT functions can be used to analyze the system. They are beyond the scope of this book. Refer instead to the Db2 System Monitor Guide and Reference.
 
 ==== SOUNDEX
-
+(((SOUNDEX)))
 Returns a 4-character code representing the sound of the words in the argument. Use the DIFFERENCE function to convert words to soundex values and then compare. 
 
 .SOUNDEX function example
@@ -3483,7 +3482,7 @@ _ANSWER_
 |===
 
 ==== SQRT
-
+(((SQRT)))
 Returns the square root of the input value, which can be any positive number. The output format is double.
 
 .SQRT function example
@@ -3511,7 +3510,7 @@ _ANSWER_
 
 [[strip.function]]
 ==== STRIP
-
+(((STRIP)))
 Removes leading, trailing, or both (the default), characters from a string. If no strip character is provided, leading and/or trailing blank characters are removed.
 
 Observe in the following query that the last example removes leading "A" characters:
@@ -3544,7 +3543,7 @@ _ANSWER_
 The TRIM function works the same way.
 
 ==== SUBSTR
-
+(((SUBSTR)))
 Returns part of a string. If the length is not provided, the output is from the start value to the end of the string.
 
 If the length is provided, and it is longer than the field length, a SQL error results. The following statement illustrates this. Note that in this example the DAT1 field has a "field length" of 9 (i.e. the length of the longest input string).
@@ -3626,7 +3625,7 @@ _ANSWER_
 |===
 
 ==== TABLE
-
+(((TABLE)))
 There isn't really a TABLE function, but there is a TABLE phrase that returns a result, one row at a time, from either an external (e.g. user written) function, or from a nested table expression. The TABLE phrase (function) has to be used in the latter case whenever there is a reference in the nested table expression to a row that exists outside of the expression. An example follows:
 
 .Fullselect with external table reference
@@ -3659,7 +3658,7 @@ _ANSWER_
 See <<table.function.usage>> for more details on using of the TABLE phrase in a nested table expression.
 
 ==== TABLE_NAME
-
+(((TABLE_NAME)))
 Returns the base view or table name for a particular alias after all alias chains have been resolved. The output type is varchar(18). If the alias name is not found, the result is the input values. There are two input parameters. The first, which is required, is the alias name. The second, which is optional, is the alias schema. If the second parameter is not provided, the default schema is used for the qualifier.
 
 TABLE_NAME function example
@@ -3682,7 +3681,7 @@ _ANSWER_
 |===
 
 ==== TABLE_SCHEMA
-
+(((TABLE_SCHEMA)))
 Returns the base view or table schema for a particular alias after all alias chains have been resolved. The output type is char(8). If the alias name is not found, the result is the input values. There are two input parameters. The first, which is required, is the alias name. The second, which is optional, is the alias schema. If the second parameter is not provided, the default schema is used for the qualifier.
 
 *Resolving non-existent Objects*
@@ -3717,19 +3716,19 @@ _ANSWER_
 |===
 
 ==== TAN
-
+(((TAN)))
 Returns the tangent of the argument where the argument is an angle expressed in radians.
 
 ==== TANH
-
+(((TANH)))
 Returns the hyperbolic tan for the argument, where the argument is an angle expressed in radians. The output format is double.
 
 ==== TIME
-
+(((TIME)))
 Converts the input into a time value.
 
 ==== TIMESTAMP
-
+(((TIMESTAMP)))
 Converts the input(s) into a timestamp value.
 
 *Argument Options*
@@ -3758,7 +3757,7 @@ FROM staff WHERE id = 10;
 
 [[timestamp_format.function]]
 ==== TIMESTAMP_FORMAT
-
+(((TIMESTAMP_FORMAT)))
 Takes an input string with the format: "YYYY-MM-DD HH:MM:SS" and converts it into a valid timestamp value. The VARCHAR_FORMAT function does the inverse.
 
 .TIMESTAMP_FORMAT function example
@@ -3784,7 +3783,7 @@ _ANSWER_
 Note that the only allowed formatting mask is the one shown.
 
 ==== TIMESTAMP_ISO
-
+(((TIMESTAMP_ISO)))
 Returns a timestamp in the ISO format (yyyy-mm-dd hh:mm:ss.nnnnnn) converted from the IBM internal format (yyyy-mm-dd-hh.mm.ss.nnnnnn). If the input is a date, zeros are inserted in the time part. If the input is a time, the current date is inserted in the date part and zeros in the microsecond section.
 
 .TIMESTAMP_ISO function example
@@ -3804,7 +3803,7 @@ _ANSWER_
 |===
 
 ==== TIMESTAMPDIFF
-
+(((TIMESTAMPDIFF)))
 Returns an integer value that is an estimate of the difference between two timestamp values. Unfortunately, the estimate can sometimes be seriously out (see the example below), so this function should be used with extreme care.
 
 *Arguments*
@@ -3874,15 +3873,15 @@ RETURN (BIGINT(DAYS(in_hi))             * 86400000000
 ....
 
 ==== TO_CHAR
-
+(((TO_CHAR)))
 This function is a synonym for VARCHAR_FORMAT (see <<varchar_format.function>>). It converts a timestamp value into a string using a template to define the output layout.
 
 ==== TO_DATE
-
+(((TO_DATE)))
 This function is a synonym for TIMESTAMP_FORMAT (see <<timestamp_format.function>>). It converts a character string value into a timestamp using a template to define the input layout.
 
 ==== TOTALORDER
-
+(((TOTALORDER)))
 Compares two DECFLOAT expressions and returns a SMALLINT number:
 
 * *-1* if the first value is less than the second value.
@@ -3926,7 +3925,7 @@ _ANSWER_
 |===
 
 ==== TRANSLATE
-
+(((TRANSLATE)))
 Converts individual characters in either a character or graphic input string from one value to another. It can also convert lower case data to upper case.
 
 *Usage Notes*
@@ -3988,11 +3987,11 @@ _ANSWER_
 |===
 
 ==== TRIM
-
+(((TRIM)))
 See <<strip.function>> function.
 
 ==== TRUNC or TRUNCATE
-
+(((TRUNC))) (((TRUNCATE)))
 Truncates (not rounds) the rightmost digits of an input number (1st argument). If the second argument is positive, it truncates to the right of the decimal place. If the second value is negative, it truncates to the left. A second value of zero truncates to integer. The input and output types will equal. To round instead of truncate, use the ROUND function.
 
 .TRUNCATE function examples
@@ -4024,19 +4023,19 @@ _ANSWER_
 |===
 
 ==== TYPE_ID
-
+(((TYPE_ID)))
 Returns the internal type identifier of the dynamic data type of the expression.
 
 ==== TYPE_NAME
-
+(((TYPE_NAME)))
 Returns the unqualified name of the dynamic data type of the expression.
 
 ==== TYPE_SCHEMA
-
+(((TYPE_SCHEMA)))
 Returns the schema name of the dynamic data type of the expression.
 
 ==== UCASE or UPPER
-
+(((UCASE))) (((UPPER)))
 Converts a mixed or lower-case string to upper case. The output is the same data type and length as the input. 
 
 .UCASE function example
@@ -4057,11 +4056,11 @@ _ANSWER_
 |===
 
 ==== VALUE
-
+(((VALUE)))
 Same as COALESCE.
 
 ==== VARCHAR
-
+(((VARCHAR)))
 Converts the input (1st argument) to a varchar data type. The output length (2nd argument) is optional. Trailing blanks are not removed.
 
 ,VARCHAR function examples
@@ -4084,12 +4083,12 @@ _ANSWER_
 |===
 
 ==== VARCHAR_BIT_FORMAT
-
+(((VARCHAR_BIT_FORMAT)))
 Returns a VARCHAR bit-data representation of a character string. See the SQL Reference for more details.
 
 [[varchar_format.function]]
 ==== VARCHAR_FORMAT
-
+(((VARCHAR_FORMAT)))
 Converts a timestamp value into a string with the format: "YYYY-MM-DD HH:MM:SS". The TIMESTAMP_FORMAT function does the inverse.
 
 .VARCHAR_FORMAT function example
@@ -4115,15 +4114,15 @@ _ANSWER_
 Note that the only allowed formatting mask is the one shown.
 
 ==== VARCHAR_FORMAT_BIT
-
+(((VARCHAR_FORMAT_BIT)))
 Returns a VARCHAR representation of a character bit-data string. See the SQL Reference for more details.
 
 ==== VARGRAPHIC
-
+(((VARGRAPHIC)))
 Converts the input (1st argument) to a VARGRAPHIC data type. The output length (2nd argument) is optional.
 
 ==== WEEK
-
+(((WEEK)))
 Returns a value in the range 1 to 53 or 54 that represents the week of the year, where a week begins on a Sunday, or on the first day of the year. Valid input types are a date, a timestamp, or an equivalent character value. The output is of type integer.
 
 .WEEK function examples
@@ -4146,7 +4145,7 @@ _ANSWER_
 Both the first and last week of the year may be partial weeks. Likewise, from one year to the next, a particular day will often be in a different week (see <<comparing.weeks>>).
 
 ==== WEEK_ISO
-
+(((WEEK_ISO)))
 Returns an integer value, in the range 1 to 53, that is the "ISO" week number. An ISO week differs from an ordinary week in that it begins on a Monday and it neither ends nor begins at the exact end of the year. Instead, week 1 is the first week of the year to contain a Thursday. Therefore, it is possible for up to three days at the beginning of the year to appear in the last week of the previous year. As with ordinary weeks, not all ISO weeks contain seven days. 
 
 WEEK_ISO function example
@@ -4202,7 +4201,7 @@ _ANSWER_
 |===
 
 ==== YEAR
-
+(((YEAR)))
 Returns a four-digit year value in the range 0001 to 9999 that represents the year (including the century). The input is a date or timestamp (or equivalent) value. The output is integer.
 
 .YEAR and WEEK functions example
@@ -4367,7 +4366,7 @@ _ANSWER_
 |===
 
 === User Defined Functions
-
+(((User defined functions))) (((UDF)))
 Many problems that are really hard to solve using raw SQL become surprisingly easy to address, once one writes a simple function. This chapter will cover some of the basics of user defined functions. These can be very roughly categorized by their input source, their output type, and the language used:
 
 * External scalar functions use an external process (e.g. a C program), and possibly also an external data source, to return a single value.
@@ -4511,7 +4510,7 @@ _ANSWER_
 |===
 
 ==== Scalar Functions
-
+(((Scalar function)))
 A scalar function has as input a specific number of values (i.e. not a table) and returns a single output item.
 
 If a function returns a value (as opposed to a table), that value will always be nullable, regardless of whether or not the returned value can ever actually be null. This may cause problems if one is not prepared to handle a null indicator. To illustrate, the following function will return a nullable value that never be null:

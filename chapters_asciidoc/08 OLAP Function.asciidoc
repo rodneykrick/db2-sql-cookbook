@@ -1,5 +1,5 @@
 == OLAP Functions
-
+(((OLAP)))
 === Introduction
 
 Online Analytical Processing (OLAP) functions enable one to sequence and rank query rows. They are especially useful when the calling program is very simple.
@@ -221,7 +221,7 @@ first matching row (ordered by ID), up to and including the current row.
 * *AVG4*: An average of matching rows within a department, starting with one preceding row (i.e. the highest, ordered by ID), the current row, and the next two following rows.
 
 ==== PARTITION Expression
-
+(((OLAP, PARTITION)))
 The PARTITION BY expression, which is optional, defines the set of rows that are used in each OLAP function calculation.
 
 Below is a query that uses different partitions to average sets of rows:
@@ -433,7 +433,7 @@ _ANSWER_
 
 [[rows.vs.range]]
 ==== ROWS vs. RANGE
-
+(((OLAP, ROWS)) (((OLAP, RANGE)))
 A moving window of rows to be evaluated (relative to the current row) can be defined using either the ROW or RANGE expressions. These differ as follows:
 
 * *ROWS*: Refers to the "n" rows before and/or after (within the partition), as defined by the ORDER BY.
@@ -485,7 +485,7 @@ _ANSWER_
 * When using the RANGE expression, only one expression can be specified in the ORDER BY, and that expression must be numeric.
 
 ==== ORDER BY Expression
-
+(((OLAP, ORDER BY)))
 The ORDER BY phrase has several purposes:
 
 * It defines the set of rows that make up a moving window.
@@ -665,7 +665,7 @@ _ANSWER_
 
 [[rank.and.dense_rank]]
 ===== RANK and DENSE_RANK
-
+(((OLAP, RANK))) (((OLAP, DENSE_RANK)))
 The RANK and DENSE_RANK functions enable one to rank the rows returned by a query. The result is of type BIGINT.
 
 NOTE: The ORDER BY phrase, which is required, is used to both sequence the values, and to tell Db2 when to generate a new value.
@@ -718,7 +718,7 @@ _ANSWER_
 
 
 ==== ORDER BY Usage
-
+(((OLAP, ORDER BY)))
 The mandatory ORDER BY phrase gives a sequence to the ranking, and also tells Db2 when to start a new rank value. The following query illustrates both uses:
 
 .ORDER BY usage
@@ -759,7 +759,7 @@ _ANSWER_
 Observe above that adding more fields to the ORDER BY phrase resulted in more ranking values being generated.
 
 ==== PARTITION Usage
-
+(((OLAP, PARTITION)))
 The optional PARTITION phrase lets one rank the data by subsets of the rows returned. In the following example, the rows are ranked by salary within year:
 
 .Values ranked by subset of rows
@@ -1025,7 +1025,7 @@ Arguably, the first query above (i.e. the one using the RANK function) is the mo
 
 [[row_number.function]]
 ==== ROW_NUMBER
-
+(((OLAP, ROW_NUMBER)))
 The ROW_NUMBER function lets one number the rows being returned. The result is of type BIGINT. A syntax diagram follows. Observe that unlike with the ranking functions, the ORDER BY is not required.
 
 ===== ORDER BY Usage
@@ -1475,7 +1475,7 @@ In this section we have illustrated how minor changes to the SQL syntax can caus
 assume that this problem is not an issue.
 
 ==== FIRST_VALUE and LAST_VALUE
-
+(((OLAP, FIRST_VALUE))) (((OLAP, LAST_VALUE)))
 The FIRST_VALUE and LAST_VALUE functions get first or last value in the (moving) window of matching rows.
 
 *Usage Notes*
@@ -1792,7 +1792,7 @@ ORDER BY id;
 |===
 
 ==== RANGE Usage
-
+(((OLAP, RANGE)))
 The RANGE phrase limits the aggregation result to a range of numeric values - defined relative to the value of the current row being processed (see <<window.definition>>). The range is obtained by taking the value in the current row (defined by the ORDER BY expression) and adding to and/or subtracting from it, then seeing what other matching rows are in the range.
 
 NOTE: When using a RANGE, only one expression can be specified in the ORDER BY, and that expression must be numeric.
@@ -1845,7 +1845,7 @@ Note the difference between the ROWS as RANGE expressions:
 
 [[between-vs-order-by]]
 ==== BETWEEN vs. ORDER BY
-
+(((OLAP, BETWEEN)))
 The BETWEEN predicate in an ordinary SQL statement is used to get those rows that have a value between the specified low-value (given first) and the high value (given last). Thus the predicate "BETWEEN 5 AND 10" may find rows, but the predicate "BETWEEN 10 AND 5" will never find any. The
 BETWEEN phrase in an aggregation function has a similar usage in that it defines the set of rows to be aggregated. But it differs in that the answer depends upon the related ORDER BY sequence, and a non-match returns a null value, not no-rows. Below is some sample SQL. Observe that the first two aggregations are ascending, while the last two are descending:
 

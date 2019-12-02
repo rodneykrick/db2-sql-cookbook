@@ -1,6 +1,6 @@
 [[compound.sql.chapter]]
 == Compound SQL
-
+(((Compound SQL)))
 A compound statement groups multiple independent SQL statements into a single executable. In addition, simple processing logic can be included to create what is, in effect, a very basic program. Such statements can be embedded in triggers, SQL functions, SQL methods, and dynamic SQL statements.
 
 === Introduction
@@ -29,7 +29,7 @@ END
 ....
 
 ==== Statement Delimiter
-
+(((Statement delimiter)))
 Db2 SQL does not come with a designated statement delimiter
 (terminator), though a semicolon is typically used. However, a semi-colon cannot be used in a compound SQL statement because that character is used to differentiate the sub-components of the statement. In Db2BATCH, one can run the SET DELIMITER command (intelligent comment) to use something other than a semi-colon. The following script illustrates this usage:
 
@@ -65,7 +65,7 @@ When used in dynamic SQL, the following control statements can be used:
 * SIGNAL statement
 * WHILE statement
 
-NOTE: There are many more PSM control statements than what is shown above. But only these ones can be used in Compound SQL statements.
+NOTE: There are many more PSM (persistent stored modules) control statements than what is shown above. But only these ones can be used in Compound SQL statements.
 
 The following SQL statements can be issued:
 
@@ -97,7 +97,7 @@ END
 
 *FOR Statement*
 
-The FOR statement executes a group of statements for each row fetched from a query.
+The ((FOR)) statement executes a group of statements for each row fetched from a query.
 
 In the next example one row is fetched per year of service (for selected years) in the STAFF table. That row is then used to do two independent updates to the three matching rows:
 
@@ -140,7 +140,7 @@ END
 
 ==== GET DIAGNOSTICS Statement
 
-The GET DIAGNOSTICS statement returns information about the most recently run SQL statement. One can either get the number of rows processed (i.e. inserted, updated, or deleted), or the return status (for an external procedure call).
+The ((GET DIAGNOSTICS)) statement returns information about the most recently run SQL statement. One can either get the number of rows processed (i.e. inserted, updated, or deleted), or the return status (for an external procedure call).
 
 In the example below, some number of rows are updated in the STAFF table. Then the count of rows updated is obtained, and used to update a row in the STAFF table:
 
@@ -161,7 +161,7 @@ END
 
 ==== IF Statement
 
-The IF statement is used to do standard if-then-else branching logic. It always begins with an IF THEN statement and ends with and END IF statement.
+The ((IF)) statement is used to do standard if-then-else branching logic. It always begins with an IF THEN statement and ends with and END IF statement.
 
 The next example uses if-then-else logic to update one of three rows in the STAFF table, depending on the current timestamp value:
 
@@ -189,7 +189,7 @@ END
 
 ==== ITERATE Statement
 
-The ITERATE statement causes the program to return to the beginning of the labeled loop.
+The ((ITERATE)) statement causes the program to return to the beginning of the labeled loop.
 
 In next example, the second update statement will never get performed because the ITERATE will always return the program to the start of the loop:
 
@@ -214,7 +214,7 @@ END
 
 ==== LEAVE Statement
 
-The LEAVE statement exits the labeled loop.
+The ((LEAVE)) statement exits the labeled loop.
 
 In the next example, the WHILE loop would continue forever, if left to its own devices. But after some random number of iterations, the LEAVE statement will exit the loop:
 
@@ -239,7 +239,7 @@ END
 [[signal.statement]]
 ==== SIGNAL Statement
 
-The SIGNAL statement is used to issue an error or warning message.
+The ((SIGNAL)) statement is used to issue an error or warning message.
 
 The next example loops a random number of times, and then generates an error message using the SIGNAL command, saying how many loops were done:
 
@@ -260,7 +260,7 @@ END
 
 ==== WHILE Statement
 
-The WHILE statement repeats one or more statements while some condition is true.
+The ((WHILE)) statement repeats one or more statements while some condition is true.
 
 The next statement has two nested WHILE loops, and then updates the STAFF table:
 
@@ -325,7 +325,7 @@ If all you want to get is this list, the above query is the way to go.
 But we will get the same answer using various other methods, just to show how it can be done using compound SQL statements.
 
 ===== Trigger
-
+(((Trigger)))
 One cannot get an answer using a trigger. All one can do is alter what happens during an insert, update, or delete. With this in mind, the following example does the following:
 
 * Sets the statement delimiter to an "!". Because we are using compound SQL inside the trigger definition, we cannot use the usual semi-colon.
@@ -392,7 +392,7 @@ NOTE: This example uses an "!" as the stmt delimiter.
 NOTE: The above code was designed to be run in Db2BATCH. The "set delimiter" notation will probably not work in other environments.
 
 ===== Scalar Function
-
+(((Scalar function)))
 One can do something very similar to the above that is almost as stupid using a user-defined scalar function, that calculates the number of rows in a given department. The basic logic will go as follows:
 
 * Set the statement delimiter to an "!".
@@ -479,7 +479,7 @@ ORDER BY dept!
 In the above example, the RETURN statement is directly finding the one matching row, and then returning it to the calling statement.
 
 ===== Table Function
-
+(((Table function)))
 Below is almost exactly the same logic, this time using a table function:
 
 Table Function with compound SQL

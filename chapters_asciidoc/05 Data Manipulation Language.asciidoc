@@ -240,7 +240,7 @@ The above statement will insert two rows into the table for US customers, and on
 
 === Update
 
-The UPDATE statement is used to change one or more columns/rows in a table, view, or fullselect. Each column that is to be updated has to specified. Here is an example:
+The ((UPDATE)) statement is used to change one or more columns/rows in a table, view, or fullselect. Each column that is to be updated has to specified. Here is an example:
 
 .Single row update
 [source,sql]
@@ -424,7 +424,7 @@ AND    projno  = 'MA2100';
 ....
 
 ==== Correlated and Uncorrelated Update
-
+(((Correlated)))
 In the next example, regardless of the number of rows updated, the ACTNO will always come out as one. This is because the sub-query that calculates the row-number is correlated, which means that it is resolved again for each row to be updated in the "AC1" table. At most, one "AC2"
 row will match, so the row-number must always equal one:
 
@@ -485,7 +485,7 @@ AND   actno  = 10;
 * Usually, all matching rows are deleted. To delete some fraction of the matching rows, use a fullselect (see <<use.full.select>>).
 
 ==== Basic Delete
-
+(((DELETE)))
 This statement would delete all rows in the EMP_ACT table:
 
 .Mass delete
@@ -576,7 +576,7 @@ WARNING: The above statement may delete five random rows – if there is more th
 
 [[select.dml.changes]]
 === Select DML Changes
-
+(((FINAL TABLE)))
 A special kind of SELECT statement (see <<select.dml.changes>>) can encompass an INSERT, UPDATE, or DELETE statement to get the before or after image of whatever rows were changed (e.g. select the list of rows deleted). This kind of SELECT can be very useful when the DML statement is internally generating a value that one needs to know (e.g. an INSERT automatically creates a new invoice number using a sequence column), or get the set of rows that were removed by a delete. All of this can be done by coding a special kind of select.
 
 ==== Table Types
@@ -649,9 +649,9 @@ ORDER BY row#;
 
 _ANSWER_
 |===
-|EMPNO | PRJ| ACT| R#
-|300000| ZZZ| 999| 1
-|300000| VVV| 111| 2
+|EMPNO |PRJ|ACT|R#
+|300000|ZZZ|999|1
+|300000|VVV|111|2
 |===
 The next example uses the INPUT SEQUENCE phrase to select the new rows in the order that they were inserted. Row numbers are assigned to the output:
 
@@ -678,7 +678,7 @@ _ANSWER_
 |400000|VVV|111|2
 |===
 
-NOTE: The INPUT SEQUENCE phrase only works in an insert statement. It can be listed in the ORDER BY part of the statement, but not in the SELECT part. The only way to display the row number of each row inserted is to explicitly assign row numbers.
+NOTE: The ((INPUT SEQUENCE)) phrase only works in an insert statement. It can be listed in the ORDER BY part of the statement, but not in the SELECT part. The only way to display the row number of each row inserted is to explicitly assign row numbers.
 
 In the next example, the only way to know for sure what the insert has done is to select from the result. This is because the select statement (in the insert) has the following unknowns:
 
@@ -716,7 +716,7 @@ _ANSWER_
 |===
 
 ==== Update Examples
-
+(((NEW TABLE)))
 The statement below updates the matching rows by a fixed amount. The select statement gets the old EMPTIME values:
 
 .Select values - from before update
@@ -766,7 +766,7 @@ _ANSWER_
 |===
 
 ==== Delete Examples
-
+(((OLD TABLE)))
 The following example lists the rows that were deleted:
 
 .List deleted rows
