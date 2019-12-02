@@ -1,5 +1,5 @@
 == Table Functions
-
+(((Table functions)))
 A table function is very similar to a scalar function, except that it returns a set of rows and columns, rather than a single value. Here is an example:
 
 .Simple table function

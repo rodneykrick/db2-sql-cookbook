@@ -1050,7 +1050,7 @@ _ANSWER_
 
 ==== Working with Nulls
 
-In SQL something can be true, false, or ((null)). This three-way logic has to always be considered when accessing data. To illustrate, if we first select all the rows in the STAFF table where the SALARY is < $10,000, then all the rows where the SALARY is >= $10,000, we have not necessarily found all the rows in the table because we have yet to select those rows where the SALARY is null. The presence of null values in a table can also impact the various column functions. For example, the AVG function ignores null values when calculating the average of a
+In SQL something can be true, false, or ((NULL)). This three-way logic has to always be considered when accessing data. To illustrate, if we first select all the rows in the STAFF table where the SALARY is < $10,000, then all the rows where the SALARY is >= $10,000, we have not necessarily found all the rows in the table because we have yet to select those rows where the SALARY is null. The presence of null values in a table can also impact the various column functions. For example, the AVG function ignores null values when calculating the average of a
 set of rows. This means that a user-calculated average may give a different result from a Db2 calculated equivalent:
 
 .AVG of data containing null values
@@ -1089,7 +1089,7 @@ ANSWER
 
 ===== Why Null Exist
 
-((Null)) values can represent two kinds of data. In first case, the value is unknown (e.g. we do not know the name of the person's spouse).
+((NULL)) values can represent two kinds of data. In first case, the value is unknown (e.g. we do not know the name of the person's spouse).
 Alternatively, the value is not relevant to the situation (e.g. the person does not have a spouse). Many people prefer not to have to bother with nulls, so they use instead a special value when necessary (e.g. an unknown employee name is blank). This trick works OK with character data, but it can lead to problems when used on numeric values (e.g. an unknown salary is set to zero). 
 
 ===== Locating Null Values
