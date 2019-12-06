@@ -1,11 +1,9 @@
 [[column.function.chapter]]
-== Column Functions
-(((Column function)))
+== Column Functions or Aggregate Functions 
+(((Column function))) (((Aggregate functions)))
 By themselves, column functions work on the complete set of matching rows. One can use a GROUP BY expression to limit them to a subset of matching rows. One can also use them in an OLAP function to treat individual rows differently. 
 
-WARNING: Be very careful when using either a column function, or the DISTINCT clause, in a join. If the join
-is incorrectly coded, and does some form of Cartesian Product, the column function may get rid of the all the extra (wrong) rows so that it becomes very hard to confirm that the answer is incorrect. Likewise, be appropriately suspicious whenever you see that someone (else) has used a
-DISTINCT statement in a join. Sometimes, users add the DISTINCT clause to get rid of duplicate rows that they didn't anticipate and don't understand.
+WARNING: Be very careful when using either a column function, or the DISTINCT clause, in a join. If the join is incorrectly coded, and does some form of Cartesian Product, the column function may get rid of the all the extra (wrong) rows so that it becomes very hard to confirm that the answer is incorrect. Likewise, be appropriately suspicious whenever you see that someone (else) has used a DISTINCT statement in a join. Sometimes, users add the DISTINCT clause to get rid of duplicate rows that they didn't anticipate and don't understand.
 
 === Column Functions, Definitions
 
@@ -269,6 +267,14 @@ _ANSWER_
 |83666.|-83666.| -1.4689| -0.0004
 |===
 
+==== COVARIANCE_SAMP
+(((COVARIANCE_SAMP)))
+Returns the sample covariance of a set of number pairs.
+
+==== CUME_DIST
+(((CUME_DIST)))
+Returns the cumulative distribution of a row that is hypothetically inserted into a group of rows.
+
 [[grouping.function]]
 ==== GROUPING
 (((GROUPING)))
@@ -302,8 +308,12 @@ _ANSWER_
 NOTE: See the section titled "Group By and Having" for more
 information on this function.
 
-==== MAX
+==== LISTAGG
+(((LISTAGG)))
+Aggregates a set of string elements into one string by concatenating the strings. Optionally, a separator string can be provided which is inserted between contiguous input strings.
 
+==== MAX
+(((MAX)))
 Get the maximum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.
 
 .MAX function examples
@@ -379,8 +389,12 @@ _ANSWER_
 
 WARNING: Be careful when using a column function on a field that has been converted from number to character, or from date/time to character. The result may not be what you intended.
 
-==== MIN
+==== MEDIAN
+(((MEDIAN)))
+Returns the median value in a set of values.
 
+==== MIN
+(((MIN)))
 Get the minimum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.
 
 .MIN function examples
@@ -398,6 +412,18 @@ _ANSWER_
 |1 | 2 | 3 | 4
 |10| 10| 10| 1
 |===
+
+==== PERCENTILE_CONT
+(((PERCENTILE_CONT)))
+Returns the value that corresponds to the specified percentile given a sort specification by using a continuous distribution model.
+
+==== PERCENTILE_DISC
+(((PERCENTILE_DISC)))
+Returns the value that corresponds to the specified percentile given a sort specification by using a discrete distribution model.
+
+==== PERCENT_RANK
+(((PERCENT_RANK)))
+Returns the relative percentile rank of a row that is hypothetically inserted into a group of rows.
 
 ==== Regression Functions
 (((Regression functions)))
@@ -445,6 +471,7 @@ _ANSWERS_
 |0.00247|644.862|5      |70850 |820   |8784575000|21715000|168000
 |===
 
+
 ==== STDDEV
 (((STDDEV)))
 Get the standard deviation of a set of numeric values. If DISTINCT is used, duplicate values are ignored. If no rows match, the result is null. The output format is double.
@@ -465,6 +492,10 @@ _ANSWER_
 |A1| S1           |S2  | S3  | S4
 |41| +2.3522355E+1|23.5| 23.5| 24.1
 |===
+
+==== STDDEV_SAMP
+(((STDDEV_SAMP)))
+The STDDEV_SAMP function returns the sample standard deviation (division by [n-1]) of a set of numbers.
 
 ==== SUM
 (((SUM)))
@@ -511,4 +542,15 @@ _ANSWER_
 |41| +5.533012244E+2| 553| 553| 582
 |===
 
+==== VARIANCE_SAMP
+(((VARIANCE_SAMP)))
+Returns the sample variance (division by [n-1]) of a set of numbers.
+
+==== XMLAGG
+(((XMLAGG)))
+Returns an XML sequence containing an item for each non-null value in a set of XML values.
+
+==== XMLGROUP
+(((XMLGROUP)))
+The XMLGROUP function returns an XML value with a single XQuery document node containing one top-level element node. This is an aggregate expression that will return a single-rooted XML document from a group of rows where each row is mapped to a row subelement.
 

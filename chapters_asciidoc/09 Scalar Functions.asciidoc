@@ -75,6 +75,54 @@ _ANSWER (float output shortened)_
 (((ACOS)))
 Returns the arccosine of the argument as an angle expressed in radians. The output format is double.
 
+==== ADD_DAYS
+(((ADD_DAYS)))
+Returns a datetime value that represents the first argument plus a specified number of days.
+
+==== ADD_HOURS
+(((ADD_HOURS)))
+Returns a timestamp value that represents the first argument plus a specified number of hours.
+
+==== ADD_MINUTES
+(((ADD_MINUTES)))
+Returns a timestamp value that represents the first argument plus a specified number of minutes.
+
+==== ADD_MONTHS
+(((ADD_MONTHS)))
+Returns a datetime value that represents expression plus a specified number of months.
+
+==== ADD_SECONDS
+(((ADD_SECONDS)))
+Returns a timestamp value that represents the first argument plus a specified number of seconds and fractional seconds.
+
+==== ADD_YEARS
+(((ADD_YEARS)))
+Returns a datetime value that represents the first argument plus a specified number of years.
+
+==== AGE
+(((AGE)))
+Returns a numeric value that represents the number of full years, full months, and full days between the current timestamp and the argument.
+
+==== ARRAY_DELETE
+(((ARRAY_DELETE)))
+Deletes elements from an array.
+
+==== ARRAY_FIRST
+(((ARRAY_FIRST)))
+Returns the minimum array index value of the array.
+
+==== ARRAY_LAST
+(((ARRAY_LAST)))
+Returns the maximum array index value of the array.
+
+==== ARRAY_NEXT
+(((ARRAY_NEXT)))
+Returns the next larger array index value for an array relative to the specified array index argument.
+
+==== ARRAY_PRIOR
+(((ARRAY_PRIOR)))
+Returns the next smaller array index value for an array relative to the specified array index argument.
+
 ==== ASCII
 (((ASCII)))
 Returns the ASCII code value of the leftmost input character. Valid input types are any valid character type up to 1 MEG. The output type is integer.
@@ -179,6 +227,10 @@ FROM temp;
 |===
 
 See <<floating.point.numbers>> for a discussion on floating-point number manipulation.
+
+==== BINARY
+(((BINARY)))
+Returns a fixed-length binary string representation of a string of any data type.
 
 ==== BIT Functions
 (((BIT Functions)))
@@ -397,6 +449,12 @@ Below is the answer:
 ==== BLOB
 (((BLOB)))
 Converts the input (1st argument) to a blob. The output length (2nd argument) is optional.
+
+==== BOOLEAN
+Returns the actual Boolean value that corresponds to a non-Boolean representation of a Boolean value.
+
+==== BTRIM
+Removes the characters that are specified in a trim string from the beginning and end of a source string.
 
 ==== CARDINALITY
 (((CARDINALITY)))
@@ -758,6 +816,10 @@ _ANSWER_
 |0    |-     |-1
 |===
 
+==== COLLATION_KEY
+(((COLLATION_KEY)))
+Returns a VARBINARY string that represents the collation key of the expression argument, in the specified collation.
+
 ==== COLLATION_KEY_BIT
 (((COLLATION_KEY_BIT)))
 Returns a VARCHAR FOR BIT DATA string that is the collation sequence of the first argument in the function. There three parameters:
@@ -968,6 +1030,10 @@ Returns the hyperbolic cosine for the argument, where the argument is an angle e
 (((COT)))
 Returns the cotangent of the argument where the argument is an angle expressed in radians. The output format is double.
 
+==== CURSOR_ROWCOUNT
+(((CURSOR_ROWCOUNT)))
+Returns the cumulative count of all rows fetched by the specified cursor since the cursor was opened.
+
 ==== DATAPARTITIONNUM
 (((DATAPARTITIONNUM)))
 Returns the sequence number of the partition in which the row resides.
@@ -1020,6 +1086,14 @@ _ANSWER_
 |728000|1994-03-13
 |730120|2000-01-01
 |===
+
+==== DATE_PART
+(((DATE_PART)))
+Returns a portion of a datetime based on its arguments. It extracts the subfield that is specified from the date, time, timestamp, and duration values.
+
+==== DATE_TRUNC
+(((DATE_TRUNC)))
+Truncates a date, time, or timestamp value to the specified time unit.
 
 ==== DAY
 (((DAY)))
@@ -1086,6 +1160,10 @@ _ANSWER_
 |1996-04-22|Monday  |6
 |1996-08-15|Thursday|8
 |===
+
+==== DAYOFMONTH
+(((DAYOFMONTH)))
+Returns an integer between 1 and 31 that represents the day of the month.
 
 ==== DAYOFWEEK
 (((DAYOFWEEK)))
@@ -1213,6 +1291,14 @@ _ANSWER_
 
 The DATE function can act as the inverse of the DAYS function. It can convert the DAYS output back into a valid date.
 
+==== DAYS_BETWEEN
+(((DAYS_BETWEEN)))
+Returns the number of full days between the specified arguments.
+
+==== DAYS_TO_END_OF_MONTH
+(((DAYS_TO_END_OF_MONTH)))
+Returns the number of days to the end of the month.
+
 ==== DBCLOB
 (((DBCLOB)))
 Converts the input (1st argument) to a dbclob. The output length (2nd argument) is optional.
@@ -1267,6 +1353,10 @@ _ANSWER_
 |===
 
 WARNING: The function does not always precisely convert floating-point numeric values to their DECFLOAT equivalent (see example above). Use character conversion instead.
+
+==== DECFLOAT_FORMAT
+(((DECFLOAT_FORMAT)))
+Returns a DECFLOAT(34) value that is based on the interpretation of the input string using the specified format.
 
 ==== DEC or DECIMAL
 (((DEC))) (((DECIMAL)))
@@ -1445,6 +1535,10 @@ _ANSWER (output shortened)_
 
 See <<floating.point.numbers>> for a discussion on floating-point number manipulation.
 
+==== EMPTY_BLOB, EMPTY_CLOB, EMPTY_DBCLOB, and EMPTY_NCLOB
+(((EMPTY_BLOB))) (((EMPTY_CLOB))) (((EMPTY_DBCLOB))) (((EMPTY_NCLOB)))
+These functions return a zero-length value with a data type of BLOB, CLOB, or DBCLOB.
+
 ===== ENCRYPT
 (((ENCRYPT)))
 Returns a encrypted rendition of the input string. The input must be char or varchar. The output is varchar for bit data.
@@ -1511,6 +1605,14 @@ _ANSWER_
 |10|+2.20264657948067E+4|22026
 |===
 
+==== EXTRACT
+(((EXTRACT)))
+Returns a portion of a datetime based on its arguments.
+
+==== FIRST_DAY
+(((FIRST_DAY)))
+Returns a date or timestamp that represents the first day of the month of the argument.
+
 ==== FLOAT
 (((FLOAT)))
 Same as <<double.function>>.
@@ -1536,6 +1638,10 @@ _ANSWER (float output shortened)_
 |0.0|+0.|+0.000E+0|+0.000E+0
 |1.8|+1.|+1.800E+0|+1.000E+0
 |===
+
+==== FROM_UTC_TIMESTAMP
+(((FROM_UTC_TIMESTAMP)))
+Returns a TIMESTAMP that is converted from Coordinated Universal Time to the time zone specified by the time zone string. FROM_UTC_TIMESTAMP is a statement deterministic function. 
 
 [[generate.unique.function]]
 ==== GENERATE_UNIQUE
@@ -1623,7 +1729,7 @@ _ANSWER_
 |20000901131649119969000000|96991194613110900002
 |===
 
-===== pseudo-random
+===== Pseudo-random
 
 Observe above that we used a nested table expression to temporarily store the results of the GENERATE_UNIQUE calls. Alternatively, we could have put a GENERATE_UNIQUE call inside each SUBSTR, but these would have amounted to separate function calls, and there is a very small chance that the net result would not always be unique.
 
@@ -1677,6 +1783,18 @@ Converts the input (1st argument) to a graphic data type. The output length (2nd
 ==== GREATEST
 (((GREATEST)))
 See <<max.function>> scalar function.
+
+==== HASH
+(((HASH)))
+Returns a 128-bit, 160-bit, 256-bit or 512-bit hash of the input data, depending on the algorithm selected, and is intended for cryptographic purposes.
+
+==== HASH4
+(((HASH4)))
+Returns the 32-bit checksum hash of the input data. The function provides 232 distinct return values and is intended for data retrieval (lookups).
+
+==== HASH8
+(((HASH8)))
+Returns the 64-bit hash of an input string. The function provides 264 distinct return values and is intended for data retrieval (that is, lookups). The result for a particular input string differs depending on the endianness (big-endian or little-endian) of your system.
 
 ==== HASHEDVALUE
 (((HASHEDVALUE)))
@@ -1768,6 +1886,10 @@ _ANSWER_
 |0001-01-01|00010101|00:00:00|000000
 |===
 
+==== HEXTORAW
+(((HEXTORAW)))
+Returns a bit string representation of a hexadecimal character string.
+
 ==== HOUR
 (((HOUR)))
 Returns the hour (as in hour of day) part of a time value. The output format is integer.
@@ -1788,6 +1910,10 @@ _ANSWER_
 |15:15:15|15
 |23:58:58|23
 |===
+
+==== HOURS_BETWEEN
+(((HOURS_BETWEEN)))
+Returns the number of full hours between the specified arguments.
 
 [[identity_val_local.function]]
 ==== IDENTITY_VAL_LOCAL
@@ -1819,6 +1945,10 @@ _ANSWER_
 |1.
 |===
 
+==== INITCAP
+(((INITCAP)))
+Returns a string with the first character of each word converted to uppercase, using the UPPER function semantics, and the other characters converted to lowercase, using the LOWER function semantics.
+
 ==== INSERT
 (((INSERT)))
 Insert one string in the middle of another, replacing a portion of what was already there. If the value to be inserted is either longer or shorter than the piece being replaced, the remainder of the data (on the right) is shifted either left or right accordingly in order to make a good fit.
@@ -1846,6 +1976,21 @@ _ANSWER (4K output fields shortened)_
 |Marenghi|MaAnghi| MaABnghi|MaABCnghi
 |===
 
+==== INSTR
+Returns the starting position of a string (the search string) within another string (the source string). The INSTR scalar function is a synonym for the LOCATE_IN_STRING scalar function.
+
+==== INSTR2
+(((INSTR2)))
+Returns the starting position, in 16-bit UTF-16 string units (CODEUNITS16), of a string within another string.
+
+==== INSTR4
+(((INSTR4)))
+Returns the starting position, in 32-bit UTF-32 string units (CODEUNITS32), of a string within another string.
+
+==== INSTRB
+Returns the starting position, in bytes, of a string within another string.
+
+
 ==== INT or INTEGER
 (((INT))) (((INTEGER)))
 The INTEGER or INT function converts either a number or a valid character value into an integer. The character input can have leading and/or trailing blanks, and a sign indictor, but it can not contain a decimal point. Numeric decimal input works just fine.
@@ -1868,6 +2013,10 @@ _ANSWER_
 |0.0|0 |123|-123|123
 |1.8|1 |123|-123|123
 |===
+
+==== INTNAND , INTNOR, INTNXOR, and INTNNOT
+(((INTNAND))) (((INTNOR))) (((INTNXOR))) (((INTNNOT)))
+These bitwise functions operate on the "two's complement" representation of the integer value of the input arguments and return the result as a corresponding base 10 integer value.
 
 ==== JULIAN_DAY
 (((JULIAN_DAY)))
@@ -1974,6 +2123,10 @@ _ANSWER_
 
 WARNING: Db2 does not make allowances for the days that were not used when Englishspeaking countries converted from the Julian to the Gregorian calendar in 1752.
 
+==== LAST_DAY
+(((LAST_DAY)))
+Feturns a date or timestamp value that represents the last day of the month of the argument.
+
 ==== LCASE or LOWER
 (((LCASE))) (((LOWER)))
 Converts a mixed or upper-case string to lower case. The output is the same data type and length as the input.
@@ -2050,6 +2203,18 @@ _ANSWER_
 |2|8|2|6|2
 |===
 
+==== LENGTH2
+(((LENGTH2)))
+Returns the length of expression in 16-bit UTF-16 string units (CODEUNITS16).
+
+==== LENGTH4
+(((LENGTH4)))
+Returns the length of expression in 32-bit UTF-32 string units (CODEUNITS32).
+
+==== LENGTHB
+(((LENGTHB)))
+Returns the length of expression in bytes.
+
 ==== LN or LOG
 (((LN))) (((LOG)))
 Returns the natural logarithm of the argument (same as LOG). The output format is double.
@@ -2115,13 +2280,13 @@ _ANSWER_
 
 When a special character like "Á" is encountered before the find-string (see last line) the plain LOCATE returns the number of bytes searched, not the number of characters.
 
-==== LOG or LN
-(((LOG))) (((LN)))
-See the description of the LN function.
+==== LOCATE_IN_STRING
+(((LOCATE_IN_STRING)))
+Returns the starting position of a string (called the search-string ) within another string (called the source-string).
 
 ==== LOG10
 (((LOG10)))
-Returns the base ten logarithm of the argument. The output format is double.
+Returns the common logarithm (base 10) of a number.
 
 .LOG10 function example
 [source,sql]
@@ -2159,6 +2324,10 @@ Converts the input (1st argument) to a long_vargraphic data type. The output len
 ==== LOWER
 (((LOWER)))
 See the description for the LCASE function.
+
+==== LPAD
+(((LPAD)))
+Pads a string on the left with a specified character string or with blanks.
 
 ==== LTRIM
 (((LTRIM)))
@@ -2328,6 +2497,10 @@ _ANSWER_
 |1996-08-15-15.15.15.151515|15
 |===
 
+==== MINUTES_BETWEEN
+(((MINUTES_BETWEEN)))
+Returns the number of full minutes between the specified arguments.
+
 ==== MOD
 (((MOD)))
 Returns the remainder (modulus) for the first argument divided by the second. In the following example the last column uses the MOD function to get the modulus, while the second to last column obtains the same result using simple arithmetic.
@@ -2391,6 +2564,10 @@ _ANSWER_
 |1996-08-15|8|August
 |===
 
+==== MONTHS_BETWEEN
+(((MONTHS_BETWEEN)))
+Returns an estimate of the number of months between expression1 and expression2.
+
 ==== MULTIPLY_ALT
 (((MULTIPLY_ALT)))
 Returns the product of two arguments as a decimal value. Use this function instead of the multiplication operator when you need to avoid an overflow error because Db2 is putting aside too much space for the scale (i.e. fractional part of number) Valid input is any exact numeric type: decimal, integer, bigint, or smallint (but not float).
@@ -2427,6 +2604,38 @@ When doing ordinary multiplication of decimal values, the output precision and t
 |DEC(26,23)|DEC(10,01)|DEC(31,24)         |DEC(31,19)         |YES                |NO
 |DEC(31,03)|DEC(15,08)|DEC(31,11)         |DEC(31,03)         |YES                |YES
 |===
+
+==== NCHAR
+(((NCHAR)))
+Returns a fixed-length national character string representation of a variety of data types.
+
+==== NCLOB
+(((NCLOB)))
+Returns a NCLOB representation of any type of national character string.
+
+==== NVARCHAR
+(((NVARCHAR)))
+Returns a varying-length national character string representation of a variety of data types.
+
+==== NEXT_DAY
+(((NEXT_DAY)))
+Returns a datetime value that represents the first weekday, named by string-expression, that is later than the date in expression
+
+==== NEXT_MONTH
+(((NEXT_MONTH)))
+Returns the first day of the next month after the specified date.
+
+==== NEXT_QUARTER
+(((NEXT_QUARTER)))
+Returns the first day of the next quarter after the date specified by the input.
+
+==== NEXT_WEEK
+(((NEXT_WEEK)))
+Returns the first day of the next week after the specified date. Sunday is considered the first day of that new week.
+
+==== NEXT_YEAR
+(((NEXT_YEAR)))
+Returns the first day of the year follows the year containing the date specified by the input.
 
 ==== NORMALIZE_DECFLOAT
 (((NORMALIZE_DECFLOAT)))
@@ -2467,6 +2676,10 @@ _ANSWER_
 |0.0012              |0.0012
 |===
 
+==== NOW
+(((NOW)))
+Returns a timestamp based on a reading of the time-of-day clock when the SQL statement is executed at the current server.
+
 ==== NULLIF
 (((NULLIF)))
 Returns null if the two values being compared are equal, otherwise returns the first value.
@@ -2493,6 +2706,10 @@ _ANSWER_
 ==== NVL
 (((NVL)))
 Same as COALESCE.
+
+==== NVL2
+(((NVL2)))
+Returns the second argument when the first argument is not NULL. If the first argument is NULL, the third argument is returned.
 
 ==== OCTET_LENGTH
 (((OCTET_LENGTH)))
@@ -2556,25 +2773,9 @@ _ANSWER_
 |adq   |adXX   |aXXq   |XXdq   |aXX
 |===
 
-==== PARTITION
-(((PARTITION)))
-Returns the partition map index of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
-
-.PARTITION function example
-[source,sql]
-....
-SELECT PARTITION(id) AS pp
-FROM staff
-WHERE id = 10;
-....
-
-_ANSWER_
-
-[cols="",options="header",]
-|===
-|PP
-|-0
-|===
+==== PARAMETER
+(((PARAMETER)))
+The PARAMETER function represents a position in an SQL statement where the value is provided dynamically by XQuery as part of the invocation of the db2-fn:sqlquery function.
 
 ==== POSITION
 (((POSITION)))
@@ -2661,8 +2862,8 @@ _ANSWER_
 |ABCDEF|0 |0 |3 |3 |0 |0 |4
 |===
 
-==== POWER
-(((POWER)))
+==== POWER or POW
+(((POWER))) (((POW)))
 Returns the value of the first argument to the power of the second argument
 
 .POWER function examples
@@ -3024,6 +3225,10 @@ SET salary = RAND()*10000
 WHERE id < 50;
 ....
 
+==== RAWTOHEX
+(((RAWTOHEX)))
+Returns a hexadecimal representation of a value as a character string.
+
 ==== REAL
 (((REAL)))
 Returns a single-precision floating-point representation of a number.
@@ -3047,6 +3252,38 @@ _ANSWER_
 |DEC                             |DBL                  |REL          |INT       |BIG
 |1234567890.123456789012345678901|1.23456789012346e+009|1.234568e+009|1234567890|1234567890
 |===
+
+==== REC2XML
+(((REC2XML)))
+Returns a string formatted with XML tags, containing column names and column data.
+
+==== REGEXP_COUNT
+(((REGEXP_COUNT)))
+Returns a count of the number of times that a regular expression pattern is matched in a string.
+
+==== REGEXP_EXTRACT
+(((REGEXP_EXTRACT)))
+Returns one occurrence of a substring of a string that matches the regular expression pattern.
+
+==== REGEXP_INSTR
+(((REGEXP_INSTR)))
+Returns the starting or ending position of the matched substring, depending on the value of the return_option argument.
+
+==== REGEXP_LIKE
+(((REGEXP_LIKE)))
+Returns a boolean value indicating if the regular expression pattern is found in a string. The function can be used only where a predicate is supported.
+
+==== REGEXP_MATCH_COUNT
+(((REGEXP_MATCH_COUNT)))
+Returns a count of the number of times that a regular expression pattern is matched in a string.
+
+==== REGEXP_REPLACE
+(((REGEXP_REPLACE)))
+Returns a modified version of the source string where occurrences of the regular expression pattern found in the source string are replaced with the specified replacement string.
+
+==== REGEXP_SUBSTR
+(((REGEXP_SUBSTR)))
+Returns one occurrence of a substring of a string that matches the regular expression pattern.
 
 ==== REPEAT
 (((REPEAT)))
@@ -3278,6 +3515,14 @@ _ANSWER_
 |0.056  |0.060  |0.100  |0.000  |0.000  |0.000
 |===
 
+==== ROUND_TIMESTAMP
+(((ROUND_TIMESTAMP)))
+Returns a TIMESTAMP based on a provided argument (expression), rounded to the unit specified in another argument (format-string).
+
+==== RPAD
+(((RPAD)))
+Returns a string composed of string-expression padded on the right, with pad or blanks.
+
 ==== RTRIM
 (((RTRIM)))
 Trims the right-most blanks of a character string.
@@ -3304,9 +3549,21 @@ _ANSWER_
 (((SECLABEL)))
 The SECLABEL, SECLABEL_BY_NAME, and SECLABEL_BY_CHAR functions are used to process security labels. See the SQL Reference for more details.
 
+==== SECLABEL_BY_NAME
+(((SECLABEL_BY_NAME)))
+Returns the specified security label. The security label returned has a data type of DB2SECURITYLABEL. Use this function to insert a named security label.
+
+==== SECLABEL_TO_CHAR
+(((SECLABEL_TO_CHAR)))
+Accepts a security label and returns a string that contains all elements in the security label. The string is in the security label string format.
+
 ==== SECOND
 (((SECOND)))
 Returns the second (of minute) part of a time or timestamp (or equivalent) value.
+
+==== SECONDS_BETWEEN
+(((SECONDS_BETWEEN)))
+Returns the number of full seconds between the specified arguments.
 
 ==== SIGN
 (((SIGN)))
@@ -3542,8 +3799,19 @@ _ANSWER_
 
 The TRIM function works the same way.
 
-==== SUBSTR
-(((SUBSTR)))
+==== STRLEFT
+(((STRLEFT)))
+Returns the leftmost string of string-expression of length length, expressed in the specified string unit.
+
+==== STRPOS
+(((STRPOS)))
+Is a synonym for POSSTR.
+
+==== STRRIGHT
+Returns the right most string of string-expression of length length, expressed in the specified string unit.
+
+==== SUBSTR or SUBSTRING
+(((SUBSTR))) (((SUBSTRING)))
 Returns part of a string. If the length is not provided, the output is from the start value to the end of the string.
 
 If the length is provided, and it is longer than the field length, a SQL error results. The following statement illustrates this. Note that in this example the DAT1 field has a "field length" of 9 (i.e. the length of the longest input string).
@@ -3623,6 +3891,18 @@ _ANSWER_
 |O'Brien |7  |ien |3 |ien|3
 |Hanes   |5  |s   |1 |s  |3
 |===
+
+==== SUBSTR2
+(((SUBSTR2)))
+Returns a substring from a string. The resulting substring starts at a specified position in the string and continues for a specified or default length. The start and length arguments are expressed in 16-bit UTF-16 string units (CODEUNITS16).
+
+==== SUBSTR4
+(((SUBSTR4)))
+Returns a substring from a string. The resulting substring starts at a specified position in the string and continues for a specified or default length. The start and length arguments are expressed in 32-bit UTF-32 string units (CODEUNITS32).
+
+==== SUBSTRB
+(((SUBSTRB)))
+Returns a substring of a string, beginning at a specified position in the string. Lengths are calculated in bytes.
 
 ==== TABLE
 (((TABLE)))
@@ -3722,6 +4002,22 @@ Returns the tangent of the argument where the argument is an angle expressed in 
 ==== TANH
 (((TANH)))
 Returns the hyperbolic tan for the argument, where the argument is an angle expressed in radians. The output format is double.
+
+==== THIS_MONTH
+(((THIS_MONTH)))
+Returns the first day of the month in the specified date.
+
+==== THIS_QUARTER
+(((THIS_QUARTER)))
+Returns the first day of the quarter that contains the specified date.
+
+==== THIS_WEEK
+(((THIS_WEEK)))
+Returns the first day of the week that contains the specified date. Sunday is considered the first day of that week.
+
+==== THIS_YEAR
+(((THIS_YEAR)))
+Returns the first day of the year in the specified date.
 
 ==== TIME
 (((TIME)))
@@ -3876,9 +4172,41 @@ RETURN (BIGINT(DAYS(in_hi))             * 86400000000
 (((TO_CHAR)))
 This function is a synonym for VARCHAR_FORMAT (see <<varchar_format.function>>). It converts a timestamp value into a string using a template to define the output layout.
 
+==== TO_CLOB
+(((TO_CLOB)))
+Returns a CLOB representation of a character string type.
+
 ==== TO_DATE
 (((TO_DATE)))
 This function is a synonym for TIMESTAMP_FORMAT (see <<timestamp_format.function>>). It converts a character string value into a timestamp using a template to define the input layout.
+
+==== TO_HEX
+(((TO_HEX)))
+Converts a numeric expression into the hexadecimal representation.
+
+==== TO_NCHAR
+(((TO_NCHAR)))
+Returns a national character representation of an input expression that has been formatted using a character template.
+
+==== TO_NCLOB
+(((TO_NCLOB)))
+Returns any type of national character string.
+
+==== TO_NUMBER
+(((TO_NUMBER)))
+Returns a DECFLOAT(34) value that is based on the interpretation of the input string using the specified format.
+
+==== TO_SINGLE_BYTE
+(((TO_SINGLE_BYTE)))
+Returns a string in which multi-byte characters are converted to the equivalent single-byte character where an equivalent character exists.
+
+==== TO_TIMESTAMP
+(((TO_TIMESTAMP)))
+Returns a timestamp that is based on the interpretation of the input string using the specified format
+
+==== TO_UTC_TIMESTAMP
+(((TO_UTC_TIMESTAMP)))
+Returns a TIMESTAMP that is converted to Coordinated Universal Time from the timezone that is specified by the timezone string. TO_UTC_TIMESTAMP is a a statement deterministic function.
 
 ==== TOTALORDER
 (((TOTALORDER)))
@@ -3990,6 +4318,14 @@ _ANSWER_
 (((TRIM)))
 See <<strip.function>> function.
 
+==== TRIM_ARRAY
+(((TRIM_ARRAY)))
+Deletes elements from the end of an array.
+
+==== TRUNC_TIMESTAMP
+(((TRUNC_TIMESTAMP)))
+Returns a TIMESTAMP that is an argument (expression) truncated to the unit specified by another argument (format-string).
+
 ==== TRUNC or TRUNCATE
 (((TRUNC))) (((TRUNCATE)))
 Truncates (not rounds) the rightmost digits of an input number (1st argument). If the second argument is positive, it truncates to the right of the decimal place. If the second value is negative, it truncates to the left. A second value of zero truncates to integer. The input and output types will equal. To round instead of truncate, use the ROUND function.
@@ -4059,6 +4395,10 @@ _ANSWER_
 (((VALUE)))
 Same as COALESCE.
 
+==== VARBINARY
+(((VARBINARY)))
+Returns a VARBINARY (varying-length binary string) representation of a string of any data type.
+
 ==== VARCHAR
 (((VARCHAR)))
 Converts the input (1st argument) to a varchar data type. The output length (2nd argument) is optional. Trailing blanks are not removed.
@@ -4120,6 +4460,18 @@ Returns a VARCHAR representation of a character bit-data string. See the SQL Ref
 ==== VARGRAPHIC
 (((VARGRAPHIC)))
 Converts the input (1st argument) to a VARGRAPHIC data type. The output length (2nd argument) is optional.
+
+==== VERIFY_GROUP_FOR_USER
+(((VERIFY_GROUP_FOR_USER)))
+Returns a value that indicates whether the groups associated with the authorization ID identified by the SESSION_USER special register are in the group names specified by the list of group-name-expression arguments.
+
+==== VERIFY_ROLE_FOR_USER
+(((VERIFY_ROLE_FOR_USER)))
+Returns a value that indicates whether any of the roles associated with the authorization ID identified by the SESSION_USER special register are in (or contain any of) the role names specified by the list of role-name-expression arguments.
+
+==== VERIFY_TRUSTED_CONTEXT_ROLE_FOR_USER
+(((VERIFY_TRUSTED_CONTEXT_ROLE_FOR_USER)))
+Returns a value that indicates whether the authorization ID identified by the SESSION_USER special register has acquired a role under a trusted connection associated with some trusted context and that role is in (or part of) the role names specified by the list of role-name-expression arguments.
 
 ==== WEEK
 (((WEEK)))
@@ -4200,6 +4552,78 @@ _ANSWER_
 |2001-01-06|Sat|1 |7 |1 |6
 |===
 
+==== WEEKS_BETWEEN
+(((WEEKS_BETWEEN)))
+Returns the number of full weeks between the specified arguments
+
+==== WIDTH_BUCKET
+(((WIDTH_BUCKET)))
+Is used to create equal-width histograms.
+
+==== XMLATTRIBUTES
+(((XMLATTRIBUTES)))
+Constructs XML attributes from the arguments.
+
+==== XMLCOMMENT
+(((XMLCOMMENT)))
+Returns an XML value with a single XQuery comment node with the input argument as the content.
+
+==== XMLCONCAT
+(((XMLCONCAT)))
+Returns a sequence containing the concatenation of a variable number of XML input arguments
+
+==== XMLDOCUMENT
+(((XMLDOCUMENT)))
+Returns an XML value with a single XQuery document node with zero or more children nodes.
+
+==== XMLELEMENT
+(((XMLELEMENT)))
+Returns an XML value that is an XQuery element node.
+
+==== XMLFOREST
+(((XMLFOREST)))
+Returns an XML value that is a sequence of XQuery element nodes.
+
+==== XMLNAMESPACES
+(((XMLNAMESPACES)))
+Constructs namespace declarations from the arguments.
+
+==== XMLPARSE
+(((XMLPARSE)))
+Parses the argument as an XML document and returns an XML value.
+
+==== XMLPI
+(((XMLPI)))
+Returns an XML value with a single XQuery processing instruction node.
+
+==== XMLQUERY
+(((XMLQUERY)))
+Returns an XML value from the evaluation of an XQuery expression possibly using specified input arguments as XQuery variables.
+
+==== XMLROW
+(((XMLROW)))
+Returns an XML value with a single XQuery document node containing one top-level element node.
+
+==== XMLSERIALIZE
+(((XMLSERIALIZE)))
+Returns a serialized XML value of the specified data type generated from the XML-expression argument.
+
+==== XMLTEXT
+(((XMLTEXT)))
+Returns an XML value with a single XQuery text node having the input argument as the content.
+
+==== XMLVALIDATE
+(((XMLVALIDATE)))
+Returns a copy of the input XML value augmented with information obtained from XML schema validation, including default values.
+
+==== XMLXSROBJECTID
+(((XMLXSROBJECTID)))
+Returns the XSR object identifier of the XML schema used to validate the XML document specified in the argument. The XSR object identifier is returned as a BIGINT value and provides the key to a single row in SYSCAT.XSROBJECTS.
+
+==== XSLTRANSFORM
+(((XSLTRANSFORM)))
+Use XSLTRANSFORM to convert XML data into other formats, including the conversion of XML documents that conform to one XML schema into documents that conform to another schema.
+
 ==== YEAR
 (((YEAR)))
 Returns a four-digit year value in the range 0001 to 9999 that represents the year (including the century). The input is a date or timestamp (or equivalent) value. The output is integer.
@@ -4220,6 +4644,15 @@ _ANSWER_
 |1996-08-15|1996|33
 |0001-01-01|1   |1
 |===
+
+==== YEARS_BETWEEN
+(((YEARS_BETWEEN)))
+Returns the number of full years between the specified arguments.
+
+==== YMD_BETWEEN
+(((YMD_BETWEEN)))
+Returns a numeric value that specifies the number of full years, full months, and full days between two datetime values.
+
 
 ==== "+" PLUS
 
