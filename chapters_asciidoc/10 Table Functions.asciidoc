@@ -155,3 +155,15 @@ _ANSWER_
 |===
 
 
+=== BASE_TABLE
+(((BASE_TABLE)))
+Returns both the object name and schema name of the object found after any alias chains have been resolved.
+
+=== UNNEST
+(((UNNEST)))
+Returns a result table that includes a row for each element of the specified array. If there are multiple ordinary array arguments specified, the number of rows will match the array with the largest cardinality.
+
+=== XMLTABLE
+(((XMLTABLE)))
+Returns a result table from the evaluation of XQuery expressions, possibly using specified input arguments as XQuery variables. Each sequence item in the result sequence of the row XQuery expression represents a row of the result table.
+
