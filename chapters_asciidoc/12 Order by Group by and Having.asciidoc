@@ -1,3 +1,4 @@
+(((Order by))) (((Group by))) (((Having)))
 [[order.by.chapter]]
 == Order By, Group By, and Having
 
@@ -471,7 +472,7 @@ _ANSWER_
 
 ==== GROUPING SETS Statement
 
-The GROUPING SETS statement enables one to get multiple GROUP BY result sets using a single statement. It is important to understand the difference between nested (i.e. in secondary parenthesis), and non-nested GROUPING SETS sub-phrases:
+The ((GROUPING SETS)) statement enables one to get multiple GROUP BY result sets using a single statement. It is important to understand the difference between nested (i.e. in secondary parenthesis), and non-nested GROUPING SETS sub-phrases:
 
 * A nested list of columns works as a simple GROUP BY.
 * A non-nested list of columns works as separate simple GROUP BY
@@ -778,7 +779,7 @@ NOTE: Repetitions of the same field in a GROUP BY (as is done above) are ignored
 [[rollup.statement]]
 ==== ROLLUP Statement
 
-A ROLLUP expression displays sub-totals for the specified fields. This is equivalent to doing the original GROUP BY, and also doing more groupings on sets of the left-most columns.
+A (((ROLLUP))) expression displays sub-totals for the specified fields. This is equivalent to doing the original GROUP BY, and also doing more groupings on sets of the left-most columns.
 
 .ROLLUP vs. GROUPING SETS
 [source,sql]
@@ -1229,7 +1230,7 @@ _ANSWER_
 
 ==== CUBE Statement
 
-A CUBE expression displays a cross-tabulation of the sub-totals for any specified fields. As such, it generates many more totals than the similar ROLLUP.
+A ((CUBE)) expression displays a cross-tabulation of the sub-totals for any specified fields. As such, it generates many more totals than the similar ROLLUP.
 
 .CUBE vs. GROUPING SETS
 [source,sql]

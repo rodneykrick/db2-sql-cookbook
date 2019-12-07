@@ -10,7 +10,7 @@ In this section we will describe some simple functions that are generally useful
 * <<sort.character.field.contents>>.
 
 === Julian Date Functions
-
+(((Julian date)))
 The function below converts a Db2 date into a Julian date (format) value:
 
 .Convert Date into Julian Date
@@ -170,7 +170,7 @@ _ANSWER_
 
 [[generating.numbers]]
 ==== Generating Numbers
-
+(((Generating numbers)))
 The next function returns a table of rows. Each row consists of a single integer value , starting at zero, and going up to the number given in the input. At least one row is always returned. If the input value is greater than zero, the number of rows returned equals the input value plus one:
 
 .Create num-list function
@@ -501,7 +501,7 @@ FROM temp;
 
 _ANSWER_
 |===
-|INDATA|TYPE| NUMBER
+|INDATA|TYPE|NUMBER
 |ABC   |    |-
 |123   |INT |123.00 
 |3.4   |DEC ||3.40

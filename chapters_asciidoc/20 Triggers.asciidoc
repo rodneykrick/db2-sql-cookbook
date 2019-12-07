@@ -1,6 +1,6 @@
 [[triggers.chapter]]
-== ((Triggers))
-
+== Triggers
+(((Triggers)))
 A trigger initiates an action whenever a row, or set of rows, is changed. The change can be either an insert, update or delete. 
 
 NOTE: The Db2 Application Development Guide: Programming Server Applications is an excellent source of information on using triggers. The SQL Reference has all the basics.

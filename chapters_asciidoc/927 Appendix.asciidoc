@@ -1,7 +1,7 @@
 == Appendix
 
-===  ((Db2 Sample Tables))
-
+===  Db2 Sample Tables
+(((Db2 sample tables)))
 Sample table DDL follows.
 
 ====  ACT

@@ -1,6 +1,6 @@
 [[subquery.chapter]]
 == Sub-Query
-
+(((Sub-Query)))
 Sub-queries are hard to use, tricky to tune, and often do some strange things. Consequently, a lot of people try to avoid them, but this is stupid because sub-queries are really, really, useful. Using a relational database and not writing sub-queries is almost as bad as not doing joins. A sub-query is a special type of fullselect that is used to relate one table to another without actually doing a join. For example, it lets one select all of the rows in one table where some related value exists, or does not exist, in another table.
 
 === Sample Tables
@@ -149,7 +149,7 @@ NOTE: There is almost never a valid reason for coding a sub-query that does not 
 
 === SOME/ANY Keyword Sub-Query
 
-When a SOME or ANY sub-query check is used, there are two possible results:
+When a ((SOME)) or ((ANY)) sub-query check is used, there are two possible results:
 
 * If any row in the sub-query result matches, the answer is true.
 * If the sub-query result is empty, or all nulls, the answer is false.
@@ -214,7 +214,7 @@ When an ANY or ALL sub-query check is used with a "greater than" or similar expr
 [[all.keyword.sub.query]]
 ==== All Keyword Sub-Query
 
-When an ALL sub-query check is used, there are two possible results:
+When an ((ALL)) sub-query check is used, there are two possible results:
 
 * If all rows in the sub-query result match, the answer is true.
 * If there are no rows in the sub-query result, the answer is also true.
@@ -340,7 +340,7 @@ So far, we have been taking a value from the TABLE1 table and comparing it again
 * If the sub-query matches on one or more rows, the result is true.
 * If the sub-query matches on no rows, the result is false.
 
-Below is an EXISTS check that, given our sample data, always returns true:
+Below is an ((EXISTS)) check that, given our sample data, always returns true:
 
 .EXISTS sub-query, always returns a match
 [source,sql]
@@ -403,7 +403,7 @@ The NOT EXISTS phrases looks for the non-existence of rows in the sub-query resu
 * If the sub-query matches on no rows, the result is true.
 * If the sub-query has rows, the result is false.
 
-We can use a NOT EXISTS check to create something similar to an ALL check, but with one very important difference. The two checks will handle nulls differently. To illustrate, consider the following two queries, both of which will return a row from TABLE1 only when it equals all of the matching rows in TABLE2:
+We can use a ((NOT EXISTS)) check to create something similar to an ((ALL)) check, but with one very important difference. The two checks will handle nulls differently. To illustrate, consider the following two queries, both of which will return a row from TABLE1 only when it equals all of the matching rows in TABLE2:
 
 [source,sql]
 ....
@@ -552,7 +552,7 @@ One problem with the above query is that it is not exactly obvious. Another is t
 
 === IN Keyword Sub-Query
 
-The IN sub-query check is similar to the ANY and SOME checks:
+The ((IN)) sub-query check is similar to the ANY and SOME checks:
 
 * If any row in the sub-query result matches, the answer is true.
 * If the sub-query result is empty, the answer is false.
@@ -1132,10 +1132,10 @@ WHERE t1a = ALL
 
 _ANSWER_
 |===
-|T1A| T1B
-|A|AA
-|B|BB
-|C|CC
+|T1A|T1B
+|A  |AA
+|B  |BB
+|C  |CC
 |===
 
 .Sub-queries, true if all match, empty set

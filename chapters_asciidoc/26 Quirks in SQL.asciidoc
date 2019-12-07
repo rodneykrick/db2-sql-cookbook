@@ -259,8 +259,8 @@ _ANSWER_: 0006-05-24
 Why the 2,000 year difference in the above results? When the DATE function gets a character string as input, it assumes that it is valid character representation of a Db2 date, and converts it accordingly. By contrast, when the input is numeric, the function assumes that it represents the number of days minus one from the start of the current era (i.e. 0001-01-01). In the above query the input was 2001-09-22, which equals (2001-9)-22, which equals 1970 days.
 
 [[rand.in.predicate]]
-=== ((RAND)) in Predicate
-
+=== RAND in Predicate
+(((RAND)))
 The following query was written with intentions of getting a single random row out of the matching set in the STAFF table. Unfortunately, it returned two rows:
 
 .Get random rows - Incorrect

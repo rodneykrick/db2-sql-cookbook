@@ -1,20 +1,18 @@
 [[column.function.chapter]]
-== Column Functions
-
+== Column Functions or Aggregate Functions 
+(((Column function))) (((Aggregate functions)))
 By themselves, column functions work on the complete set of matching rows. One can use a GROUP BY expression to limit them to a subset of matching rows. One can also use them in an OLAP function to treat individual rows differently. 
 
-WARNING: Be very careful when using either a column function, or the DISTINCT clause, in a join. If the join
-is incorrectly coded, and does some form of Cartesian Product, the column function may get rid of the all the extra (wrong) rows so that it becomes very hard to confirm that the answer is incorrect. Likewise, be appropriately suspicious whenever you see that someone (else) has used a
-DISTINCT statement in a join. Sometimes, users add the DISTINCT clause to get rid of duplicate rows that they didn't anticipate and don't understand.
+WARNING: Be very careful when using either a column function, or the DISTINCT clause, in a join. If the join is incorrectly coded, and does some form of Cartesian Product, the column function may get rid of the all the extra (wrong) rows so that it becomes very hard to confirm that the answer is incorrect. Likewise, be appropriately suspicious whenever you see that someone (else) has used a DISTINCT statement in a join. Sometimes, users add the DISTINCT clause to get rid of duplicate rows that they didn't anticipate and don't understand.
 
 === Column Functions, Definitions
 
 ==== ARRAY_AGG
-
+(((ARRAY_AGG)))
 Aggregate the set of elements in an array. If an ORDER BY is provided, it determines the order in which the elements are entered into the array.
 
 ==== AVG
-
+(((AVG)))
 Get the average (mean) value of a set of non-null rows. The columns(s) must be numeric. ALL is the default. If DISTINCT is used duplicate values are ignored. If no rows match, the null value is returned.
 
 .AVG function examples
@@ -61,8 +59,8 @@ FROM staff;
 _ANSWER_
 
 |===
-|SALARY  | COMM1 | COMM2
-|67932.78| 351.98| 513.31
+|SALARY  |COMM1 |COMM2
+|67932.78|351.98|513.31
 |===
 
 [source,sql]
@@ -114,8 +112,8 @@ FROM employee;
 
 _ANSWER_
 |===
-|1     | 2
-|721092| 1975-04-14
+|1     |2
+|721092|1975-04-14
 |===
 
 Time data can be manipulated in a similar manner using the
@@ -139,7 +137,7 @@ FROM (SELECT dept
 ANSWER: Overflow error
 
 ==== CORRELATION
-
+(((CORRELATION)))
 I don't know a thing about statistics, so I haven't a clue what this function does. But I do know that the SQL Reference is wrong - because it says the value returned will be between 0 and 1. I found that it is between -1 and +1 (see below). The output type is float.
 
 .CORRELATION function examples
@@ -169,7 +167,7 @@ _ANSWER_
 |===
 
 ==== COUNT
-
+(((COUNT)))
 Get the number of values in a set of rows. The result is an integer. The value returned depends upon the options used:
 
 * COUNT(*) gets a count of matching rows.
@@ -218,7 +216,7 @@ _ANSWER_
 |===
 
 ==== COUNT_BIG
-
+(((COUNT_BIG)))
 Get the number of rows or distinct values in a set of rows. Use this function if the result is too large for the COUNT function. The result is of type decimal 31. If the DISTINCT option is used both duplicate and null values are eliminated. If no rows match, the result is zero.
 
 .COUNT_BIG function examples
@@ -239,7 +237,7 @@ _ANSWER_
 |===
 
 ==== COVARIANCE
-
+(((COVARIANCE)))
 Returns the covariance of a set of number pairs. The output type is float.
 
 .COVARIANCE function examples
@@ -269,9 +267,17 @@ _ANSWER_
 |83666.|-83666.| -1.4689| -0.0004
 |===
 
+==== COVARIANCE_SAMP
+(((COVARIANCE_SAMP)))
+Returns the sample covariance of a set of number pairs.
+
+==== CUME_DIST
+(((CUME_DIST)))
+Returns the cumulative distribution of a row that is hypothetically inserted into a group of rows.
+
 [[grouping.function]]
 ==== GROUPING
-
+(((GROUPING)))
 The GROUPING function is used in CUBE, ROLLUP, and GROUPING SETS statements to identify what rows come from which particular GROUPING SET. A value of 1 indicates that the corresponding data field is null because the row is from of a GROUPING SET that does not involve this row. Otherwise, the value is zero.
 
 .GROUPING function example
@@ -302,8 +308,12 @@ _ANSWER_
 NOTE: See the section titled "Group By and Having" for more
 information on this function.
 
-==== MAX
+==== LISTAGG
+(((LISTAGG)))
+Aggregates a set of string elements into one string by concatenating the strings. Optionally, a separator string can be provided which is inserted between contiguous input strings.
 
+==== MAX
+(((MAX)))
 Get the maximum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.
 
 .MAX function examples
@@ -323,7 +333,7 @@ _ANSWER_
 |===
 
 ===== MAX and MIN usage with Scalar Functions
-
+(((MAX))) (((MIN)))
 Several Db2 scalar functions convert a value from one format to another, for example from numeric to character. The function output format will not always shave the same ordering sequence as the input. This difference can affect MIN, MAX, and ORDER BY processing.
 
 .MAX function with dates
@@ -379,8 +389,12 @@ _ANSWER_
 
 WARNING: Be careful when using a column function on a field that has been converted from number to character, or from date/time to character. The result may not be what you intended.
 
-==== MIN
+==== MEDIAN
+(((MEDIAN)))
+Returns the median value in a set of values.
 
+==== MIN
+(((MIN)))
 Get the minimum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.
 
 .MIN function examples
@@ -399,8 +413,20 @@ _ANSWER_
 |10| 10| 10| 1
 |===
 
-==== Regression Functions
+==== PERCENTILE_CONT
+(((PERCENTILE_CONT)))
+Returns the value that corresponds to the specified percentile given a sort specification by using a continuous distribution model.
 
+==== PERCENTILE_DISC
+(((PERCENTILE_DISC)))
+Returns the value that corresponds to the specified percentile given a sort specification by using a discrete distribution model.
+
+==== PERCENT_RANK
+(((PERCENT_RANK)))
+Returns the relative percentile rank of a row that is hypothetically inserted into a group of rows.
+
+==== Regression Functions
+(((Regression functions)))
 The various regression functions support the fitting of an
 ordinary-least-squares regression line of the form y = a * x + b to a set of number pairs.
 
@@ -445,8 +471,9 @@ _ANSWERS_
 |0.00247|644.862|5      |70850 |820   |8784575000|21715000|168000
 |===
 
-==== STDDEV
 
+==== STDDEV
+(((STDDEV)))
 Get the standard deviation of a set of numeric values. If DISTINCT is used, duplicate values are ignored. If no rows match, the result is null. The output format is double.
 
 .STDDEV function examples
@@ -466,8 +493,12 @@ _ANSWER_
 |41| +2.3522355E+1|23.5| 23.5| 24.1
 |===
 
-==== SUM
+==== STDDEV_SAMP
+(((STDDEV_SAMP)))
+The STDDEV_SAMP function returns the sample standard deviation (division by [n-1]) of a set of numbers.
 
+==== SUM
+(((SUM)))
 Get the sum of a set of numeric values. If DISTINCT is used, duplicate values are ignored. Null values are always ignored. If no rows match, the result is null.
 
 .SUM function examples
@@ -491,7 +522,7 @@ _ANSWER_
 WARNING: The answers S4 and S5 above are different. This is because the division is done before the SUM in column S4, and after in column S5. In the former case, precision has been lost due to rounding of the original integer value and the result is arguably incorrect. When in doubt, use the S5 notation.
 
 ==== VAR or VARIANCE
-
+(((VAR))) (((VARIANCE)))
 Get the variance of a set of numeric values. If DISTINCT is used, duplicate values are ignored. If no rows match, the result is null. The output format is double.
 
 .VARIANCE function examples
@@ -511,4 +542,15 @@ _ANSWER_
 |41| +5.533012244E+2| 553| 553| 582
 |===
 
+==== VARIANCE_SAMP
+(((VARIANCE_SAMP)))
+Returns the sample variance (division by [n-1]) of a set of numbers.
+
+==== XMLAGG
+(((XMLAGG)))
+Returns an XML sequence containing an item for each non-null value in a set of XML values.
+
+==== XMLGROUP
+(((XMLGROUP)))
+The XMLGROUP function returns an XML value with a single XQuery document node containing one top-level element node. This is an aggregate expression that will return a single-rooted XML document from a group of rows where each row is mapped to a row subelement.
 

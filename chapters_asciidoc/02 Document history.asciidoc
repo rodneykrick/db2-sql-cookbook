@@ -9,6 +9,7 @@
 Syntax diagrams were removed. +
 Cross references updated.
 |1.1     |24.11.2019|Added license terms
+|1.2     |06.12.2019|Update functions to Db2 version 11.1
 |===
 
 

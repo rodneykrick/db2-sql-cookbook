@@ -1,6 +1,6 @@
 [[join.chapter]]
 == Joins
-
+(((JOIN)))
 A join is used to relate sets of rows in two or more logical tables. The tables are always joined on a row-by-row basis using whatever join criteria are provided in the query. The result of a join is always a new, albeit possibly empty, set of rows. In a join, the matching rows are joined side-by-side to make the result table. By contrast, in a union (see <<union.chapter>>) the matching rows are joined (in a sense) one-above-the-other to make the result table.
 
 === Why Joins Matter
@@ -267,7 +267,7 @@ Then, for each row, the two ON checks were used to find matching rows in the V2 
 A generic join matches one row with another to create a new compound row. Joins can be categorized by the nature of the match between the joined rows. In this section we shall discuss each join type and how to code it in SQL.
 
 ===== Inner Join
-
+(((Inner join)))
 An inner-join is another name for a standard join in which two sets of columns are joined by matching those rows that have equal data values.
 Most of the joins that one writes will probably be of this kind and, assuming that suitable indexes have been created, they will almost always be very efficient.
 
@@ -344,7 +344,7 @@ _ANSWER_
 
 [[on.and.where.usage]]
 ==== ON and WHERE Usage
-
+(((JOIN, ON))) (((JOIN, WHERE)))
 In an inner join only, an ON and a WHERE check work much the same way. Both define the nature of the join, and because in an inner join, only matching rows are returned, both act to exclude all rows that do not match the join. Below is an inner join that uses an ON check to exclude managers:
 
 .Inner join, using ON check
@@ -391,7 +391,7 @@ _ANSWER_
 
 [[left.outer.join]]
 ==== Left Outer Join
-
+(((Left outer join)))
 A left outer join is the same as saying that I want all of the rows in the first table listed, plus any matching rows in the second table:
 
 pass:[_STAFF_V1_]
@@ -485,7 +485,7 @@ _ANSWER_
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
 |20|Pernal  |20|Sales
-|30|Marenghi|30|Clerk|
+|30|Marenghi|30|Clerk
 |===
 
 If we rewrite the above query using a WHERE check we will lose a row (of output) because the check is applied after the join is done, and a null JOB does not match:
@@ -581,7 +581,7 @@ _ANSWER_
 Unlike in the previous example, there is no way to alter the above WHERE check to make it logically equivalent to the prior ON check. The ON and the WHERE are applied at different times and for different purposes, and thus do completely different things.
 
 ==== Right Outer Join
-
+(((Right outer join)))
 A right outer join is the inverse of a left outer join. One gets every row in the second table listed, plus any matching rows in the first table:
 
 pass:[_STAFF_V1_]
@@ -670,7 +670,7 @@ The rules for ON and WHERE usage are the same in a right outer join as they are 
 
 [[full.outer.joins]]
 ==== Full Outer Joins
-
+(((Full outer join)))
 A full outer join occurs when all of the matching rows in two tables are joined, and there is also returned one copy of each non-matching row in both tables.
 
 pass:[_STAFF_V1_]
@@ -1111,7 +1111,7 @@ The last two checks in the above query ensure that every V2 row is returned. But
 
 ==== Cartesian Product
 
-A Cartesian Product is a form of inner join, where the join predicates either do not exist, or where they do a poor job of matching the keys in the joined tables.
+A ((Cartesian Product)) is a form of inner join, where the join predicates either do not exist, or where they do a poor job of matching the keys in the joined tables.
 
 pass:[_STAFF_V1_]
 |===
