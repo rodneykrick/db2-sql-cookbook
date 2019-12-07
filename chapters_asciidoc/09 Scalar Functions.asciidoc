@@ -678,7 +678,7 @@ _ANSWER_
 
 NOTE: Neither the DIGITS nor the CHAR function do a great job of converting numbers to characters. See <<convert.number.to.character>> for some user-defined functions that can be used instead.
 
-=== CHARACTER_LENGTH
+==== CHARACTER_LENGTH
 (((CHARACTER_LENGTH)))
 This function is similar to the LENGTH function, except that it works with different encoding schemas. The result is an integer value that is the length of the input string.
 
