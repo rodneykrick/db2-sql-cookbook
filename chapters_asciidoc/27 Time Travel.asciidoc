@@ -1,0 +1,41 @@
+[[time.travel]]
+== Time Travel
+(((Time travel)))
+
+This chapter gives an overview on the time travel feature in Db2. It is based on an article by Jan-Eike Michels and Matthias Nicola published on October 18, 2012 on developerWorks [https://www.ibm.com/developerworks/data/library/techarticle/dm-1210temporaltablesdb2/index.html]. 
+
+We don't go that much into detail, just show you how it works. The basic idea is: sometimes you need to keep track on how the data changes over time in the database. While it is possible to track the changes using old database features like triggers (as described in the chapter <<retaining.a.record>>), you will get a very robust solution utilizing the native features of the database. The database solution target two different scenarios: 
+
+- track all the changes to data (System-period) and
+- track the validity of data for some time interval (Application-period).
+
+You can have both at the same time defined for one table (Db2 call this a "Bitemporal" table), i.e., you let the database keep track of all changes and at the same time manage the business validity of the data for you.
+
+To show time travel in action let's take the same table used in chapter <<retaining.a.record>>:
+
+.Customer table
+[source,sql]
+....
+CREATE TABLE customer
+( cust#     INTEGER NOT NULL
+, cust_name CHAR(10)
+, cust_mgr  CHAR(10)
+, PRIMARY KEY(cust#));
+....
+
+If you query this table you will always get one manager (the last one) for the customer. If you need to know who was the manager for this customer one year ago, you just cannot do it. If this is a need in our business, we can profit from the time travel feature. To implement it for this table we will need the following steps:
+
+* add new columns for the table (start, end and transaction) with the following characteristics:
+** system_begin TIMESTAMP(12) NOT NULL GENERATED ALWAYS AS ROW BEGIN
+** system_end   TIMESTAMP(12) NOT NULL GENERATED ALWAYS AS ROW END
+** trans_start  TIMESTAMP(12) GENERATED ALWAYS AS TRANSACTION START ID
+* tell the table that this columns will manage the time slices when the data was active in the database:
+** PERIOD SYSTEM_TIME (system_begin, system_end)
+* define a new table to save the history data:
+** CREATE TABLE customer_history LIKE customer
+* instruct the database management system to activate the time travel feature for this object:
+** ALTER TABLE customer ADD VERSIONING USE HISTORY TABLE customer_history
+
+
+  
+  
