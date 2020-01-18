@@ -173,3 +173,4 @@ select cust_name, cust_mgr
 |===
 
 Now if some customer is unsatisfied because she didn't get a xmas gift, you can blame the right person. 
+
