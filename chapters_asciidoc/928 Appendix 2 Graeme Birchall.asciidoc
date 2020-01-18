@@ -24,7 +24,6 @@ Acrobat is a registered trademark of the Adobe Corporation.
 
 This book was written on a Dell PC that came with oodles of RAM. All testing was done in Db2 V9.7 Express-C for Windows. Word for Windows was used to write the document. Adobe Acrobat was used to make the PDF file. 
 
-[[book.binding]]
 ===  Book Binding
 
 This book looks best when printed on a doubled sided laser printer and then suitably bound. To this end, I did some experiments a few years ago to figure out how to bind books cheaply using commonly available materials. I came up with what I consider to be a very satisfactory solution that is fully documented on <<book.binding>>.
@@ -136,6 +135,7 @@ Graeme
 |2011-08-16| Fixed some minor problems.
 |===
 
+[[book.binding]]
 ===  Book Binding
 
 Below is a quick-and-dirty technique for making a book out of this book. The object of the exercise is to have a manual that will last a long time, and that will also lie flat when opened up. All suggested actions are done at your own risk.

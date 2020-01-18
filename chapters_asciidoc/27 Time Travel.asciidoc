@@ -11,19 +11,19 @@ We don't go that much into detail, just show you how it works. The basic idea is
 
 You can have both at the same time defined for one table (Db2 call this a "Bitemporal" table), i.e., you let the database keep track of all changes and at the same time manage the business validity of the data for you.
 
-To show time travel in action let's take the same table used in chapter <<retaining.a.record>>:
+To show time travel in action let's take a similar table as we used in chapter <<retaining.a.record>>:
 
-.Customer table
+.MyCustomer table
 [source,sql]
 ....
-CREATE TABLE customer
+CREATE TABLE mycustomer
 ( cust#     INTEGER NOT NULL
 , cust_name CHAR(10)
 , cust_mgr  CHAR(10)
 , PRIMARY KEY(cust#));
 ....
 
-If you query this table you will always get one manager (the last one) for the customer. If you need to know who was the manager for this customer one year ago, you just cannot do it. If this is a need in our business, we can profit from the time travel feature. To implement it for this table we will need the following steps:
+If you query this table you will always get one manager (the last one) for the customer. If you need to know who was the manager for this customer im some date in the past, you just cannot do it. If this is a need in our business, we can profit from the time travel feature. To implement it for this table we will need the following steps:
 
 * add new columns for the table (start, end and transaction) with the following characteristics:
 ** system_begin TIMESTAMP(12) NOT NULL GENERATED ALWAYS AS ROW BEGIN
@@ -32,10 +32,144 @@ If you query this table you will always get one manager (the last one) for the c
 * tell the table that this columns will manage the time slices when the data was active in the database:
 ** PERIOD SYSTEM_TIME (system_begin, system_end)
 * define a new table to save the history data:
-** CREATE TABLE customer_history LIKE customer
+** CREATE TABLE mycustomer_history LIKE customer
 * instruct the database management system to activate the time travel feature for this object:
-** ALTER TABLE customer ADD VERSIONING USE HISTORY TABLE customer_history
+** ALTER TABLE mycustomer ADD VERSIONING USE HISTORY TABLE mycustomer_history
 
+.DDL to implement the history for mycustomer
+[source,sql]
+....
+ALTER TABLE mycustomer
+  ADD COLUMN system_begin  TIMESTAMP(12) NOT NULL GENERATED ALWAYS AS ROW BEGIN IMPLICITLY HIDDEN
+  ADD COLUMN system_end    TIMESTAMP(12) NOT NULL GENERATED ALWAYS AS ROW END   IMPLICITLY HIDDEN
+  ADD COLUMN trans_start   TIMESTAMP(12)          GENERATED ALWAYS AS TRANSACTION START ID
+  ADD PERIOD SYSTEM_TIME (system_begin, system_end);
+  
+CREATE TABLE mycustomer_history LIKE mycustomer;
 
-  
-  
+ALTER TABLE mycustomer ADD VERSIONING USE HISTORY TABLE mycustomer_history;    
+.... 
+
+Now suppose we have the following time line in our company:
+
+.Events time line for time travel 
+[options="header",cols="20%,80%"]
+|===
+|Date      |Event
+|01.01.2019|First customer is registered in the database. Name: Customer. Manager: Mgr 1
+|01.07.2019|Second customer is registered in the database. Name: Customer2. Manager: Mgr 1
+|01.12.2019|Third customer is registered in the database. Name: Customer3. Manager: Mgr 2
+|12.01.2020|Fourth customer is registerd in the database. Name: Customer4. Manager: Mgr 3
+|15.01.2020|Fourth customer is deleted from the database.
+|16.01.2020|Name of first customer is changed from Customer to Customer1
+|17.01.2020|Manager of second customer is changed from Mgr 1 to Mgr 2
+|18.01.2020|Manager of third customer is changed from Mgr 2 to Mgr 3
+|===
+
+Now let us select the current data from our table:
+.Select current data from table
+[source,sql]
+....
+SELECT *
+  FROM mycustomer;
+....
+
+.Current data
+[options="header"]
+|===
+|CUST#|CUST_NAME|CUST_MGR
+|1    |Customer1|Mgr 1     
+|2    |Customer2|Mgr 2     
+|3    |Customer3|Mgr 3 
+|===     
+
+We don't see Customer4 because she was already deleted from the database. If we want to see the data as it was on 12.1.2020, we can do it!
+
+.Select table data as it was on 12.1.2020
+[source,sql]
+....
+SELECT *
+  FROM mycustomer 
+  FOR SYSTEM_TIME AS OF '2020-01-12'  
+....
+ 
+.Data on 12.1.2020
+[options="header"]
+|===
+|CUST#|CUST_NAME|CUST_MGR
+|1    |Customer |Mgr 1     
+|2    |Customer2|Mgr 1     
+|3    |Customer3|Mgr 2     
+|4    |Customer4|Mgr 3    
+|=== 
+
+All the changes were done after this date, so we see changes in every single record! Because we defined the columns SYSTEM_BEGIN and SYSTEM_END as IMPLICITLY HIDDEN, we don't get them in the result set. If we want to see them we need to explicitly code their names in our select statement:
+
+.Select table data as it was on 12.1.2020, show all columns
+[source,sql]
+....
+SELECT cust#, cust_name, cust_mgr, system_begin, system_end
+  FROM mycustomer 
+  FOR SYSTEM_TIME AS OF '2020-01-12'  
+....
+
+.Table data as it was on 12.1.2020, show all columns
+[options="header",cols="15%,20%,15%,25%,25%"]
+|===
+|CUST#|CUST_NAME|CUST_MGR|SYSTEM_BEGIN         |SYSTEM_END
+|1    |Customer |Mgr 1   |2019-01-01 00:00:00.0|2020-01-16 00:00:00.0
+|2    |Customer2|Mgr 1   |2019-07-01 00:00:00.0|2020-01-17 00:00:00.0
+|3    |Customer3|Mgr 2   |2019-12-01 00:00:00.0|2020-01-18 00:00:00.0
+|4    |Customer4|Mgr 3   |2020-01-12 00:00:00.0|2020-01-15 00:00:00.0
+|===     
+
+Because the content of SYSTEM_END is always different from the default value of a "ROW END" column in the base table ('9999-12-30 00:00:00.0'), we know that all data came from the history table! 
+
+NOTE: In the first version of the time travel feature IBM used '9999-12-31 00:00:00.0' as default value for the row end. That worked fine when you didn't work in different time zones! This is the reason why it changed to 9999-12-30: to avoid overflows. 
+
+The history table is a normal table and you can query it. If you want to show all the events in the table mycustomer, you could write the following query: 
+
+.Select all events (all data) from both tables
+[source,sql] 
+....
+select 'myCustomer' as Tablename, cust#, cust_name, cust_mgr, system_begin, system_end
+from mycustomer
+union all
+select 'myCustomer_History', cust#, cust_name, cust_mgr, system_begin, system_end
+from mycustomer_history
+order by system_begin;
+....
+
+.All table data, order by start of event
+[options="header"]
+|===
+|TABLENAME         |CUST#|CUST_NAME|CUST_MGR|SYSTEM_BEGIN         |SYSTEM_END
+|myCustomer_History|1    |Customer |Mgr 1   |2019-01-01 00:00:00.0|2020-01-16 00:00:00.0
+|myCustomer_History|2    |Customer2|Mgr 1   |2019-07-01 00:00:00.0|2020-01-17 00:00:00.0
+|myCustomer_History|3    |Customer3|Mgr 2   |2019-12-01 00:00:00.0|2020-01-18 00:00:00.0
+|myCustomer_History|4    |Customer4|Mgr 3   |2020-01-12 00:00:00.0|2020-01-15 00:00:00.0
+|myCustomer        |1    |Customer1|Mgr 1   |2020-01-16 00:00:00.0|9999-12-30 00:00:00.0
+|myCustomer        |2    |Customer2|Mgr 2   |2020-01-17 00:00:00.0|9999-12-30 00:00:00.0
+|myCustomer        |3    |Customer3|Mgr 3   |2020-01-18 00:00:00.0|9999-12-30 00:00:00.0
+|===
+
+Now we can answer the question we posted at the beginning: who was the manager Customer2 on Christmas in year 2019?
+
+.Select Manager for a specific date
+[source,sql]
+....
+select cust_name, cust_mgr  
+  FROM mycustomer 
+  FOR SYSTEM_TIME AS OF '2019-12-25'
+....
+
+.Result for a specific date
+[options="header"]
+|===
+|CUST_NAME|CUST_MGR
+|Customer |Mgr 1     
+|Customer2|Mgr 1     
+|Customer3|Mgr 2  
+|===
+
+Now if some customer is unsatisfied because she didn't get a xmas gift, you can blame the right person. 
