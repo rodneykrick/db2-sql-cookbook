@@ -17,9 +17,9 @@
 :toclevels: 4                                                       
 :toc-title: Content                                                                                        
 :description: Overview of SQL in Db2 Linux, Windows and Unix (LUW)
-:keywords: Db2, SQL, Query Language
+:keywords: Db2, SQL, Query Language, SQL Cookbook, Grame Birchall
 
-Graeme Birchal (until Version 9.7, 2011) +
+Graeme Birchall (until Version 9.7, 2011) +
 Version 1.0, Rodney Krick, November 2019 +
 Contributors: Andres Gomez Casanova
 
