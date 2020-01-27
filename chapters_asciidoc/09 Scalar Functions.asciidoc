@@ -39,6 +39,7 @@ FROM    temp1;
 Below are the view contents:
 
 .SCALAR view, contents (3 rows)
+[options="header",]
 |===
 |D1  |F1       |S1|C1    |V1    |TS1                       |DT1       |TM1     |TC1
 |-2.4|-2.4e+000|-2|ABCDEF|ABCDEF|1996-04-22-23.58.58.123456|1996-04-22|23:58:58|1996-04-22-23.58.58.123456
@@ -63,7 +64,7 @@ FROM scalar;
 ....
 
 _ANSWER (float output shortened)_
-
+[options="header",]
 |===
 |D1  |D2 |F1       |F2
 |-2.4|2.4|-2.400e+0|2.400e+00
@@ -138,7 +139,7 @@ WHERE c1 = 'ABCDEF';
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |C1|AC1| AC2
 |ABCDEF|65|66
@@ -212,6 +213,7 @@ SELECT f1         AS float1
 FROM temp;
 ....
 
+[options="header",]
 |===
 |FLOAT1                |DECIMAL1            |BIGINT1
 |+1.23456789000000E+000|1.                  |1
@@ -273,6 +275,7 @@ FROM temp2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |B1|B2|hex1|hex2|and|ano|or|xor
 |1 |0 |0100|0000|0  |1  |1 |1
@@ -348,6 +351,7 @@ FROM temp2;
 
 _ANSWER_
 
+[options="header",]
 |===
 |B1    |hex1|bit_display
 |32767 |FF7F|0111111111111111
@@ -398,6 +402,7 @@ FROM temp2;
 
 Below is the answer:
 
+[options="header",]
 |===
 |B1   |b1_display      |xor  |xor_display     |andnot|andnot_display
 |32767|0111111111111111|32752|0111111111110000|32752 |0111111111110000
@@ -436,6 +441,7 @@ FROM temp2;
 ....
 
 Below is the answer:
+[options="header",]
 |===
 |B1   |b1_display      |and|and_display     |not   |not_display
 |32767|0111111111111111|15 |0000000000001111|-32768|1000000000000000
@@ -475,7 +481,7 @@ FROM scalar;
 ....
 
 _ANSWER (float output shortened)_
-
+[options="header",]
 |===
 |D1  |D2 |F1       |F2
 |-2.4|-2.|-2.400E+0|-2.000E+0
@@ -510,6 +516,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NAME   |2  |COMM   |4       |5
 |James  |Jam|128.20 |00128.20|00128@20
@@ -537,6 +544,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INT     |CHAR_INT|CHAR_FLT   |CHAR_DEC
 |3       |3       |3.0E0      |00000000003.
@@ -575,6 +583,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1   |I1   |I2   |D1     |D2
 |3    |3    |+3   |00003. |+00003.
@@ -609,6 +618,7 @@ FROM sysibm.sysdummy1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ISO       |EUR       | JIS      |USA 
 |2005-11-30|30.11.2005|2005-11-30|11/30/2005
@@ -626,6 +636,7 @@ FROM sysibm.sysdummy1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ISO     |EUR     | JIS    |USA
 |19.42.21|19.42.21|19:42:21|07:42 PM
@@ -669,6 +680,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D2  |CD2   |DD2
 |-2.4|-002.4|0024
@@ -698,6 +710,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |LEN|OCT|L08|L16|L32
 |ÁÉÌ|6  |6  |6  |3  |3
@@ -719,6 +732,7 @@ WHERE id = 10;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C|C>N|C>N>C|NL
 |A|65 |A    |ÿ|
@@ -740,6 +754,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |CC1   |CC2
 |ABCDEF|ABCDEF|ABC
@@ -767,6 +782,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|COMM  |3
 |10|-     |0.00
@@ -793,6 +809,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |CC1|CC2
 |10 |10
@@ -811,6 +828,7 @@ WHERE id < 5;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |#ROWS|MIN_ID|CCC_ID
 |0    |-     |-1
@@ -850,6 +868,7 @@ ORDER BY COLLATION_KEY_BIT(c1, 'UCA400R1_S3');
 ....
 
 Below is the answer:
+[options="header",]
 |===
 |C1|a=A=Á=Ä|a=A<Á<Ä      |a<A<Á<Ä
 |a |x'2600'|x'26010500'  |x'260105010500'
@@ -923,6 +942,7 @@ WHERE id = 10;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1 |2 |3 |4  |5
 |AB|AB|AB|ABC|ABC
@@ -951,6 +971,7 @@ ORDER BY col3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2|COL3
 |AE  |OOO |AEOOO
@@ -977,6 +998,7 @@ ORDER BY col3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2|COL3
 |A   |YYY |A YYY
@@ -1008,6 +1030,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1|RAN  |COS  |SIN
 |0 |0.000|1.000|0.000
@@ -1058,6 +1081,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                       |DT1
 |1996-04-22-23.58.58.123456|1996-04-22 
@@ -1080,6 +1104,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1    |D1
 |1     |0001-01-01
@@ -1109,6 +1134,7 @@ WHERE DAY(dt1) > 10;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |DAY1
 |1996-04-22|22
@@ -1130,6 +1156,7 @@ ORDER BY dt1;
 ....
 
 __ANSWER__
+[options="header",]
 |===
 |DT1       |DAY1|DUR2|DAY2
 |1996-04-22|22  |-8. |-8
@@ -1154,6 +1181,7 @@ ORDER BY dt1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |DY1     |DY2
 |0001-01-01|Monday  |6
@@ -1181,6 +1209,7 @@ ORDER BY dwk
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |DWK|DNM
 |1996-04-22|2  |Monday
@@ -1222,6 +1251,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DATE      |DAY|W |D|WI|DI
 |1999-12-25|Sat|52|7|51|6
@@ -1282,6 +1312,7 @@ ORDER BY dy1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |DY1
 |0001-01-01|1
@@ -1347,6 +1378,7 @@ FROM sysibm.sysdummy1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1    |2  |3     |4                    |5     |6    |7    |8   |9
 |123.4|1.0|1.0000|0.0011999999999999999|0.0012|-1000|-1E+3|12.5|12.5
@@ -1377,6 +1409,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEC1|DEC2 |DEC3 |DEC4
 |123.|100.0|123.4|567.8
@@ -1405,6 +1438,7 @@ ORDER BY firstnme;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |FIRSTNME |SEX|SEX2  |SEX3
 |BRUCE    |M  |MALE  |MALE
@@ -1465,6 +1499,7 @@ ORDER BY df DESC
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1     |S1  |N2       |S2  |DF
 |Sanders|S536|Sneider  |S536|4
@@ -1495,6 +1530,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S1|DS1  |D1  |DD1
 |2 |00002|-2.4|024
@@ -1525,6 +1561,7 @@ FROM temp1;
 ....
 
 _ANSWER (output shortened)_ 
+[options="header",]
 |===
 |C1D             |D1D
 |+1.23450000E+004|+1.24000000E+001
@@ -1590,6 +1627,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1|E1                  |E2
 |0 |+1.00000000000000E+0|1
@@ -1632,6 +1670,7 @@ FROM scalar;
 ....
 
 _ANSWER (float output shortened)_
+[options="header",]
 |===
 |D1 |D2 |F1       |F2
 |2.4|-3.|-2.400E+0|-3.000E+0
@@ -1660,6 +1699,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|UNIQUE_VAL#1|UNIQUE_VAL#2
 |10|            |20011017191648990521000000. 
@@ -1686,6 +1726,7 @@ FROM sysibm.sysdummy1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                       |TS2                       |TS3
 |2007-01-19-18.12.33.587000|2007-01-19-22.12.28.434960|2007-01-19-18.12.28.434953
@@ -1721,6 +1762,7 @@ ORDER BY u2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |U1                        |U2
 |20000901131649119940000000|04991194613110900002 
@@ -1770,6 +1812,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |HINT
 |10|Sanders|MY BROTHER
@@ -1839,6 +1882,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S |SHX |DHX   |FHX
 |3 |FDFF|00003D|00000000000008C0
@@ -1861,6 +1905,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |CHX         |V1    |VHX
 |ABCDEF|414243444546|ABCDEF|414243444546
@@ -1879,6 +1924,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |DTHX    |TM1     |TMHX
 |1996-04-22|19960422|23:58:58|235858
@@ -1904,6 +1950,7 @@ ORDER BY tm1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TM1     |HR
 |00:00:00|0
@@ -1969,6 +2016,7 @@ WHERE id < 40;
 ....
 
 _ANSWER (4K output fields shortened)_
+[options="header",]
 |===
 |NAME    |2      |3        |4
 |Sanders |SaAers | SaABers |SaABCers
@@ -2007,6 +2055,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1 |2 |3  |4   |5
 |2.4|-2|123|-123|123
@@ -2038,6 +2087,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT        |DY    |DJ
 |0001-01-01|1     |1721426
@@ -2087,6 +2137,7 @@ ORDER BY bd;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |BD        |2      |3
 |1926-05-17|2424653|2424653
@@ -2114,6 +2165,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT        |DJ1       |DJ2
 |2007-01-01|2006-12-19|2007001
@@ -2142,6 +2194,7 @@ WHERE id < 30;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NAME   |LNAME  |UNAME
 |Sanders|sanders|SANDERS
@@ -2171,6 +2224,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |C2 |L2
 |ABC|AB |4
@@ -2196,6 +2250,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1|2|3|4|5
 |2|8|2|6|6
@@ -2235,6 +2290,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1    |L1
 |1     |+0.00000000000000E+000
@@ -2270,6 +2326,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1   |l1|l2|l3|l4|l5
 |abcdÄ|5 |5 |5 |5 |5
@@ -2304,6 +2361,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1    |L1
 |1     |+0.00000000000000E+000
@@ -2348,6 +2406,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |C2 |L2
 |ABC|ABC|3
@@ -2403,6 +2462,7 @@ ORDER BY ts1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                       |2
 |0001-01-01-00.00.00.000000|0
@@ -2425,6 +2485,7 @@ ORDER BY ts1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                       |2    |3
 |0001-01-01-00.00.00.000000|0    |0
@@ -2452,6 +2513,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |MS   |TM
 |0    |00:00:00
@@ -2490,6 +2552,7 @@ ORDER BY ts1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                       |2
 |0001-01-01-00.00.00.000000|0
@@ -2526,6 +2589,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1 |N2 |DIV|MD1|MD2
 |31 |11 |-2 |-9 |-9
@@ -2557,6 +2621,7 @@ ORDER BY dt1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |2|3
 |0001-01-01|1|January
@@ -2588,6 +2653,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1   |N2   |P1      |P2      |P3
 |1234.|1234.|1522756.|1522756.|1522756.
@@ -2596,6 +2662,7 @@ _ANSWER_
 When doing ordinary multiplication of decimal values, the output precision and the scale is the sum of the two input precisions and scales - with both having an upper limit of 31. Thus, multiplying a DEC(10,5) number and a DEC(4,2) number returns a DEC(14,7) number. Db2 always tries to avoid losing (truncating) fractional digits, so multiplying a DEC(20,15) number with a DEC(20,13) number returns a DEC(31,28) number, which is probably going to be too small. The MULTIPLY_ALT function addresses the multiplication overflow problem by, if need be, truncating the output scale. If it is used to multiply a DEC(20,15) number and a DEC(20,13) number, the result is a DEC(31,19) number. The scale has been reduced to accommodate the required precision. Be aware that when there is a need for a scale in the output, and it is more than three digits, the function will leave at least three digits. Below are some examples of the output precisions and scales generated by this function:
 
 .Decimal multiplication - same output lengths
+[options="header",]
 |===
 |INPUT#1   |INPUT#2   |RESULT "*" OPERATOR|RESULT MULTIPLY_ALT|M_A->SCALE TRUNCATD| M_A->PRECISION TRUNCATD
 |DEC(05,00)|DEC(05,00)|DEC(10,00)         |DEC(10,00)         |NO                 |NO
@@ -2662,6 +2729,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1                  |D2
 |1                   |1
@@ -2696,6 +2764,7 @@ WHERE NULLIF(0, 0) IS NULL;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S1|2 |C1    |4
 |2 |-2|ABCDEF|ABCDEF
@@ -2731,6 +2800,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |LEN|OCT|L08|L16|L32
 |ÁÉÌ|6  |6  |6  |3  |3
@@ -2767,6 +2837,7 @@ FROM temp1;
 
 _ANSWER_
 |===
+[options="header",]
 |TXT   |s3f1   |s2f0   |s1f1   |s2f2
 |abcded|abXXded|aXXcded|XXbcded|aXXded
 |addd  |adXXd  |aXXdd  |XXddd  |aXXd
@@ -2801,6 +2872,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |p1|p2|p3|p4
 |Ä  |1 |1 |1 |1
@@ -2827,6 +2899,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |P1|P2|P3
 |AB    |3 |0 |0
@@ -2855,6 +2928,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |P1|L1|P2|L2|P3|L3|L4
 |AB    |3 |3 |0 |0 |0 |0 |0
@@ -2882,6 +2956,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1 |P1 |P2   |P3
 |1  |1  |1    |1
@@ -2941,6 +3016,7 @@ FROM temp1;
 ....
 
 _ANSWER_ 
+[options="header",]
 |===
 |D1
 |0.00001
@@ -2971,6 +3047,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S1              |S2
 |-2              |-2
@@ -3023,6 +3100,7 @@ FROM temp;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |#ROWS |#VALUES|AVG_RAN |STD_DEVM|MIN_RAN |MAX_RAN |RANGE   |VARIANCE
 |100000|31242  |0.499838|0.288706|0.000000|1.000000|1.000000|0.083351
@@ -3047,6 +3125,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DNO|RAN
 |A00|+1.15970336008789E-003
@@ -3070,6 +3149,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DNO|RAN
 |A00|+2.55287331766717E-001
@@ -3103,6 +3183,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2|COL3
 |0   |0   |9342.32
@@ -3145,6 +3226,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL#1|RAN#1|RAN#2
 |30000|19698|29998
@@ -3171,6 +3253,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |NAME
 |140|Fraye
@@ -3204,6 +3287,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |NAME
 |10 |Sanders
@@ -3248,6 +3332,7 @@ FROM
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEC                             |DBL                  |REL          |INT       |BIG
 |1234567890.123456789012345678901|1.23456789012346e+009|1.234568e+009|1234567890|1234567890
@@ -3300,6 +3385,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|2
 |10|SandersSandersSanders
@@ -3321,6 +3407,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |R1    |R2
 |ABCDEF|XYCDEF|ABCDEF
@@ -3345,6 +3432,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |R1
 |ABCDEF|XYCDEF
@@ -3368,6 +3456,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |STAFF_RID
 |10|98357.50|100663300
@@ -3392,6 +3481,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|RID_BIT
 |10|x'04000006000000000000000000FCE14D'
@@ -3414,6 +3504,7 @@ ORDER BY s1.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|RID_BIT
 |10|x'04000006000000000000000000FCE14D'
@@ -3436,6 +3527,7 @@ WHERE id = 20;
 
 _ANSWER_ 
 
+[options="header",]
 |===
 |ID|SALARY  |3                                  |4
 |20|78171.25|x'05000006000000000000000000FCE14D'|3999250443959009280
@@ -3478,6 +3570,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |C2 |L2
 |ABC|ABC|4
@@ -3507,6 +3600,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1     |P2     |P1     |P0     |N1     |N2
 |123.400|123.400|123.400|123.000|120.000|100.000
@@ -3538,6 +3632,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |R1     |R2|R3
 |ABCDEF| ABCDEF|6 |6
@@ -3580,6 +3675,7 @@ FROM scalar;
 ....
 
 _ANSWER (float output shortened)_
+[options="header",]
 |===
 |D1  |2        |F1       |4
 |-2.4|-1.000E+0|-2.400E+0|-1.000E+0
@@ -3609,6 +3705,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1|RAN  |SIN  |TAN
 |0 |0.000|0.000|0.000
@@ -3642,6 +3739,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1  |2 |3  |4   |5
 |-2.4|-2|123|-123|123
@@ -3673,6 +3771,7 @@ ORDER BY df DESC
        , n2 ASC;
 ....
 _ANSWER_
+[options="header",]
 |===
 |N1     |S1  |N2       |S2  |DF
 |Sanders|S536|Sneider  |S536|4
@@ -3694,6 +3793,7 @@ There are several minor variations on the SOUNDEX algorithm. Below is one exampl
 * The letters W and H are ignored.
 * The vowels, A, E, I, O, U, and Y are not coded, but are used as separators (see last item).
 * The remaining letters are coded as:
+[options="header",]
 |===
 |Letters                 |Value
 |B, P, F, V              |1
@@ -3731,6 +3831,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1|S1|S2|S3
 |1 |  |1 |"X"
@@ -3757,6 +3858,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |N1   |S1
 |0.500|0.707
@@ -3790,6 +3892,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 |C2 |L2|C3 |L3|C4
 |ABC|ABC|3 |ABC|3 |ABC
@@ -3832,6 +3935,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |LEN|DAT1     |LDAT|SUBDAT
 |6  |123456789|9   |123456
@@ -3860,6 +3964,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |LEN|DAT1     |LDAT|SUBDAT
 |6  |123456789|9   |123456
@@ -3883,6 +3988,7 @@ WHERE id < 60;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NAME    |LEN|S1  |L1|S2 |L2
 |Sanders |7  |ers |3 |ers|3
@@ -3928,6 +4034,7 @@ ORDER BY a.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY  |DEPTSAL
 |10|20  |98357.50|254286.10
@@ -3955,6 +4062,7 @@ WHERE tabname = TABLE_NAME('emp2', 'graeme');
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TABSCHEMA|TABNAME |CARD
 |graeme   |employee|-1
@@ -3989,6 +4097,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TAB_SCH|TAB_NME
 |graeme |fred1
@@ -4070,6 +4179,7 @@ ORDER BY ts1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                |TS2
 |1999-12-31 23:59:59|1999-12-31-23.59.59.000000
@@ -4091,6 +4201,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TM1     |2
 |23:58:58|2000-09-01-23.58.58.000000
@@ -4143,6 +4254,7 @@ FROM temp3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DF                   |DIF|DYS
 |00010000000001.000000|365|366
@@ -4278,6 +4390,7 @@ SELECT 'abcd'
 	  , TRANSLATE('abcd', 'AB', 'a')
 FROM staff WHERE id = 10;
 ....
+[options="header",]
 |===
 |ANS.|NOTES
 |abcd|No change
@@ -4309,6 +4422,7 @@ WHERE c1 = 'ABCD';
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1   |2   |3   |4   |5
 |ABCD|XYCD|ABCD|XYCD|YXCD
@@ -4350,6 +4464,7 @@ ORDER BY 1 DESC;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1     |POS2   |POS1   |ZERO   |NEG1   |NEG2
 |123.400|123.400|123.400|123.000|120.000|100.000
@@ -4385,6 +4500,7 @@ WHERE id < 30;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NAME   |LNAME  |UNAME
 |Sanders|sanders|SANDERS
@@ -4415,6 +4531,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1    |L1|V2    |L2|V3
 |ABCDEF|6 |ABCDEF|6 |ABCD
@@ -4445,6 +4562,7 @@ ORDER BY ts1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TS1                       |TS2
 |1999-12-31-23.59.59.000000|1999-12-31 23:59:59
@@ -4489,6 +4607,7 @@ FROM sysibm.sysdummy1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |W1|W2|W3|W4|W5
 |1 |2 |1 |54|53
@@ -4526,6 +4645,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DTE       |DY |WK|DY|WI|DI
 |1998-12-27|Sun|53|1 |52|7
@@ -4638,6 +4758,7 @@ FROM scalar;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |YR  |WK
 |1996-04-22|1996|17
@@ -4671,6 +4792,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |S2      |S3
 |10|98357.50|98357.50|98367.50
@@ -4694,6 +4816,7 @@ ORDER BY empno;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |BDATE1    |BDATE2    |BDATE3    |BDATE4
 |000010|1933-08-24|1934-08-24|1934-08-24|1934-08-24
@@ -4718,6 +4841,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |S2       |S3
 |10|98357.50|-98357.50|98347.50
@@ -4742,6 +4866,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |S2        |S3
 |10|98357.50|983575.00 |983575.00
@@ -4766,6 +4891,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |S2     |S3
 |10|98357.50|9835.75|9835.75
@@ -4791,6 +4917,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |N1   |N2   |N3   |N4
 |110|NganZ|NganZ|NganZ|NganZ
@@ -4839,6 +4966,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|I2   |I3
 |10|00010|00010
@@ -4877,6 +5005,7 @@ ORDER BY ID;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|balance
 |1 |111.11
@@ -4918,6 +5047,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NEWBAL
 |1 |1111.10
@@ -4936,6 +5066,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NEWBAL
 |1 |1111.10
@@ -4981,6 +5112,7 @@ WHERE id = 10;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|ZZ
 |10|0
@@ -5003,6 +5135,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|C1 |C2
 |10|100|50
@@ -5031,6 +5164,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|RND
 |10|37
@@ -5057,6 +5191,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY
 |10|98357.50
@@ -5102,6 +5237,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SAL1    |SAL2
 |10|98357.50|98357.50
@@ -5160,6 +5296,7 @@ ORDER BY id!
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME1   |NAME2
 |10|Sanders |srednaS
@@ -5208,6 +5345,7 @@ ORDER BY id!
 IMPORTANT: This example uses an "!" as the stmt delimiter.
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME1   |NAME2
 |10|Sanders |7

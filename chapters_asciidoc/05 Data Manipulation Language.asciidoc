@@ -622,6 +622,7 @@ ORDER BY 1,2,3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO | PRJ| ACT
 |200000| ABC| 10
@@ -648,6 +649,7 @@ ORDER BY row#;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PRJ|ACT|R#
 |300000|ZZZ|999|1
@@ -672,6 +674,7 @@ ORDER BY INPUT SEQUENCE;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PRJ|ACT|R#
 |400000|ZZZ|999|1
@@ -707,7 +710,7 @@ ORDER BY INPUT SEQUENCE;
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |EMPNO |PRJ|ACT|R#
 |600010|1  |59 |1
@@ -733,6 +736,7 @@ ORDER BY projno;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PRJ|ETIME
 |200000|ABC|1.00
@@ -759,6 +763,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PRJ|OLD_T|NEW_T
 |ABC|2.00 |0.02
@@ -783,7 +788,7 @@ ORDER BY 1,2;
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |PRJ|ACT
 |VVV|111
@@ -811,6 +816,7 @@ ORDER BY 1, 2, 3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PROJNO|ACT|R#
 |000260|AD3113|70 |2
@@ -845,6 +851,7 @@ FETCH FIRST 5 ROWS ONLY;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |LASTNAME|PROJNO|ACT
 |000010|HAAS    |AD3100|10
@@ -986,6 +993,7 @@ WHEN NOT MATCHED THEN
 |===
 
 *AFTER-MERGE*
+[options="header",]
 |===
 |ID|JOB  |SALARY
 |20|Sales|78171.25
@@ -1009,6 +1017,7 @@ WHEN MATCHED THEN
 ....
 
 *AFTER-MERGE*
+[options="header",]
 |===
 |ID|JOB  |SALARY
 |20|Sales|78171.25
@@ -1049,6 +1058,7 @@ WHEN NOT MATCHED THEN
 ....
 
 *OLD_STAFF*
+[options="header",]
 |===
 |ID|JOB  |SALARY 
 |20|Sales|78171.25
@@ -1057,7 +1067,7 @@ WHEN NOT MATCHED THEN
 |===
 
 *NEW_STAFF*
-
+[options="header",]
 |===
 |ID|SALARY 
 |30|7750.67
@@ -1066,7 +1076,7 @@ WHEN NOT MATCHED THEN
 |===
  
 *AFTER-MERGE*
-
+[options="header",]
 |===
 |ID|JOB  |SALARY
 |20|Sales|78171.25
@@ -1097,6 +1107,7 @@ WHEN NOT MATCHED THEN
 ....
 
 *AFTER-MERGE*
+[options="header",]
 |===
 |ID|JOB  |SALARY
 |20|Sales|78171.25
@@ -1161,6 +1172,7 @@ WHEN NOT MATCHED THEN
 |===
 
 *AFTER-MERGE*
+[options="header",]
 |===
 |ID|JOB  |SALARY
 |20|Sales|78171.25
@@ -1194,6 +1206,7 @@ WHEN NOT MATCHED THEN
 ....
 
 *AFTER-MERGE*
+[options="header",]
 |===
 |ID|JOB  |SALARY
 |20|Sales|78171.25
