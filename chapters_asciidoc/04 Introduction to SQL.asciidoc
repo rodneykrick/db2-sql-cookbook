@@ -413,7 +413,7 @@ What follows is a brief introduction to the subject. The basic rules are:
 
 The valid labeled durations are listed below:
 
-// Angoca: I have tried to arrange the table as the original one, but for the moment I have not found a solution.
+// TODO Angoca: I have tried to arrange the table as the original one, but for the moment I have not found a solution.
 
 .Labeled Durations and Date/Time Types
 [options="header",]
@@ -629,7 +629,7 @@ _ANSWER_
 
 A distinct data type is a field type that is derived from one of the base Db2 field types. It is used when one wants to prevent users from combining two separate columns that should never be manipulated together (e.g. adding US dollars to Japanese Yen).
 
-// Angoca: LONG VARCHAR were deprecated in V9.5, DataLinks were deprecated in version 9.1. LOB are allowed. XML and Array are not - https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.1.0/com.ibm.db2.luw.sql.ref.doc/doc/r0000913.html
+// Angoca: LONG VARCHAR were deprecated in V9.5, DataLinks were deprecated in version 9.1. LOB are allowed. XML and Array are not - https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.1.0/com.ibm.db2.luw.sql.ref.doc/doc/r0000913.html For this reason, I removed from the document.
 
 NOTE: The following source type do not support distinct types: XML, Array.
 
@@ -1410,9 +1410,9 @@ WHERE (empno, 'AD3113') IN
 ORDER BY 1;
 ....
 
-[options="header",]
 _ANSWER_
 
+[options="header",]
 |===
 |EMPNO |LASTNAME
 |000260|JOHNSON
@@ -1454,13 +1454,12 @@ _ANSWER_
 
 ===== The ESCAPE Phrase
 
-The ((escape)) character in a LIKE statement enables one to check for percent signs and/or underscores in the search string. When used, it precedes the '%' or '_' in the search string indicating that it is the actual value and not the special character which is to be checked for.
-When processing the LIKE pattern, Db2 works thus: Any pair of escape characters is treated as the literal value (e.g. "++" means the string "+"). Any single occurrence of an escape character followed by either a "%" or a "_" means the literal "%" or "_" (e.g. "+%" means the string
-"%"). Any other "%" or "_" is used as in a normal LIKE pattern.
-
-// Angoca: The like escape is not shown correctly
+The ((escape)) character in a LIKE statement enables one to check for percent signs and/or underscores in the search string. When used, it precedes the '%' or '\_' in the search string indicating that it is the actual value and not the special character which is to be checked for.
+When processing the LIKE pattern, Db2 works thus: Any pair of escape characters is treated as the literal value (e.g. "++" means the string "+"). Any single occurrence of an escape character followed by either a "%" or a "\_" means the literal "%" or "\_" (e.g. "+%" means the string
+"%"). Any other "%" or "\_" is used as in a normal LIKE pattern.
 
 .LIKE and ESCAPE examples
+[options="header",]
 |===
 |LIKE STATEMENT TEXT       |WHAT VALUES MATCH 
 |LIKE 'AB%'                |Finds AB, any string 
@@ -1508,6 +1507,9 @@ One may need to do this when joining structured to unstructured data.
 For example, imagine that one had a list of SQL statements (in a table) and a list of view names in a second table. One might want to scan the SQL text (using a LIKE predicate) to find those statements that referenced the views. The LOCATE function can be used to do a simple equality check. The LIKE predicate allows a more sophisticated search.
 The following code creates a scalar function and dependent procedure that can compare one column against another (by converting both column values into input variables). The function is just a stub. It passes the two input values down to the procedure where they are compared using a LIKE predicate. If there is a match, the function returns one, else zero.
 
+NOTE: These examples use an "!" as the stmt delimiter.
+
+.Create LIKE_COLUMN procedure
 [source,sql]
 ....
 --#SET DELIMITER !
@@ -1530,8 +1532,6 @@ BEGIN
 END!
 ....
 
-NOTE: This example uses an "!" as the stmt delimiter.
-
 .Create LIKE_COLUMN function
 [source,sql]
 ....
@@ -1545,7 +1545,7 @@ DETERMINISTIC
 NO EXTERNAL ACTION
 BEGIN ATOMIC
     DECLARE outval SMALLINT;
-    CALL LIKE_COLUMN(instr1,instr2,outval);
+    CALL LIKE_COLUMN(instr1, instr2, outval);
     RETURN outval;
 END!
 ....
@@ -1573,6 +1573,7 @@ ORDER BY s.id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID|NAME    |JOB  |JTEST
 |10|Sanders |Mgr  |_gr%
@@ -1601,6 +1602,7 @@ ORDER BY id;
 
 ANSWER
 
+[options="header",]
 |===
 |ID| COMM
 |10| - 
@@ -1625,6 +1627,8 @@ WHERE name LIKE '%a' || X'3B' || '%'
 ORDER BY id;
 ....
 
+// TODO Angoca: Put an example of using UNICODE characters.
+
 ==== Precedence Rules
 
 Expressions within parentheses are done first, then prefix operators (e.g. -1), then multiplication and division, then addition and subtraction. When two operations of equal ((precedence)) are together (e.g. 1 * 5 / 4) they are done from left to right.
@@ -1634,9 +1638,9 @@ Expressions within parentheses are done first, then prefix operators (e.g. -1), 
 ....
 Example:
 
-555 +      -22  /    (12 - 3) * 66
-    ^      ^    ^        ^    ^
-    5th   2nd  3rd      1st  4th 
+555 +     -22  /  (12 - 3) * 66
+    ^     ^    ^      ^    ^
+    5th  2nd  3rd    1st  4th 
 
 ANSWER: 423
 ....
@@ -1655,6 +1659,7 @@ FROM sysibm.sysdummy1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |INT1| INT2| INT3| INT4
 |9   | -2  | -132| 423
@@ -1676,6 +1681,7 @@ FROM sysibm.sysdummy1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |DEC1| DEC2| DEC3  | DEC4
 |9.0 | -2.4| -161.3| 393.6
@@ -1687,6 +1693,8 @@ _ANSWER_
 ((AND)) operations are done before ((OR)) operations. This means that one side of an OR is fully processed before the other side is begun. To illustrate:
 
 *TABLE1*
+
+[options="header",]
 |===
 |col1|col2
 |A   |AA
@@ -1705,6 +1713,7 @@ ORDER BY col1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2
 |A   |AA
@@ -1723,6 +1732,7 @@ ORDER BY col1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2
 |A   |AA 
@@ -1743,6 +1753,7 @@ ORDER BY col1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |COL1| COL2
 |C   | CC
@@ -1752,13 +1763,22 @@ WARNING: The omission of necessary parenthesis surrounding OR operators is a ver
 
 ==== Processing Sequence
 
-The various parts of a SQL statement are always executed in a specific sequence in order to avoid semantic ambiguity: FROM clause JOIN ON clause WHERE clause GROUP BY and aggregate HAVING clause SELECT list ORDER BY clause FETCH FIRST.
+The various parts of a SQL statement are always executed in a specific sequence in order to avoid semantic ambiguity:
+
+* FROM clause.
+* JOIN ON clause.
+* WHERE clause.
+* GROUP BY and aggregate.
+* HAVING clause.
+* SELECT list.
+* ORDER BY clause.
+* FETCH FIRST.
 
 Observe that ON predicates (e.g. in an outer join) are always processed before any WHERE predicates (in the same join) are applied. Ignoring this processing sequence can cause what looks like an outer join to run as an inner join (see <<on.and.where.usage>>). Likewise, a function that is referenced in the SELECT section of a query (e.g. row-number) is applied after the set of matching rows has been identified, but before the data has been ordered.
 
 === CAST Expression
 
-The CAST is expression is used to convert one data type to another. It is similar to the various field-type functions (e.g. CHAR, SMALLINT) except that it can also handle null values and host-variable parameter markers.
+The CAST expression is used to convert one data type to another. It is similar to the various field-type functions (e.g. CHAR, SMALLINT) except that it can also handle null values and host-variable parameter markers.
 
 [[input-vs-output-rules]]
 ==== Input vs. Output Rules
@@ -1783,7 +1803,8 @@ ORDER BY id;
 ....
 
 _ANSWER_
-
+ 
+[options="header",]
 |===
 |ID| SALARY  | SAL2
 |10| 98357.50| 98357
@@ -1805,6 +1826,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| JOB   |JOB2
 |10| Mgr   |Mgr
@@ -1825,6 +1847,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| JUNK
 |10| -
@@ -1848,6 +1871,7 @@ ORDER BY stf.id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID| EMPNO
 |10| - 
@@ -1871,8 +1895,10 @@ AND emp.job = 'MANAGER'
 WHERE stf.id < 60 
 ORDER BY stf.id;
 ....
+
 _ANSWER_
 
+[options="header",]
 |===
 |ID| EMPNO
 |10| - 
@@ -1943,6 +1969,7 @@ ORDER BY 2 DESC;
 
 _ANSWER_
 
+[options="header",]
 |===
 |1|2
 |3|4
@@ -1967,6 +1994,7 @@ WITH UR;
 
 _ANSWER_
 
+[options="header",]
 |===
 |1 |2       |3
 |42|67932.78|J22
@@ -1989,6 +2017,7 @@ FROM temp1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |COL1|COL2
 |0   |AA
@@ -2013,6 +2042,7 @@ FROM temp1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |COL1|COL2
 |0.0 |AA
@@ -2037,6 +2067,7 @@ FROM temp1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |COL1|COL2
 |0   |A
@@ -2061,6 +2092,7 @@ FROM temp1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |COL1|COL2
 |0   |A
@@ -2092,13 +2124,13 @@ FROM temp2;
 
 _ANSWER_
 
+[options="header",]
 |===
 |COL1B|COLX
 |0    |0.00
 |1    |2.11
 |2    |4.22
 |===
-
 
 .Define a view using a VALUES clause
 [source,sql]
@@ -2127,7 +2159,7 @@ FROM temp1;
 
 _ANSWER_
 
-[cols="",options="header",]
+[options="header",]
 |===
 |COL1
 |0
@@ -2153,8 +2185,9 @@ ORDER BY 1 DESC;
 
 _ANSWER_
 
+[options="header",]
 |===
-|   | 
+|-  | -
 |234| DEF
 |123| ABC
 |===
@@ -2182,6 +2215,7 @@ ORDER BY id
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID|SAL     |COM   |COMBO   |TYP
 |10|98357.50|-     |        |COM
@@ -2208,8 +2242,7 @@ NOTE: The keyword LATERAL can be used instead of TABLE in the above query.
 
 ((CASE)) expressions enable one to do if-then-else type processing inside of SQL statements. 
 
-WARNING: The sequence of the CASE conditions can affect
-the answer. The first WHEN check that matches is the one used.
+WARNING: The sequence of the CASE conditions can affect the answer. The first WHEN check that matches is the one used.
 
 ==== CASE Syntax Styles
 
@@ -2233,6 +2266,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |LASTNAME |SX|SEXX
 |JEFFERSON|M |MALE
@@ -2257,6 +2291,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |LASTNAME |SX|SEXX
 |JEFFERSON|M |MALE
@@ -2291,6 +2326,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |LASTNAME | MI| SX| MX
 |JEFFERSON| J | M | M
@@ -2311,6 +2347,7 @@ WHERE lastname LIKE 'J%';
 
 _ANSWER_
 
+[options="header",]
 |===
 |TOT|#F|#M
 |4  |2 |2
@@ -2333,6 +2370,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |LASTNAME |LEN|LASTNM
 |JEFFERSON|9  |JEFFER
@@ -2382,6 +2420,7 @@ FROM temp1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |C1|C2|C3
 |88|9 |9
@@ -2412,6 +2451,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |LASTNAME |SX|SXX
 |JEFFERSON|M |MAL
@@ -2438,6 +2478,7 @@ ORDER BY 1;
 
 _ANSWER_
 
+[options="header",]
 |===
 |LASTNAME |SX|SXX
 |JEFFERSON|M |FEM
@@ -2472,6 +2513,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID |DEPT|SALARY  |COMM
 |130|42  |10505.90|75.60
@@ -2490,12 +2532,9 @@ SELECT id
      , comm
 FROM staff
 WHERE (comm < 70)
-OR (salary < 11000 AND NOT name LIKE 'W%')
-OR (salary < 19000 
-    AND NOT 
-    (name LIKE 'W%' 
-     OR 
-     (salary < 18500 AND dept <> 33)
+   OR (salary < 11000 AND NOT name LIKE 'W%')
+   OR (salary < 19000 AND NOT (name LIKE 'W%' 
+                           OR (salary < 18500 AND dept <> 33)
     )
    )
 ORDER BY id;
@@ -2503,6 +2542,7 @@ ORDER BY id;
 
 _ANSWER_
 
+[options="header",]
 |===
 |ID | DEPT|SALARY  |COMM
 |130| 42  |10505.90|75.60
@@ -2622,6 +2662,8 @@ The ((PREPARE)) statement is used in an application program to dynamically prepa
 Prepared statement can be used by the following:
 
 .What statements can use prepared statement
+
+[options="header",]
 |===
 |STATEMENT CAN BE USED BY| STATEMENT TYPE 
 |DESCRIBE                | Any statement
