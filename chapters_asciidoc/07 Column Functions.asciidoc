@@ -28,6 +28,7 @@ HAVING AVG(dept) > 40;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |A1| A2| A3| A4| A5
 |41| 41| 40| 3 | 4
@@ -57,7 +58,7 @@ FROM staff;
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |SALARY  |COMM1 |COMM2
 |67932.78|351.98|513.31
@@ -92,6 +93,7 @@ WHERE id < 10;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1| A1| A2| A3
 |0 | - | 0 | 0
@@ -111,6 +113,7 @@ FROM employee;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1     |2
 |721092|1975-04-14
@@ -161,6 +164,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COR11| COR12 | COR23| COR34
 |1.000| -1.000|-0.017| -0.005
@@ -187,6 +191,7 @@ SELECT COUNT(*)                     AS c1
 FROM staff;
 ....
 _ANSWER_
+[options="header",]
 |===
 |C1| C2| C3| C4| C5| C6
 |35| 24| 24| 19| 24| 2
@@ -210,6 +215,7 @@ GROUP BY dept;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1      | C2
 |NO GP-BY| 0
@@ -231,6 +237,7 @@ FROM STAFF;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1 | C2 | C3| C4| C5
 |35.| 35.| 8.| 7.| 0.
@@ -261,7 +268,7 @@ FROM temp1;
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |COV11 | COV12 | COV23  | COV34
 |83666.|-83666.| -1.4689| -0.0004
@@ -292,6 +299,7 @@ ORDER BY dept;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT| SALARY  | DF
 |10  | 83365.86| 0
@@ -327,6 +335,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1 | 2 | 3 | 4
 |84| 84| 84| 8
@@ -346,7 +355,7 @@ FROM employee;
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |1         | 2         | 3
 |2006-12-15| 12/15/2006| 12/15/2006
@@ -365,6 +374,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID | CHR| DIG
 |350| 90 | 00350
@@ -382,6 +392,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D  | CHR| DIG
 |100| 90 | 0000000240
@@ -408,6 +419,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |1 | 2 | 3 | 4
 |10| 10| 10| 1
@@ -466,6 +478,7 @@ WHERE workdept = 'A00';
 ....
 
 _ANSWERS_
+[options="header",]
 |===
 |r_slope|r_icpt |r_count|r_avgx|r_avgy|r_sxx     |r_sxy   |r_syy
 |0.00247|644.862|5      |70850 |820   |8784575000|21715000|168000
@@ -488,6 +501,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |A1| S1           |S2  | S3  | S4
 |41| +2.3522355E+1|23.5| 23.5| 24.1
@@ -514,6 +528,7 @@ SELECT SUM(dept)          AS s1
 FROM staff;
 
 _ANSWER_
+[options="header",]
 |===
 |S1  | S2  | S3 | S4 | S5
 |1459| 1459| 326| 134| 145
@@ -537,6 +552,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |A1| V1             | V2 | V3 | V4
 |41| +5.533012244E+2| 553| 553| 582

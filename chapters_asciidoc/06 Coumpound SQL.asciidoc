@@ -124,6 +124,7 @@ END
 ....
 
 *BEFORE*
+[options="header",]
 |===
 |ID | SALARY  | COMM
 |180| 37009.75| 236.50
@@ -131,6 +132,7 @@ END
 |330| 49988.00| 55.50
 |===
 *AFTER*
+[options="header",]
 |===
 |ID | SALARY  | COMM
 |180| 37009.75| 0.00
@@ -309,6 +311,7 @@ ORDER BY dept;
 ....
 
 *ANSWER*
+[options="header",]
 |===
 |DEPT| #ROWS
 |10  | 4
@@ -377,6 +380,7 @@ ORDER BY dept!
 NOTE: This example uses an "!" as the stmt delimiter.
 
 *ANSWER*
+[options="header",]
 |===
 |DEPT| #NAMES
 |10  | 4
@@ -434,6 +438,7 @@ ORDER BY dept!
 NOTE: This example uses an "!" as the stmt delimiter.
 
 *ANSWER*
+[options="header",]
 |===
 |DEPT| #NAMES
 |10  | 4
@@ -509,6 +514,7 @@ ORDER BY dept;
 NOTE: This example uses an "!" as the stmt delimiter.
 
 *ANSWER*
+[options="header",]
 |===
 |DEPT| #NAMES
 |10  | 4
