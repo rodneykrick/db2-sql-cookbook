@@ -2836,8 +2836,8 @@ FROM temp1;
 ....
 
 _ANSWER_
-|===
 [options="header",]
+|===
 |TXT   |s3f1   |s2f0   |s1f1   |s2f2
 |abcded|abXXded|aXXcded|XXbcded|aXXded
 |addd  |adXXd  |aXXdd  |XXddd  |aXXd
