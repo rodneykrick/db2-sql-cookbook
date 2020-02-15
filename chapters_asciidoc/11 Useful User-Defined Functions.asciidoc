@@ -33,6 +33,7 @@ ORDER BY empno;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |H_DATE    |J_DATE
 |000010|1995-01-01|1995001
@@ -149,6 +150,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DATE      |DAY|WK|IS|SUN_WK|MON_WK
 |2004-12-29|Wed|53|53|104563|104563
@@ -268,6 +270,7 @@ ORDER BY actno;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ACTNO|EMSTDATE  |EMENDATE  |#DAYS
 |70   |2002-06-15|2002-07-01|16
@@ -300,6 +303,7 @@ ORDER BY actno
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ACTNO|#DAYS|NUM|NEW_DATE
 |70   |16   |0  |2002-06-15
@@ -342,6 +346,8 @@ ON 1 = 1
 ORDER BY actno
        , num;
 ....
+
+[options="header",]
 |===
 |ACTNO|#DAYS|NUM|NEW_DATE
 |70   |16   |0  |2002-06-15
@@ -413,6 +419,7 @@ FROM temp;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INDATA|C|N
 |ABC   |1|0
@@ -500,6 +507,7 @@ FROM temp;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INDATA|TYPE|NUMBER
 |ABC   |    |-
@@ -562,6 +570,7 @@ ORDER BY id!
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |HASH_VAL
 |10|Sanders |203506538768383718
@@ -592,6 +601,7 @@ FROM temp1!
 ....
 
 ANSWER
+[options="header",]
 |===
 |#ROWS |#HASH1|#HASH2
 |100000|100000|100000

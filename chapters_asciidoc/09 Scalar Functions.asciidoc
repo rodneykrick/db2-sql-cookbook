@@ -1290,6 +1290,7 @@ ORDER BY dyr;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DT1       |DYR
 |0001-01-01|1

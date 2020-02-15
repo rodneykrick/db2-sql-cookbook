@@ -53,6 +53,7 @@ ORDER BY col1 ASC
 ....
 
 *SEQ_DATA*
+[options="header",]
 |===
 |COL1|COL2
 |ab  |xy 
@@ -63,6 +64,7 @@ ORDER BY col1 ASC
 |===
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2
 |AB  |XY
@@ -85,6 +87,7 @@ ORDER BY TRANSLATE(col1) ASC
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2
 |Ab  |12
@@ -131,6 +134,7 @@ ORDER BY SUBSTR(col1,2) DESC
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2
 |ac  |XY
@@ -155,6 +159,7 @@ ORDER BY HEX(col1)
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|HEX1|COL2|HEX2
 |AB  |4142|XY  |5859
@@ -213,6 +218,7 @@ ORDER BY ORDER OF yyy
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |COL1|COL2
 |Ab  |12
@@ -243,6 +249,7 @@ ORDER BY INPUT SEQUENCE;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PRJ|ACT|R#
 |400000|ZZZ|999|1
@@ -343,6 +350,7 @@ VALUES ('A', 'A00', 'F', 52750)
 ....
 
 *VIEW CONTENTS*
+[options="header",]
 |===
 |D1|DEPT|SEX|SALARY
 |A |A00 |F  |52750
@@ -394,6 +402,7 @@ ORDER BY d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SALARY|#ROWS
 |A |A00 |F  |52750 |1
@@ -419,7 +428,8 @@ GROUP BY dept
 ORDER BY sex;
 ....
 
-ANSWER
+_ANSWER_
+[options="header",]
 |===
 |SEX|SALARY|#ROWS
 |F  |52750 |1
@@ -444,6 +454,7 @@ HAVING COUNT(*) <> 99;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SALARY|#ROWS
 |128500|3
@@ -464,6 +475,7 @@ ORDER BY wpart DESC;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |WPART|SALARY|#ROWS
 |1    |353820|13
@@ -637,6 +649,7 @@ SELECT d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R|DF|WF|SF
 |A |A00 |F  |52750 |1 |0 |0 |0
@@ -672,6 +685,7 @@ ORDER BY d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R|F1|FD|FS
 |A |A00 |-  |128500|3 |0 |0 |1
@@ -711,6 +725,7 @@ ORDER BY d1
 	   , sex;
 ....
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R|F1|FD|FS
 |A |A00 |F  |52750 |1 |0 |0 |0
@@ -742,6 +757,7 @@ ORDER BY d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R|F1|FD|FS
 |A |A00 |F  |52750 |1 |0 |0 |0
@@ -850,6 +866,7 @@ ORDER BY dept;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SALARY|#ROWS|FD
 |A00 |128500|3    |0
@@ -873,6 +890,7 @@ ORDER BY dept;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SALARY|#ROWS|FD
 |A00 |128500|3    |0
@@ -905,6 +923,7 @@ ORDER BY dept;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SALARY|#ROWS|FD
 |A00 |128500|3    |0
@@ -930,6 +949,7 @@ ORDER BY dept;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SALARY|#ROWS|FD
 |A00 |128500|3    |0
@@ -972,6 +992,7 @@ ORDER BY dept
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SEX|SALARY|#ROWS|FD|FS
 |A00 |F  |52750 |1    |0 |0
@@ -1006,6 +1027,7 @@ GROUP BY ROLLUP(dept , sex)
 ORDER BY dept , sex;
 ....
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SEX|SALARY|#ROWS|FD|FS
 |A00 |F  |52750 |1    |0 |0
@@ -1040,6 +1062,7 @@ ORDER BY sex
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEX|DEPT|SALARY|#ROWS|FD|FS
 |F  |A00 |52750 |1    |0 |0
@@ -1074,6 +1097,7 @@ ORDER BY sex
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEX|DEPT|SALARY|#ROWS|FD|FS
 |F  |A00 |52750 |1    |0 |0
@@ -1111,6 +1135,7 @@ ORDER BY sex
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEX|DEPT|SALARY|#ROWS|FD|FS
 |F  |A00 |52750 |1    |0 |0
@@ -1146,6 +1171,7 @@ ORDER BY dept
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|SEX|SALARY|#ROWS|FD|FS
 |A00 |F  |52750 |1    |0 |0
@@ -1173,6 +1199,7 @@ ORDER BY salary;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SALARY|#ROWS
 |482320|16
@@ -1190,6 +1217,7 @@ GROUP BY GROUPING SETS(());
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SALARY|#ROWS
 |482320|16
@@ -1207,6 +1235,7 @@ GROUP BY ();
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SALARY|#ROWS
 |482320|16
@@ -1223,6 +1252,7 @@ FROM employee_view;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SALARY|#ROWS
 |482320|16
@@ -1304,6 +1334,7 @@ ORDER BY d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R|F1|FD|FS
 |A |A00 |F  |52750 |1 |0 |0 |0
@@ -1369,6 +1400,7 @@ ORDER BY d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL  |#R|F1|FD|FS
 |A |A00 |F  |52750|1 |0 |0 |0
@@ -1399,6 +1431,7 @@ ORDER BY d1
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R|F1|FD|FS
 |A |A00 |F  |52750 |1 |0 |0 |0
@@ -1446,6 +1479,7 @@ ORDER BY 1,2,3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DPT|SX|SAL   |R
 |A |A00|F |52750 |1
@@ -1499,6 +1533,7 @@ ORDER BY 1,2,3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DPT|SX|SAL   |#R|G1|GD|GS
 |A |A00|F |52750 |1 |0 |0 |0
@@ -1555,6 +1590,7 @@ ORDER BY 1,2,3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D1|DEPT|SEX|SAL   |#R
 |A |A00 |F  |52750 |1
@@ -1623,6 +1659,7 @@ ORDER BY a.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |NAME    |DEPT
 |160|Molinare|10
@@ -1651,6 +1688,7 @@ ORDER BY a.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |NAME    |DEPT
 |160|Molinare|10

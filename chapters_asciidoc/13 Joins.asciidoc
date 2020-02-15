@@ -31,7 +31,7 @@ WHERE id = 30;
 ....
 
 _STAFF_V1_
-
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders
@@ -40,7 +40,7 @@ _STAFF_V1_
 |===
 
 _STAFF_V2_
-
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales
@@ -76,7 +76,7 @@ ORDER BY v1.id
 ....
 
 _JOIN ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |JOB
 |20|Pernal  |Sales
@@ -101,7 +101,7 @@ ORDER BY v1.name
 ....
 
 _JOIN ANSWER_
-
+[options="header",]
 |===
 |ID|JOB  |NAME
 |30|Clerk|Marenghi
@@ -126,7 +126,7 @@ ORDER BY v1.id
 ....
 
 _JOIN ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |JOB
 |20|Pernal  |Sales
@@ -151,7 +151,7 @@ ORDER BY v1.name
 ....
 
 _STAFF_V1_
-
+[options="header",]
 |===
 |ID|NAME
 |10|Sanders
@@ -160,7 +160,7 @@ _STAFF_V1_
 |===
 
 _JOIN ANSWER_
-
+[options="header",]
 |===
 |ID|JOB  |NAME
 |30|Clerk|Marenghi
@@ -168,7 +168,7 @@ _JOIN ANSWER_
 |===
 
 _STAFF_V2_
-
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -220,7 +220,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |- |-
@@ -244,7 +244,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -272,7 +272,7 @@ An inner-join is another name for a standard join in which two sets of columns a
 Most of the joins that one writes will probably be of this kind and, assuming that suitable indexes have been created, they will almost always be very efficient.
 
 _STAFF_V1_
-
+[options="header",]
 |===
 |ID|NAME
 |10|Sanders
@@ -281,7 +281,7 @@ _STAFF_V1_
 |===
 
 _STAFF_V2_
-
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -294,7 +294,7 @@ _STAFF_V2_
 ===== Join on ID
 
 _INNER-JOIN ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -314,7 +314,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -334,7 +334,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -360,7 +360,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -382,7 +382,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -395,7 +395,7 @@ _ANSWER_
 A left outer join is the same as saying that I want all of the rows in the first table listed, plus any matching rows in the second table:
 
 pass:[_STAFF_V1_]
-
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -404,7 +404,7 @@ pass:[_STAFF_V1_]
 |===
 
 pass:[_STAFF_V2_]
-
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -417,6 +417,7 @@ pass:[_STAFF_V2_]
 _LEFT-OUTER-JOIN ANSWER_
 
 .Example of Left Outer Join
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |- |
@@ -480,7 +481,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -503,6 +504,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -525,7 +527,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID| NAME|ID| JOB
 |10| Sanders||
@@ -548,7 +550,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |- |-
@@ -571,7 +573,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME   |ID|JOB
 |10|Sanders|  |
@@ -585,6 +587,7 @@ Unlike in the previous example, there is no way to alter the above WHERE check t
 A right outer join is the inverse of a left outer join. One gets every row in the second table listed, plus any matching rows in the first table:
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -593,6 +596,7 @@ pass:[_STAFF_V1_]
 |===
 
 pass:[_STAFF_V2_]
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -604,6 +608,7 @@ pass:[_STAFF_V2_]
 
 _RIGHT-OUTER-JOIN ANSWER_
 .Example of Right Outer Join
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -625,6 +630,7 @@ ORDER BY v2.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -655,6 +661,7 @@ ORDER BY 3, 4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -674,6 +681,7 @@ The rules for ON and WHERE usage are the same in a right outer join as they are 
 A full outer join occurs when all of the matching rows in two tables are joined, and there is also returned one copy of each non-matching row in both tables.
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -681,7 +689,7 @@ pass:[_STAFF_V1_]
 |30|Marenghi
 |===
 pass:[_STAFF_V2_]
-
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -693,6 +701,7 @@ pass:[_STAFF_V2_]
 
 _FULL-OUTER-JOIN ANSWER_
 .Example of Full Outer Join
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -716,6 +725,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -754,6 +764,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -783,7 +794,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -810,7 +821,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -840,6 +851,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -867,6 +879,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -893,6 +906,7 @@ ORDER BY v1.id
 ....
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -901,6 +915,7 @@ pass:[_STAFF_V1_]
 |===
 
 pass:[_STAFF_V2_]
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -912,6 +927,7 @@ pass:[_STAFF_V2_]
 
 _ANSWER_
 .Full Outer Join, don't match on keys (all rows match)
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |20|Sales
@@ -950,6 +966,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |20|Pernal  |20|Sales
@@ -960,6 +977,7 @@ _ANSWER_
 To illustrate some of the complications that WHERE checks can cause, imagine that we want to do a FULL OUTER JOIN on our two test views (see below), limiting the answer to those rows where the "V1 ID" field is less than 30. There are several ways to express this query, each giving a different answer:
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders
@@ -968,7 +986,7 @@ pass:[_STAFF_V1_]
 |===
 
 pass:[_STAFF_V2_]
-
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -1000,6 +1018,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |ID|JOB
 |10|Sanders|  |
@@ -1020,6 +1039,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -1046,6 +1066,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |ID|JOB
 |10|Sanders|  |
@@ -1071,6 +1092,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |ID|JOB
 |10|Sanders|  |
@@ -1095,7 +1117,7 @@ ORDER BY 1,3,4;
 ....
 
 _ANSWER_
-
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |  |
@@ -1114,6 +1136,7 @@ The last two checks in the above query ensure that every V2 row is returned. But
 A ((Cartesian Product)) is a form of inner join, where the join predicates either do not exist, or where they do a poor job of matching the keys in the joined tables.
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -1122,6 +1145,7 @@ pass:[_STAFF_V1_]
 |===
 
 pass:[_STAFF_V2_]
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -1132,6 +1156,7 @@ pass:[_STAFF_V2_]
 |===
 
 .Example of Cartesian Product
+[options="header",]
 |===
 |ID|NAME    |ID|JOB
 |10|Sanders |20|Sales
@@ -1195,6 +1220,7 @@ ORDER BY v2a.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID| JOB|ID
 |20| Sales| 20
@@ -1220,6 +1246,7 @@ ORDER BY #rows
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |JOB  |#ROWS
 |Clerk|3
@@ -1252,6 +1279,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |JOB
 |10|Sanders |
@@ -1267,6 +1295,7 @@ _ANSWER_
 Imagine that we wanted to do an outer join on our two test views, only getting those rows that do not match. This is a surprisingly hard query to write.
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -1274,6 +1303,7 @@ pass:[_STAFF_V1_]
 |30|Marenghi|
 |===
 pass:[_STAFF_V2_]
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -1285,6 +1315,7 @@ pass:[_STAFF_V2_]
 _NON-MATCHING OUTER-JOIN ANSWER_
 
 .Example of outer join, only getting the non-matching rows
+[options="header",]
 |===
 |ID|NAME   |ID|JOB
 |10|Sanders|  |
@@ -1340,6 +1371,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |FLAG|ID|JOB  |FLAG
 |10|Sanders|V1  |  |     |
@@ -1372,6 +1404,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |FLAG|ID|JOB  |FLAG
 |10|Sanders|V1  |  |     |
@@ -1400,6 +1433,7 @@ Join in SELECT Phrase
 Imagine that we want to get selected rows from the V1 view, and for each matching row, get the corresponding JOB from the V2 view - if there is one:
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -1407,6 +1441,7 @@ pass:[_STAFF_V1_]
 |30|Marenghi
 |===
 pass:[_STAFF_V2_]
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
@@ -1420,7 +1455,8 @@ pass:[_STAFF_V2_]
 ....
 V1.ID = V2.ID V1.ID <> 30
 ....
-_ANSWER_ 
+_ANSWER_
+[options="header",] 
 |===
 |ID| NAME|ID| JOB
 |10| Sanders||
@@ -1443,6 +1479,7 @@ ORDER BY v1.id ;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |JOB
 |10|Sanders|
@@ -1465,6 +1502,7 @@ ORDER BY v1.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |JB
 |10|Sanders|
@@ -1493,6 +1531,7 @@ ORDER BY v1.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |JB
 |10|Sanders|
@@ -1514,6 +1553,7 @@ ORDER BY v1.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |JB
 |10|Sanders |
@@ -1538,6 +1578,7 @@ ORDER BY v1.id ;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |JB
 |10|Sanders |
@@ -1568,6 +1609,7 @@ ORDER BY v2.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|J2
 |20|Sales
@@ -1598,6 +1640,7 @@ ORDER BY v2.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|JOB  |NAME    |N2
 |20|Sales|Pernal  |6
@@ -1624,6 +1667,7 @@ ORDER BY v2.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|JOB  |NAME    |N2
 |20|Sales|Pernal  |6
@@ -1651,6 +1695,7 @@ ORDER BY v1.id
        , v2.job;
 ....
 
+[options="header",]
 |===
 |ID|NAME    |SUM_ID
 |10|Sanders |10
@@ -1671,6 +1716,7 @@ ORDER BY v1.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |SUM_ID
 |10|Sanders |10
@@ -1683,6 +1729,7 @@ _ANSWER_
 Imagine that one wants to get all of the rows in STAFF_V1, and to also join those matching rows in STAFF_V2 where the JOB begins with an 'S':
 
 pass:[_STAFF_V1_]
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders
@@ -1690,13 +1737,14 @@ pass:[_STAFF_V1_]
 |30|Marenghi
 |===
 pass:[_STAFF_V2_]
+[options="header",]
 |===
 |ID|JOB 
 |20|Sales 
 |30|Clerk 
 |30|Mgr
 |40|Sales 
-|50|Mgr|
+|50|Mgr
 |===
 _OUTER-JOIN CRITERIA_
 
@@ -1708,6 +1756,7 @@ V2.JOB LIKE 'S%'
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |JOB
 |10|Sanders |
@@ -1732,6 +1781,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER (WRONG)_
+[options="header",]
 |===
 |ID|NAME  |JOB
 |20|Pernal|Sales
@@ -1757,6 +1807,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |JOB
 |10|Sanders |
@@ -1781,6 +1832,7 @@ ORDER BY v1.id
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME    |JOB
 |10|Sanders |
@@ -1825,6 +1877,7 @@ ORDER BY eee.empno;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPN O|PROJNO|ACTNO|FORMAT
 |000010|MA2110|10   |-
@@ -1859,6 +1912,7 @@ ORDER BY eee.empno;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PROJNO|ACTNO| FORMAT
 |000010|MA2110|10   |
@@ -1905,6 +1959,8 @@ ORDER BY eee.workdept
        , eee.empno
        , aaa.projno;
 ....
+
+[options="header",]
 |===
 |DP#|EMPNO |PROJNO|STAFF
 |C01|000030|IF1000|2.00
@@ -1945,6 +2001,8 @@ ORDER BY eee.workdept
        , eee.empno
        , xxx.projno;
 ....
+
+[options="header",]
 |===
 |DP#|EMPNO |PROJNO|STAFF
 |C01|000030|IF1000|2.00
@@ -1990,6 +2048,7 @@ ORDER BY eee.workdept
        , xxx.projno;
 ....
 
+[options="header",]
 |===
 |DP#|EMPNO |PROJNO|STAFF
 |C01|000030|IF1000|2.00
