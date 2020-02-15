@@ -24,6 +24,7 @@ Recursive SQL statements can be very efficient, if coded correctly, and if there
 Below is a description of a very simple application. The table on the left contains a normalized representation of the hierarchical structure on the right. Each row in the table defines a relationship displayed in the hierarchy. The PKEY field identifies a parent key, the CKEY field has related child keys, and the NUM field has the number of times the child occurs within the related parent.
 
 _HIERARCHY_
+[options="header",]
 |===
 |PKEY |CKEY |NUM
 |AAA  |BBB  | 1
@@ -74,6 +75,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PKEY|CKEY|PROCESSING SEQUENCE
 |AAA |BBB |1st pass 
@@ -376,6 +378,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |CKEY|LVL
 |AAA |0
@@ -414,6 +417,7 @@ WHERE lvl < 3;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |CKEY|LVL
 |AAA |0
@@ -465,6 +469,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |CKEY|LVL
 |AAA |0
@@ -504,6 +509,7 @@ WHERE lvl = 2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |CKEY|LVL
 |EEE |2 
@@ -569,6 +575,7 @@ SELECT kkey
 FROM parents;
 ....
 _ANSWER_
+[options="header",]
 |===
 |KKEY|LVL
 |AAA |-1
@@ -888,6 +895,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PKEY|CKEY|LVL
 |AAA |AAA |0
@@ -971,6 +979,7 @@ WHERE LOCATE('th', name) > 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |NAME   |L1|L2
 |70 |Rothman|3 |2
@@ -1009,6 +1018,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PKEY|CKEY|LVL|PATH        |LOOP
 |AAA |AAA |0  |AAA         |0
@@ -1051,6 +1061,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PKEY|CKEY|LVL|PATH
 |AAA |AAA |0  |AAA
@@ -1091,6 +1102,7 @@ FROM parent;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PKEY|CKEY|LVL|PATH        |LOOP
 |AAA |AAA |0  |AAA         |0
@@ -1134,6 +1146,7 @@ WHERE loop > 0;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |PKEY|CKEY
 |DDD |AAA

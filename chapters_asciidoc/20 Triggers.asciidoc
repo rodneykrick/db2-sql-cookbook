@@ -304,6 +304,7 @@ WHERE cust# = 3;
 At the end of the above, the three tables had the following data:
 
 .Customer-balance table rows
+[options="header",]
 |===
 |CUST#|STATUS|BALANCE|NUM_TRANS|CUR_TS
 |1    |C     |123.45 |3        |2005-05-31-19.58.46.096000
@@ -311,6 +312,7 @@ At the end of the above, the three tables had the following data:
 |===
 
 .Customer-history table rows
+[options="header",]
 |===
 |CUST#| TRANS#| BALANCE| BGN_TS                     | END_TS
 |1    | 1     | 123.45 | 2005-05-31-19.58.45.971000 | 2005-05-31-19.58.46.034000
@@ -322,6 +324,7 @@ At the end of the above, the three tables had the following data:
 |===
 
 .Customer-transaction table rows
+[options="header",]
 |===
 |MIN_CUST#| MAX_CUST#| ROWS |CHANGE_VAL| CHANGE_TYPE |CUR_TS
 |1        | 1        | 1    | 123.45   | I           | 2005-05-31-19.58.45.971000

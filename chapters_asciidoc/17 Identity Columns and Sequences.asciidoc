@@ -210,6 +210,7 @@ _ANSWER_
 
 Below is the state of the table after the above two inserts:
 .Invoice table, after inserts
+[options="header",]
 |===
 |INVOICE#|SALE_DATE |CUSTOMER_ID|PRODUCT_ID|QUANTITY|PRICE
 |100     |2001-11-22|ABC        |123       |100     |10.00
@@ -243,6 +244,7 @@ INSERT INTO invoice_data
 Our mindless management will now see this data:
 
 .Invoice table, after second inserts
+[options="header",]
 |===
 |INVOICE#|SALE_DATE |CUSTOMER_ID|PRODUCT_ID|QUANTITY|PRICE
 |100     |2001-11-22|ABC        |123       |100     |10.00
@@ -352,6 +354,7 @@ _INPUT_
 |===
 
 _ANSWER_
+[options="header",]
 |===
 |MIN_VAL|MAX_VAL|NUM_VAL|CUR_VAL
 |1      |10     |8      |5
@@ -435,6 +438,7 @@ ORDER BY lg1.gap#;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |GAP#|PREV_VAL|NEXT_VAL|DIFF
 |1   |4       |6       |2
@@ -478,6 +482,7 @@ FROM FINAL TABLE
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |MINC|MAXC|ROWS
 |3   |5   |3
@@ -537,6 +542,7 @@ COMMIT;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INV#|SALE_DATE |ID
 |1   |11/22/2000|2
@@ -558,6 +564,7 @@ WHERE id = IDENTITY_VAL_LOCAL();
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INV#|SALE_DATE |ID
 |2   |11/23/2000|2
@@ -730,6 +737,8 @@ SELECT NEXTVAL FOR fred AS nxt
      , PREVVAL FOR fred AS prv
 FROM temp1;
 ....
+
+[options="header",]
 |===
 |NXT|PRV
 |2  |1
@@ -758,6 +767,8 @@ SELECT *
 FROM temp1
 WHERE id = 50 + (nxt * 0);
 ....
+
+[options="header",]
 |===
 |ID|NXT
 |50|5
@@ -771,6 +782,8 @@ WITH temp1 (nxt, prv) AS
 SELECT *
 FROM temp1;
 ....
+
+[options="header",]
 |===
 |NXT|PRV
 |10 |9
@@ -840,12 +853,14 @@ FROM FINAL TABLE
 ....
 
 _ANSWERS_
+[options="header",]
 |===
 |CUST#|CNAME
 |1    |FRED
 |2    |JOHN
 |===
 
+[options="header",]
 |===
 |CUST#|CNAME 
 |3    |SUE
@@ -999,6 +1014,7 @@ COMMIT;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INVOICE#|SALE_DATE |CUSTOMER_ID|PRODUCT_ID|QUANTITY|PRICE
 |1       |06/22/2001|ABC        |123       |10      |1.00  

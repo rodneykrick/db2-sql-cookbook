@@ -52,6 +52,7 @@ ORDER BY R2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |R1|R2
 |A |A
@@ -88,6 +89,8 @@ SELECT R2
 FROM R2 
 ORDER BY 1;
 ....
+
+[options="header",]
 |===
 |R1|R2|UNION|UNION ALL
 |A |A |A    |A
@@ -131,6 +134,8 @@ SELECT R2
 FROM R2
 ORDER BY 1;
 ....
+
+[options="header",]
 |===
 |R1|R2|INTERSECT|INTERSECT ALL
 |A |A |A        |A   
@@ -168,6 +173,8 @@ SELECT R2
 FROM R2
 ORDER BY 1;
 ....
+
+[options="header",]
 |===
 |R1|R2|R1 EXCEPT R2|R1 EXCEPT ALL R2
 |A |A |E           |A
@@ -200,6 +207,8 @@ SELECT R1
 FROM R1
 ORDER BY 1;
 ....
+
+[options="header",]
 |===
 |R1|R2|R2 EXCEPT R1|R2 EXCEPT ALL R1
 |A |A |D           |B
@@ -240,7 +249,7 @@ ORDER BY 1;
 
 _ANSWER_
 
-[cols="",]
+[options="header",]
 |===
 |E
 |===
@@ -262,7 +271,7 @@ _ANSWER_
 
 _ANSWER_
 
-[cols="",]
+[options="header",]
 |===
 |E
 |===
@@ -284,7 +293,7 @@ ORDER BY 1;
 
 _ANSWER_
 
-[cols="",]
+[options="header",]
 |===
 |A
 |B
@@ -351,6 +360,7 @@ AND daily_seq# = 2;
 
 Below is the view contents, after the above is run:
 .View contents after insert, update, delete
+[options="header",]
 |===
 |SALES_DATE|DAILY_SEQ#|CUST_ID|AMOUNT|INVOICE#|SALES_REP
 |01/01/2003|1         |123    |100.10|998     |FRED

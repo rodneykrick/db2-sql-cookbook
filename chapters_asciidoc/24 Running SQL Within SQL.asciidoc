@@ -62,7 +62,8 @@ AND typename = 'CHARACTER'
 ORDER BY tabname;
 ....
 
-ANSWER
+_ANSWER_
+[options="header",]
 |===
 |TABNAME    |NUM_ROWS
 |EMP_PHOTO  |0
@@ -116,6 +117,7 @@ ORDER BY t1.tabname
 ....
 
 Below are the first three "rows" of the answer:
+[options="header",]
 |===
 |TABNAME   |ROW#|COL#|COLNAME  |COLTYPE |COLVALUE
 |EMPLOYEE  |1   |1   |EMPNO    |CHAR    |000250
@@ -200,6 +202,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SCHEMA|TABNAME     |#ROWS
 |SYSCAT|ROUTINEAUTH |168
@@ -320,6 +323,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SCHEMA|TABNAME        |#ROWS
 |SYSIBM|SYSCOLUMNS     |3518
@@ -355,6 +359,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TABNAME   |COLNAME |HAS_DEPT
 |DEPARTMENT|DEPTNO  |Y
@@ -393,6 +398,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TABNAME   |COLNAME|HAS_DEPT
 |DEPARTMENT|DEPTNO |Y
@@ -483,6 +489,7 @@ ORDER BY workdept
 ....
 
 _ANSWER_ 
+[options="header",]
 |===
 |DEPT|EMPNO |SALARY  |#ROWS
 |E11 |000290|35340.00|7
@@ -629,6 +636,7 @@ ORDER BY row_value
 FOR FETCH ONLY WITH UR;
 ....
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |#ROWS|#TABS|MIN_TAB  |MAX_TAB
 |000130|7    |4    |EMP_PHOTO|EMPPROJACT
@@ -659,6 +667,7 @@ SELECT * FROM empprojact WHERE empno = '000150';
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |EMPNO |PROJNO|ACTNO|EMPTIME|EMSTDATE  |EMENDATE
 |000150|MA2112|60   |1.00   |01/01/2002|07/15/2002
@@ -685,6 +694,7 @@ ORDER BY 1,2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ROW#|COL#|COL_NAME|COL_TYPE|COL_LEN|VAL_LEN|COL_VALUE
 |1   |1   |EMPNO   |CHAR    |6      |6      |000150
@@ -751,6 +761,7 @@ ORDER BY 1,2,3;
 ....
 
 When we run the above, we get the following answer:
+[options="header",]
 |===
 |TAB_NAME  |ROW#|COL#|COL_NAME     |COL_TYPE|COL_LEN|VAL_LEN|COL_VALUE
 |EMP_PHOTO |1   |1   |EMPNO        |CHAR    |6      |6      |000150
@@ -872,6 +883,7 @@ ORDER BY 1,2,3;
 ....
 
 Below is the answer (with a few values truncated to fit):
+[options="header",]
 |===
 |TAB_NAME  |ROW#|COL#|COL_NAME     |COL_TYPE|COL_LEN|VAL_LEN|COL_VALUE
 |EMP_PHOTO |1   |1   |EMPNO        |CHAR    |6      |6      |000150
@@ -1174,6 +1186,7 @@ WITH UR;
 ....
 
 I had two matching tables that needed to be refreshed, so I got the following answer:
+[options="header",]
 |===
 |TABNAME    |SQLCODE|SQLTEXT
 |STAFF_DEPT1|0      |REFRESH TABLE FRED.STAFF_DEPT1
@@ -1201,6 +1214,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TABNAME|SQLCODE|SQLTEXT
 |SALES  |0      |CREATE TABLE FRED.SALES_C1 LIKE FRED.SALES
@@ -1231,6 +1245,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TABNAME|SQLCODE|SQLTEXT
 |SALES  |0      |CREATE TABLE FRED.SALES_C1 LIKE FRED.SALES
@@ -1275,6 +1290,7 @@ WITH UR;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |TABNAME| SQLCODE1| SQLCODE2
 |SALES  | 0       | 0     

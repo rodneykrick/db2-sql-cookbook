@@ -203,6 +203,7 @@ ORDER BY name;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NME    |SAL 
 |NO NAME|0.00
@@ -227,6 +228,7 @@ ORDER BY NAME;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NME    | SAL 
 |NO NAME| 0.00
@@ -275,6 +277,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME
 |30|Marenghi 
@@ -303,6 +306,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |NAME    |RAN|EQL
 |10 |Sanders |10 |Y 
@@ -351,6 +355,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -391,6 +396,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME 
 |10|Sanders 
@@ -425,6 +431,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |BGN_TSTAMP                |ELP_SEC|END_TSTAMP
 |2001-01-15-01.02.03.000000|1.234  |2001-01-15-01.02.04.000000
@@ -446,6 +453,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |BGN_TSTAMP                |ELP_SEC|END_TSTAMP 
 |2001-01-15-01.02.03.000000|1.234  |2001-01-15-01.02.04.234000
@@ -558,6 +566,7 @@ GROUP BY yy
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |YEAR|MIN_DT    |MAX_DT 
 |2000|2000-08-06|2000-08-12 
@@ -586,6 +595,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S1    |S2 
 |583633|583647
@@ -602,6 +612,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S1    |S2 
 |583640|583647
@@ -627,6 +638,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |LASTNAME |SX|SXX 
 |JEFFERSON|M |FEM 
@@ -651,6 +663,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |LASTNAME |SX|SXX 
 |JEFFERSON|M |MAL 
@@ -671,6 +684,7 @@ FROM staff;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |A1 |A2 
 |-32|61.98
@@ -781,6 +795,7 @@ WITH CS;
 ....
 
 When the users ran the above query, they found that some orders were seemingly listed twice:
+[options="header",]
 |===
 |REGION|STATUS |ORDER#|VALUE 
 |EAST  |PAID   |111   |4.66 (_) 
@@ -994,6 +1009,7 @@ FROM temp2;
 
 Below are the contents of the table after the above insert. Observe the different values:
 .Table after insert
+[options="header",]
 |===
 |TEST#|CURRENT_TS                |GENERATE_U                |GENERATE_A 
 |1    |2007-11-13-19.12.43.139000|2007-11-13-19.12.42.973805|2007-11-13-19.12.43.139000 
@@ -1023,6 +1039,7 @@ FROM temp;
 ....
 
 After a while, things get interesting:
+[options="header",]
 |===
 |FLOAT1                | DECIMAL1                    | BIGINT1
 |+1.23456789000000E+000| 1.23456789                  | 1 
@@ -1060,7 +1077,8 @@ FROM temp
 WHERE f1 <> f2;
 ....
 
-ANSWER
+_ANSWER_
+[options="header",]
 |===
 |F1                    |F2 
 |+1.23456789000000E+008|+1.23456789000000E+008
@@ -1081,6 +1099,7 @@ WHERE f1 <> f2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |HEX_F1          | HEX_F2 
 |FFFFFF53346F9D41| 00000054346F9D41
@@ -1143,6 +1162,7 @@ FROM temp;
 ....
 
 Here is the answer:
+[options="header",]
 |===
 |F1                    |D1                   |COMPARE
 |+1.23456789000000E+000|1.2345678900         |SAME 
@@ -1171,6 +1191,7 @@ WHERE f1 <> 1.0;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |F1                    |HEX_F1
 |+1.00000000000000E-001|9A9999999999B93F
@@ -1198,6 +1219,7 @@ FROM temp;
 ....
 
 Now we get the result that we expect:
+[options="header",]
 |===
 |FLOAT1                |DECIMAL1                    |BIGINT1
 |+1.23456789000000E+000|1.23456789                  |1 

@@ -67,7 +67,7 @@ Graeme
 [[graeme.birchall.book.editions]]
 ====  Graeme Birchall Book Editions Upload Dates
 
-[cols=",",options="header",]
+[options="header",cols="30%,70%"]
 |===
 |Date Published (Version) | Content 
 |1996-05-08| First edition of the Db2 V2.1.1 SQL Cookbook was posted to my web site. This version was in Postscript Print File format. 

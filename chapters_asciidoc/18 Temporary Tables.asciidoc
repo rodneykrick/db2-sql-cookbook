@@ -28,6 +28,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |SALARY
 |50 |20659.80
@@ -56,6 +57,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |SALARY
 |50 |20659.80
@@ -90,6 +92,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME   |SALARY  |SUM_SAL |PCT
 |70|Rothman|16502.83|34504.58|47
@@ -140,6 +143,7 @@ _ANSWER#1_
 |===
 
 _ANSWER#2_
+[options="header",]
 |===
 |DEPT|AVG_SALARY|NUM_EMPS
 |10  |20168.08  |3
@@ -181,6 +185,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |DEPT|SALARY  |MAX_SAL
 |10 |20  |18357.50|18357.50
@@ -209,6 +214,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |DEPT|SALARY  |MAX_SAL
 |10 |20  |18357.50|18357.50
@@ -234,6 +240,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |DEPT|SALARY  |MAX_SAL
 |10 |20  |18357.50|18357.50
@@ -272,6 +279,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |MAX_NAME |MAX_DEPT
 |Yamaguchi|84
@@ -291,6 +299,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |MAX_NAME |MAX_DEPT
 |Yamaguchi|84
@@ -382,6 +391,7 @@ ORDER BY t1.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |DEPT|SALARY  |MAX_SAL
 |10 |20  |18357.50|18357.50
@@ -448,6 +458,7 @@ GROUP BY division;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DIVISION |DIV_DEPT|#DPTS|#EMPS
 |Corporate|20865.86|1    |4
@@ -505,6 +516,7 @@ ORDER BY a.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY  |AVG_DEPT
 |10|20  |18357.50|16071.52
@@ -535,6 +547,7 @@ ORDER BY a.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY  |DEPTSAL
 |10|20  |18357.50|64286.10
@@ -562,6 +575,7 @@ ORDER BY a.id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY  |DEPTSAL
 |10|20  |18357.50|64286.10
@@ -588,6 +602,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |MAXSAL
 |10|18357.50|22959.20
@@ -613,6 +628,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY  |MAXSAL
 |10|18357.50|18357.50
@@ -639,6 +655,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY  |4       |5
 |10|20  |18357.50|18357.50|22959.20
@@ -683,6 +700,7 @@ WHERE id < 60;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY BEFORE|SALARY AFTER
 |10|20  |18357.50     |18675.64
@@ -706,6 +724,7 @@ WHERE id < 60;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|DEPT|SALARY BEFORE|SALARY AFTER
 |10|20  |18357.50     |18071.52

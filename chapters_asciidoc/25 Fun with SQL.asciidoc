@@ -71,6 +71,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEQ#|RAN1
 |0   |0.001 
@@ -114,6 +115,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEQ#|RAN2|RAN1  |RAN3 
 |0   |13  |0.0013|0 
@@ -144,6 +146,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |S#|RAN1  |RAN2   |RAN3 
 |0 |1251  |365370 |114753 
@@ -176,6 +179,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEQ#|RAN2|RAN3|RAN4
 |0   |65  |A   |65 
@@ -266,6 +270,7 @@ FROM temp1;
 ....
 
 Some sample data follows:
+[options="header",]
 |===
 |EMP#  |SOCSEC#    |JOB_|DEPT|SALARY  |DATE_BN   |F_NME |L_NME
 |100000|484-10-9999|WKR |47  |13.63   |1979-01-01|Ammaef|Mimytmbi
@@ -362,6 +367,7 @@ ORDER BY 1,2;
 ....
 
 _ANSWER_:
+[options="header",]
 |===
 |KEYCOL|BGN_DT    |END_DT    |BGN_DT    |END_DT    |DIFF
 |AAA   |1995-10-01|1995-10-04|1995-10-06|1995-10-06|2
@@ -401,6 +407,7 @@ ORDER BY 1,2;
 ....
 
 _TIME_SERIES_
+[options="header",]
 |===
 |KYY|BGN_DT    |END_DT     
 |AAA|1995-10-01|1995-10-04
@@ -411,6 +418,7 @@ _TIME_SERIES_
 |BBB|1995-10-03|1995-10-03
 |===
 _ANSWER_
+[options="header",]
 |===
 |KEYCOL|BGN_DT    |END_DT    |BGN_DT    |END_DT    |DIFF
 |AAA   |1995-10-01|1995-10-04|1995-10-06|1995-10-06|2 
@@ -444,6 +452,7 @@ ORDER BY 1,2;
 ....
 
 _TIME_SERIES_
+[options="header",]
 |===
 |KYY|BGN_DT    |END_DT     
 |AAA|1995-10-01|1995-10-04
@@ -454,6 +463,7 @@ _TIME_SERIES_
 |BBB|1995-10-03|1995-10-03
 |===
 _ANSWER_
+[options="header",]
 |===
 |KYY|BGN_GAP   |END_GAP   |SZ
 |AAA|1995-10-05|1995-10-05|1 
@@ -494,6 +504,7 @@ ORDER BY 1, 2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |KEYCOL|GAP_DT     |GSIZE 
 |AAA   |1995-10-05 |1 
@@ -580,6 +591,7 @@ FROM temp1;
 ....
 
 _ANSWER (numbers shortened)_
+[options="header",]
 |===
 |C1 |DBL       |DEC |SML|INT
 |123|+1.2300E+2|123.|123|123
@@ -589,6 +601,7 @@ _ANSWER (numbers shortened)_
 
 Not all numeric functions support all character representations of a number. The following table illustrates what's allowed and what's not:
 .Acceptable conversion values
+[options="header",]
 |===
 |INPUT STRING|COMPATIBLE FUNCTIONS
 |" 1234"     |DOUBLE, DECIMAL, INTEGER, SMALLINT, BIGINT 
@@ -729,6 +742,7 @@ FROM TEMP1!
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |C1     |C2|C3
 |123    |Y |123.00000 
@@ -768,6 +782,7 @@ ORDER BY d_sal;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |D_SAL  |D_CHR   |D_DGT |I_SAL|I_CHR|I_DGT
 |494.10 |-0494.10|049410|-494 |-494 |00494 
@@ -819,6 +834,7 @@ ORDER BY i_sal;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |I_SAL|I_CHR
 |494  |-494 
@@ -874,6 +890,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NUM|TST   |TCHAR 
 |1  |0.01  |0.01 
@@ -945,6 +962,7 @@ ORDER BY num;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |INPUT           |OUTPUT
 |-975460660753.97|-975,460,660,753.97
@@ -1029,6 +1047,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID |SALARY  |LEN|SALARY_CHART 
 |130|10505.90|7  |******* 
@@ -1055,6 +1074,7 @@ ORDER BY 1,2;
 ....
 
 ANSWER
+[options="header",]
 |===
 |DEPT|ID |SALARY  |CHART 
 |10  |160|82959.20|******************
@@ -1085,6 +1105,7 @@ ORDER BY 1,2;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |DEPT|ID |SALARY   |CHART 
 |10  |160|82959.20 |******************
@@ -1110,6 +1131,7 @@ ORDER BY sex;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |SEX|NUM
 |F  |595 
@@ -1167,6 +1189,7 @@ GROUP BY years;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |YEARS|#STAFF
 |1    |1 
@@ -1196,6 +1219,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |YEARS|#STAFF 
 |0    |0 
@@ -1232,6 +1256,7 @@ ORDER BY 1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |YEARS|#STAFF
 |0    |0 
@@ -1329,6 +1354,7 @@ ORDER BY 1,2;
 ....
 
 In the above query, a temporary table is defined and then populated with all of the summation types. This table is then joined (using a left outer join) to the EMPLOYEE table. Any matches (i.e. where EMPNO is not null) are given a FOUND value of 1. The output of the join is then feed into a GROUP BY to get the required counts.
+[options="header",]
 |===
 |CATEGORY| SUBCATEGORY/DEPT            |#ROWS 
 |1ST     | ROWS IN TABLE               |32
@@ -1397,6 +1423,7 @@ ORDER BY 1,2;
 
 The SUBSTR function is used above to extract both the next word in the string, and the remainder of the text. If there is a blank byte in the string, the SUBSTR stops (or begins, when getting the remainder) at it. If not, it goes to (or begins at) the end of the string. CASE logic is used to decide what to do.
 .Break text into words
+[options="header",]
 |===
 |ID|WORD#|WORD     |DATA_LEFT 
 |1 |1    |SOME     |TEXT TO PARSE. 
@@ -1438,6 +1465,7 @@ ORDER BY dept;
 ....
 
 Here is the answer:
+[options="header",]
 |===
 |DEPT|W#|MAX_NAME |ALL_NAMES 
 |10  |4 |Molinare |Daniels Jones Lu Molinare 
@@ -1677,6 +1705,7 @@ For comparison, below are the contents of the first temporary table, and the fin
 .Contents of first temporary table and final output
 
 *DATA_INPUT*
+[options="header",]
 |===
 |DEPT |JOB  |SUM_SAL
 |10   |Mgr  |22959.20
@@ -1697,6 +1726,7 @@ For comparison, below are the contents of the first temporary table, and the fin
 |===
 
 *OUTPUT*
+[options="header",]
 |===
 |DEPT|Clerk   |Mgr      |Sales
 |10  |0.00    |22959.20 |0.00 
@@ -1745,6 +1775,7 @@ ORDER BY id!
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|NAME1   |NAME2
 |10|Sanders |srednaS 
@@ -1766,6 +1797,7 @@ ORDER BY id;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SALARY1 |SALARY2 
 |10|18357.50|5.7538 
@@ -1838,6 +1870,7 @@ FROM temp1 t1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |V1|V2|LP|SEQUENCE
 |0 |1 |11|0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144 
@@ -1889,6 +1922,7 @@ FROM temp1 t1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |LD        |HD        |DIFF|BDAYS
 |2006-01-10|2007-01-01|356 |254
@@ -1920,6 +1954,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |#LOOPS|BGN_TIMESTAMP             |END_TIMESTAMP
 |58327 |2001-08-09-22.58.12.754579|2001-08-09-22.58.16.754634
@@ -1974,6 +2009,7 @@ WHERE id < 31;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |ID|SS_MMMMMM|#LOOPS|SS_MMMMMM
 |10|50.068593|76386 |50.068587
@@ -2059,6 +2095,7 @@ ORDER BY w#;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |W#|WORD_VAL|SA      |SD
 |1 |12345678|12345678|87654321 
@@ -2117,6 +2154,7 @@ ORDER BY nn.job;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |JOB  |MED_SAL
 |Clerk|13030.50 
@@ -2158,6 +2196,7 @@ ORDER BY nn.job;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |JOB  |MED_SAL |AVG_SAL |#R
 |Clerk|13030.50|12857.56|7 
@@ -2195,6 +2234,7 @@ AND nn.row# = mr.med_row#
 ORDER BY nn.job;
 ....
 _ANSWER_
+[options="header",]
 |===
 |JOB  |MED_SAL
 |Clerk|13030.50 
@@ -2225,6 +2265,7 @@ ORDER BY job;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |JOB  |MED_SAL 
 |Clerk|13030.50 
@@ -2348,6 +2389,7 @@ FROM temp1;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NUM   |HEX  |H2I 
 |0     |0000 |0 
@@ -2381,6 +2423,7 @@ ORDER BY num;
 ....
 
 _ANSWER_
+[options="header",]
 |===
 |NUM      |HEX     |H2I 
 |87432800 |A0E1C9FA|-87432800 
