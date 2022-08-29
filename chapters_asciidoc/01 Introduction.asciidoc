@@ -4,7 +4,4 @@
 Project in GitHub: https://github.com/rodneykrick/db2-sql-cookbook
 The PDF version can be found here: http://db2-sql-cookbook.org/pdf/Db2_SQL_Cookbook.pdf. 
 
-This version of the book is intended to be a community effort to help other learn SQL. Join, improve, enjoy, have fun!
-
-
-
+This version of the book is intended to be a community effort to help people learn SQL. Join, improve, enjoy, have fun!
