@@ -4547,9 +4547,9 @@ Returns a VARCHAR bit-data representation of a character string. See the SQL Ref
 [[varchar_format.function]]
 ==== VARCHAR_FORMAT
 (((VARCHAR_FORMAT)))
-Converts a timestamp value into a string with the format: "YYYY-MM-DD HH:MM:SS". The TIMESTAMP_FORMAT function does the inverse.
+Returns a character representation of an input expression using the format specified by the format string.
 
-.VARCHAR_FORMAT function example
+.VARCHAR_FORMAT function example using TIMESTAMP
 [source,sql]
 ....
 WITH temp1 (ts1) AS
@@ -4557,7 +4557,7 @@ WITH temp1 (ts1) AS
       , (TIMESTAMP('2002-10-30-11.22.33'))
 )
 SELECT ts1
-     , VARCHAR_FORMAT(ts1,'YYYY-MM-DD HH24:MI:SS') AS ts2
+     , VARCHAR_FORMAT(ts1,'YYYY-MM-DD HH24:MI:SS') AS vc1
 FROM temp1
 ORDER BY ts1;
 ....
@@ -4565,9 +4565,30 @@ ORDER BY ts1;
 _ANSWER_
 [options="header",]
 |===
-|TS1                       |TS2
+|TS1                       |VC1
 |1999-12-31-23.59.59.000000|1999-12-31 23:59:59
 |2002-10-30-11.22.33.000000|2002-10-30 11:22:33
+|===
+
+.VARCHAR_FORMAT function example using Signed Numeric
+[source,sql]
+....
+WITH temp1 (sn1) AS
+(VALUES (-1234567890)
+      , (1234567890)
+)
+SELECT sn1
+     , VARCHAR_FORMAT(sn1,'9,999,999,999') AS vc1
+FROM temp1
+ORDER BY sn1;
+....
+
+_ANSWER_
+[options="header",]
+|===
+|SN1                       |VC1
+|-1234567890|-1,234,567,890
+|1234567890|1,234,567,890
 |===
 
 ==== VARCHAR_FORMAT_BIT
