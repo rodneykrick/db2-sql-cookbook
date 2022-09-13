@@ -4570,8 +4570,6 @@ _ANSWER_
 |2002-10-30-11.22.33.000000|2002-10-30 11:22:33
 |===
 
-Note that the only allowed formatting mask is the one shown.
-
 ==== VARCHAR_FORMAT_BIT
 (((VARCHAR_FORMAT_BIT)))
 Returns a VARCHAR representation of a character bit-data string. See the SQL Reference for more details.
