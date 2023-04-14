@@ -54,7 +54,7 @@ RETURN
   WHERE id = inval;
 
 SELECT *
-FROM TABLE(get_st(30)) AS sss (id, nnn, yy) *
+FROM TABLE(get_st(30)) AS sss (id, nnn, yy)
 ....
 
 _ANSWER_
