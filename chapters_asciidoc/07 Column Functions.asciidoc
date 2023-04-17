@@ -154,7 +154,7 @@ WITH temp1(col1, col2, col3, col4) AS
       , RAND()
       , RAND()
  FROM temp1
- WHERE col1 < = 1000
+ WHERE col1 <= 1000
  )
 SELECT DEC(CORRELATION(col1, col1), 5, 3) AS cor11
      , DEC(CORRELATION(col1, col2), 5, 3) AS cor12

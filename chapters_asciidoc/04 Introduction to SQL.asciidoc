@@ -633,7 +633,7 @@ A distinct data type is a field type that is derived from one of the base Db2 fi
 
 NOTE: The following source type do not support distinct types: XML, Array.
 
-The creation of a distinct type, under the covers, results in the creation of two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, < =, >, and > =` ) is also provided. Below is a typical create and drop statement:
+The creation of a distinct type, under the covers, results in the creation of two implied functions that can be used to convert data to and from the source type and the distinct type. Support for the basic comparison operators ( `=, <>, <, <=, >, and >=` ) is also provided. Below is a typical create and drop statement:
 
 .Create and drop distinct type
 [source,sql]

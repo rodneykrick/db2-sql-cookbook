@@ -3951,7 +3951,7 @@ The best way to avoid the above problem is to simply write good code. If that so
 WITH temp1 (len, dat1) AS
 (VALUES ( 6,'123456789')
       , ( 4,'12345')
-      , ( 16,'123'
+      , ( 16,'123')
 )
 SELECT len
      , dat1

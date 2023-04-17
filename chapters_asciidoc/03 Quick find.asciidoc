@@ -168,7 +168,7 @@ EMP_JB
 ....
 SELECT * 
 FROM emp_nm
-WHERE emp_nm name < 'S'
+WHERE emp_nm.name < 'S'
   UNION 
 SELECT *
 FROM emp_jb 

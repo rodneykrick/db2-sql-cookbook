@@ -102,7 +102,7 @@ SELECT CASE num
        END
 FROM syscat.tables
    , temp1
-WHERE tabschema = 'SYSCAT',
+WHERE tabschema = 'SYSCAT'
 AND tabname LIKE 'N%'
 ORDER BY tabschema
        , tabname

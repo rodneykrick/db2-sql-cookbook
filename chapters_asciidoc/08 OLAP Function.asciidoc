@@ -425,7 +425,7 @@ SELECT id
 , SUM(id) OVER(ORDER BY id ROWS 1 PRECEDING)         AS sum2
 , SUM(id) OVER(ORDER BY id ROWS UNBOUNDED PRECEDING) AS sum3
 , SUM(id) OVER(ORDER BY id ROWS CURRENT ROW)         AS sum4
-, SUM(id) OVER(ORDER BY id ROWS2 FOLLOWING)          AS sum6
+, SUM(id) OVER(ORDER BY id ROWS 2 FOLLOWING)         AS sum6
 , SUM(id) OVER(ORDER BY id ROWS UNBOUNDED FOLLOWING) AS sum6
 FROM staff
 WHERE id < 40
@@ -534,8 +534,8 @@ SELECT dept
      , DEC(SUM(salary) OVER(ORDER BY dept DESC) ,8,2)      AS sum2
      , DEC(SUM(salary) OVER(ORDER BY ORDER OF s1) ,8,2)    AS sum3
      , SMALLINT(RANK() OVER(ORDER BY salary, name, dept) ) AS r1
-     , SMALLINT(RANK() OVER(ORDER BY ORDER OF s1)          AS r2
-     , ROW_NUMBER() OVER(ORDER)                            AS w1
+     , SMALLINT(RANK() OVER(ORDER BY ORDER OF s1) )        AS r2
+     , ROW_NUMBER() OVER(ORDER BY salary)                  AS w1
      , COUNT(*) OVER(ORDER BY salary)                      AS w2
 FROM (SELECT *
       FROM staff
