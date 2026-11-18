@@ -11,7 +11,8 @@ Because I've learned a lot and I found the book very good to help people that ar
 Somethings that I decided to change in this book, comparing to the original version:
 
 * I've migrated the text to asciidoc and opened a project in GitHub (https://github.com/rodneykrick/db2-sql-cookbook). As the people at *_Asciidoc_* use to say: "It's just text, mate!" I believe with this format the community will be able to contribute and improve the content.  
-* Graeme tried to keep syntax diagrams in his book. I'll try to follow a more practical approach in this version of the book. You won't find syntax diagrams, just sample code that was tested in Db2 (some will work in other RDBMS, it would be great and helpful if we manage to check and document this). If you want to learn more about the statement and the syntax, you should use the SQL reference book of your RDBMS, in the version you are using. 
+* Graeme tried to keep syntax diagrams in his book. I'll try to follow a more practical approach in this version of the book. You won't find syntax diagrams, just sample code that was tested in Db2 (some will work in other RDBMS, it would be great and helpful if we manage to check and document this). If you want to learn more about the statement and the syntax, you should use the SQL reference book of your RDBMS, in the version you are using.
+* I will try to export the current version of the book as PDF. If you want to be sure you have the newest version, clone the repository and export the master document. My copy can be found here: [https://drive.google.com/file/d/1GCF6aMuHk4MZlttpyOB4_RwSZVvk0tCn/view?usp=sharing]
 
 Some notes: 
 
