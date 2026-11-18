@@ -1,6 +1,17 @@
 # db2-sql-cookbook
 Colaboration platform for the new version of the old Db2 SQL Cookbook.
 
+## Building the book
+
+[`book.adoc`](book.adoc) is the book's master document. It includes the front page and every chapter in reading order. To build the PDF with Asciidoctor PDF, install the Ruby gem and run this command from the repository root:
+
+```sh
+gem install asciidoctor-pdf
+asciidoctor-pdf -o Db2_SQL_Cookbook.pdf book.adoc
+```
+
+If you use a Ruby build script, have it convert `book.adoc` instead of assembling the chapter files itself. Put new chapters in the master document at the intended position.
+
 [Preamble]
 == Introduction
 
