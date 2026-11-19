@@ -36,7 +36,16 @@ In the body of the trigger the object being changed can be referenced using a se
 * A trigger defined FOR EACH STATEMENT is invoked once per statement.
 * A trigger defined FOR EACH ROW is invoked once per individual row changed. 
 
-NOTE: If one defines two FOR EACH ROW triggers, the first is applied for all rows before the second is run. To do two separate actions per row, one at a time, one has to define a single trigger that includes the two actions in a single compound SQL statement.
+[NOTE]
+====
+If one defines two FOR EACH ROW triggers, the first is applied for all rows before the second is run. To do two separate actions per row, one at a time, one has to define a single trigger that includes the two actions in a single compound SQL statement.
+
+*Execution Order of Multiple Triggers:*
+
+When multiple triggers are defined for the exact same event (e.g., two `AFTER UPDATE` triggers on the same table), IBM Db2 executes them in the order of their creation timestamp (`CREATE TIME` as stored in the system catalog). 
+
+If you need guaranteed sequential execution of multiple distinct logic blocks per row, combine them into a single compound SQL block (`BEGIN ATOMIC ... END`) within a single trigger rather than relying on multiple trigger definitions.
+====
 
 *When Check*
 
@@ -104,7 +113,6 @@ NO CASCADE BEFORE INSERT
 ON cust_balance
 REFERENCING NEW AS nnn
 FOR EACH ROW
-MODE Db2SQL
 SET nnn.cur_ts = CURRENT TIMESTAMP
   , nnn.num_trans = 1;
 ....
@@ -120,7 +128,6 @@ ON cust_balance
 REFERENCING NEW AS nnn
             OLD AS ooo
 FOR EACH ROW
-MODE Db2SQL
 SET nnn.cur_ts = CURRENT TIMESTAMP
   , nnn.num_trans = ooo.num_trans + 1;
 ....
@@ -138,7 +145,6 @@ ON cust_balance
 REFERENCING NEW AS nnn
             OLD AS ooo
 FOR EACH ROW
-MODE Db2SQL
 WHEN (ooo.balance - nnn.balance > 1000)
    SIGNAL SQLSTATE VALUE '71001'
    SET MESSAGE_TEXT = 'Cannot withdraw > 1000';
@@ -155,7 +161,6 @@ CREATE TRIGGER cust_his_ins1
 AFTER INSERT ON cust_balance
 REFERENCING NEW AS nnn
 FOR EACH ROW
-MODE Db2SQL
 INSERT INTO cust_history 
 VALUES (nnn.cust#
       , nnn.num_trans
@@ -174,7 +179,6 @@ AFTER UPDATE ON cust_balance
 REFERENCING OLD AS ooo
             NEW AS nnn
 FOR EACH ROW
-MODE Db2SQL
 BEGIN ATOMIC
   UPDATE cust_history
   SET end_ts = CURRENT TIMESTAMP
@@ -203,7 +207,6 @@ CREATE TRIGGER cust_his_del1
 AFTER DELETE ON cust_balance
 REFERENCING OLD AS ooo
 FOR EACH ROW
-MODE Db2SQL
 UPDATE cust_history
 SET end_ts = CURRENT TIMESTAMP
 WHERE cust# = ooo.cust#
@@ -221,7 +224,6 @@ CREATE TRIGGER trans_his_ins1
 AFTER INSERT ON cust_balance
 REFERENCING NEW_TABLE AS newtab
 FOR EACH STATEMENT
-MODE Db2SQL
 INSERT INTO cust_trans
   SELECT MIN(cust#)
   , MAX(cust#)
@@ -240,7 +242,6 @@ AFTER UPDATE ON cust_balance
 REFERENCING OLD_TABLE AS oldtab
 NEW_TABLE AS newtab
 FOR EACH STATEMENT
-MODE Db2SQL
 INSERT INTO cust_trans
   SELECT MIN(nt.cust#)
        , MAX(nt.cust#)
@@ -260,7 +261,6 @@ CREATE TRIGGER trans_his_del1
 AFTER DELETE ON cust_balance
 REFERENCING OLD_TABLE AS oldtab
 FOR EACH STATEMENT
-MODE Db2SQL
 INSERT INTO cust_trans
   SELECT MIN(cust#)
        , MAX(cust#)

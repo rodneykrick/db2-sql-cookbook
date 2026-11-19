@@ -1514,6 +1514,14 @@ assume that this problem is not an issue.
 (((OLAP, FIRST_VALUE))) (((OLAP, LAST_VALUE)))
 The FIRST_VALUE and LAST_VALUE functions get first or last value in the (moving) window of matching rows.
 
+[NOTE]
+====
+In addition to `FIRST_VALUE` and `LAST_VALUE`, modern Db2 releases (including Db2 11.5 and 12.1) support additional analytical functions such as `NTH_VALUE` and `RATIO_TO_REPORT`:
+
+* `NTH_VALUE(expr, n)`: Returns the value of the _n_-th row within the window frame.
+* `RATIO_TO_REPORT(expr) OVER(...)`: Calculates the ratio of a value to the sum of a set of values within a partition.
+====
+
 *Usage Notes*
 
 * An expression value must be provided in the first set of parenthesis. Usually this will be a column name, but any valid scalar expression is acceptable.

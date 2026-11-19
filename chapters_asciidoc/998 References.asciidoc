@@ -2,5 +2,6 @@
 == References
 
 - [[[sql.reference]]] Db2 11.1 for Linux, UNIX, and Windows: SQL. IBM Corp. 1994, 2017
+- [[[sql.reference.12.1]]] Db2 12.1.3 for Linux, UNIX, and Windows: SQL. IBM Corp. 2026
 
 

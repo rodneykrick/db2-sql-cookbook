@@ -77,6 +77,16 @@ The following SQL statements can be issued:
 
 ==== DECLARE Variables
 
+[NOTE]
+====
+In Db2 SQL PL, compound statements can be specified as either `ATOMIC` or `NOT ATOMIC`:
+
+* `BEGIN ATOMIC`: Guarantees that if any statement within the block fails, all changes made by previous statements within that same block are automatically rolled back. 
+* `BEGIN NOT ATOMIC`: Allows execution to continue or handle errors selectively, making it suitable for broader dynamic SQL scripts and complex stored procedure control flows.
+
+Dynamic Compound SQL executed outside of triggers or functions often utilizes `BEGIN NOT ATOMIC` depending on the desired error handling strategy.
+====
+
 All variables have to be declared at the start of the compound statement. Each variable must be given a name and a type and, optionally, a default (start) value.
 
 .DECLARE examples

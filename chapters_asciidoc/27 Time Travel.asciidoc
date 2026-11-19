@@ -90,7 +90,7 @@ We don't see Customer4 because she was already deleted from the database. If we 
 ....
 SELECT *
   FROM mycustomer 
-  FOR SYSTEM_TIME AS OF '2020-01-12'  
+  FOR SYSTEM_TIME AS OF '2020-01-12';  
 ....
  
 .Data on 12.1.2020
@@ -110,7 +110,7 @@ All the changes were done after this date, so we see changes in every single rec
 ....
 SELECT cust#, cust_name, cust_mgr, system_begin, system_end
   FROM mycustomer 
-  FOR SYSTEM_TIME AS OF '2020-01-12'  
+  FOR SYSTEM_TIME AS OF '2020-01-12';  
 ....
 
 .Table data as it was on 12.1.2020, show all columns
@@ -130,14 +130,14 @@ NOTE: In the first version of the time travel feature IBM used '9999-12-31 00:00
 The history table is a normal table and you can query it. If you want to show all the events in the table mycustomer, you could write the following query: 
 
 .Select all events (all data) from both tables
-[source,sql] 
+[source,sql]
 ....
-select 'myCustomer' as Tablename, cust#, cust_name, cust_mgr, system_begin, system_end
-from mycustomer
-union all
-select 'myCustomer_History', cust#, cust_name, cust_mgr, system_begin, system_end
-from mycustomer_history
-order by system_begin;
+SELECT 'myCustomer' as Tablename, cust#, cust_name, cust_mgr, system_begin, system_end
+FROM mycustomer
+UNION ALL
+SELECT 'myCustomer_History', cust#, cust_name, cust_mgr, system_begin, system_end
+FROM mycustomer_history
+ORDER BY system_begin;
 ....
 
 .All table data, order by start of event
@@ -158,9 +158,9 @@ Now we can answer the question we posted at the beginning: who was the manager C
 .Select Manager for a specific date
 [source,sql]
 ....
-select cust_name, cust_mgr  
+SELECT cust_name, cust_mgr  
   FROM mycustomer 
-  FOR SYSTEM_TIME AS OF '2019-12-25'
+  FOR SYSTEM_TIME AS OF '2019-12-25';
 ....
 
 .Result for a specific date
@@ -173,4 +173,3 @@ select cust_name, cust_mgr
 |===
 
 Now if some customer is unsatisfied because she didn't get a xmas gift, you can blame the right person. 
-

@@ -524,6 +524,15 @@ _ANSWER_
 |.     |    |-
 |===
 
+[NOTE]
+====
+Modern Db2 versions (including Db2 11.5 and 12.1) provide built-in capabilities that simplify type checking and hashing:
+
+* *Pattern Matching:* Regular expressions like `REGEXP_LIKE(inval, '^[+-]?[0-9]+(\.[0-9]+)?$')` offer a concise alternative to multi-step `TRANSLATE` validation logic.
+* *Native Hashing:* Instead of custom looping hash UDFs, consider using the native `HASH8(expr)` function for 64-bit lookup hashes or `HASH(expr, 2)` for standard cryptographic hashes (SHA-256).
+* *Series Generation:* Native array and series functions like `GENERATE_SERIES(0, max_num)` can often replace custom recursive `NumList` UDFs.
+====
+
 === Hash Function
 
 The following hash function is a little crude, but it works. It accepts a VARCHAR string as input, then walks the string and, one byte at a time, manipulates a floating point number. At the end of the process the floating point value is translated into BIGINT.

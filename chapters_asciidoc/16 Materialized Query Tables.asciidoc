@@ -49,8 +49,8 @@ See <<optimizer.options>> for more details on these registers.
 ==== Usage Notes
 
 A materialized query table is defined using a variation of the standard CREATE TABLE statement. Instead of providing an element list, one supplies a SELECT statement, and defines the refresh option. 
-===Syntax Options 
-====Refresh
+=== Syntax Options 
+==== Refresh
 
 *REFRESH DEFERRED*: The data is refreshed whenever one does a REFRESH TABLE. At this point, Db2 will first delete all of the existing rows in the table, then run the select statement defined in the CREATE to (you guessed it) repopulate.
 
@@ -222,7 +222,7 @@ Assuming that the current query optimization special register is set to five or 
 REFRESH    MAINTAINED-BY   REFRESH-AGE  MAINTAINED-TYPE          MQT
 ========= ==============   =========== =====================     ===
 IMMEDIATE  SYSTEM             -                -                 Yes
-DEFERRED   SYSETM            ANY           ALL or SYSTEM         Yes
+DEFERRED   SYSTEM            ANY           ALL or SYSTEM         Yes
 DEFERRED   USER              ANY           ALL or USER           Yes
 DEFERRED   FEDERATED-TOOL    ANY           ALL or FEDERATED-TOOL Yes
 ....
@@ -457,7 +457,7 @@ To refresh a materialized query table, use either of the following commands:
 ....
 REFRESH TABLE emp_summary;
 COMMIT;
-SET INTEGRITY FOR emp_summary iMMEDIATE CHECKED;
+SET INTEGRITY FOR emp_summary IMMEDIATE CHECKED;
 COMMIT;
 ....
 
@@ -677,6 +677,11 @@ ORDER BY 1, 2, 3, 4;
 ....
 
 === Organizing by Dimensions
+
+[NOTE]
+====
+In modern Db2 environments (including Db2 11.5 and 12.1), MQTs can also be created as column-organized tables (`ORGANIZE BY COLUMN`) using Db2 BLU Acceleration. Furthermore, Db2 supports *Shadow Tables*—column-organized MQTs maintained by replication (`MAINTAINED BY REPLICATION`)—which allow running high-performance analytical queries against transactional OLTP tables without impacting workload performance.
+====
 
 The following materialized query table is organized (clustered) by the two columns that are referred to in the GROUP BY. Under the covers, Db2 will also create a dimension index on each column, and a block index on both columns combined:
 

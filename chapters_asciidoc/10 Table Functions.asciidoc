@@ -166,6 +166,16 @@ Returns both the object name and schema name of the object found after any alias
 === UNNEST
 (((UNNEST)))
 Returns a result table that includes a row for each element of the specified array. If there are multiple ordinary array arguments specified, the number of rows will match the array with the largest cardinality.
+[NOTE]
+====
+In modern Db2 releases (including Db2 11.5 and 12.1), `UNNEST` supports the `WITH ORDINALITY` clause. This generates an incremental index column that explicitly tracks the original position of each element within the array:
+
+[source,sql]
+....
+SELECT item_code, item_pos
+FROM UNNEST(array_items) WITH ORDINALITY AS t(item_code, item_pos);
+....
+====
 
 === XMLTABLE
 (((XMLTABLE)))

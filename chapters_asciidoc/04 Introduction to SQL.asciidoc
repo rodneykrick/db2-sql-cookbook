@@ -195,12 +195,16 @@ Db2 comes with the following standard ((data types)):
 * FLOAT, REAL, and DOUBLE (i.e. floating point numbers).
 * DECIMAL and NUMERIC (i.e. decimal numbers).
 * DECFLOAT (i.e. decimal floating-point numbers).
-* CHAR, VARCHAR, and LONG VARCHAR (i.e. character values).
-* GRAPHIC, VARGRAPHIC, and LONG VARGRAPHIC (i.e. graphical values).
+* CHAR, VARCHAR (i.e. character values).
+* GRAPHIC, VARGRAPHIC, and  (i.e. graphical values).
 * BLOB, CLOB, and DBCLOB (i.e. binary and character long object values).
 * DATE, TIME, and TIMESTAMP (i.e. date/time values).
-* DATALINK (i.e. link to external object).
 * XML (i.e. contains well formed XML data).
+* BOOLEAN (i.e. true/false values).
+* ARRAY (i.e. array of values).
+* ROW (i.e. a row of values).
+
+NOTE: LONG VARCHAR, LONG VARGRAPHIC are also supported, but they are deprecated. Use CLOB and DBCLOB instead. DATALINK (i.e. link to external object) can also be found in old versions of the product documentation but is obsolete.
 
 Below is a simple table definition that uses some of the above data types:
 

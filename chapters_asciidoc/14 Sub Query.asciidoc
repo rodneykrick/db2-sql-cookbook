@@ -110,7 +110,7 @@ _TABLE2_
 "-" = null
 ....
 
-The next example gets a SQL error. The sub-query returns two rows, which the "=l" check cannot process. Had an "= ANY" or an "= SOME" check been used instead, the query would have worked fine:
+The next example gets a SQL error. The sub-query returns two rows, which the "=" check cannot process. Had an "= ANY" or an "= SOME" check been used instead, the query would have worked fine:
 
 .No keyword sub-query, fails
 [source,sql]
@@ -769,7 +769,10 @@ _ANSWER_
 === Which is Faster
 
 In general, if there is a suitable index on the sub-query table, use a correlated sub-query. Else, use an uncorrelated sub-query. However, there are several very important exceptions to this rule, and some queries can only be written one way. 
-NOTE: The Db2 optimizer is not as good at choosing the best access path for sub-queries as it is with joins. Be prepared to spend some time doing tuning.
+[NOTE]
+====
+In modern Db2 releases (including Db2 11.5 and 12.1), the Db2 Cost-Based Optimizer utilizes advanced Query Rewrite rules. It automatically converts many `EXISTS`, `NOT EXISTS`, `IN`, and `NOT IN` sub-queries into internal *Semi-Joins* or *Anti-Joins*. Consequently, performance differences between sub-queries and joins have been significantly reduced compared to earlier Db2 versions.
+====
 
 [[multi.field.sub.queries]]
 === Multi-Field Sub-Queries
