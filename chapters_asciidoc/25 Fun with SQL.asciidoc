@@ -481,7 +481,7 @@ Imagine that we wanted to see each individual day in a gap. The following statem
 WITH temp (kyy, gap_dt, gsize) AS
 (SELECT a.kyy
       , a.end_dt + 1 DAY
-      , (DAYS(b.bgn_dt) DAYS(a.end_dt) - 1)
+      , (DAYS(b.bgn_dt) - DAYS(a.end_dt) - 1)
  FROM time_series a
     , time_series b
  WHERE a.kyy = b.kyy

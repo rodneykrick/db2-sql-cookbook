@@ -1116,6 +1116,14 @@ _ANSWER_
 |FFF |GGG |3  |AAADDDFFFGGG|0
 |===
 
+[NOTE]
+====
+*Explicit Data Type Casting in Anchor Members:*
+When building string-based hierarchy paths (or concatenating column values across recursive iterations), always ensure that expressions in the anchor `SELECT` are explicitly cast using `VARCHAR(column, <length>)` with a sufficiently large buffer. 
+
+Db2 derives the target column's data type and maximum length strictly from the first (anchor) query of the `UNION ALL`. If the anchor returns a short string—such as `VARCHAR(pkey, 20)`—and the recursive chain eventually constructs a path exceeding 20 characters, the query will fail at runtime with a string truncation error (`SQLSTATE 22001`).
+====
+
 The next query tosses in another predicate (in the final select) to only list those rows that point back to a previously processed parent:
 
 .List rows that point back to a parent
@@ -1199,6 +1207,7 @@ The LOCATE_BLOCK solution shown above works fine, as long as the key in question
 
 * Cast VARCHAR columns as type CHAR.
 * Convert other field types to character using the HEX function.
+
 
 ===== Keeping the Hierarchy Clean
 

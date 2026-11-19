@@ -1,7 +1,7 @@
 [[union.chapter]]
 == Union, Intersect, and Except
 
-A UNION, EXCEPT, or INTERCEPT expression combines sets of columns into new sets of columns. An illustration of what each operation does with a given set of data is shown below:
+A UNION, EXCEPT, or INTERSECT expression combines sets of columns into new sets of columns. An illustration of what each operation does with a given set of data is shown below:
 
 .Examples of Union, Except, and Intersect
 ....
@@ -368,4 +368,8 @@ Below is the view contents, after the above is run:
 |11/22/2002|2         |123    |50.05 |997     |JOHN
 |===
 
+[NOTE]
+====
+While `UNION ALL` views combined with `CHECK` constraints offer a portable way to construct updatable partitioned structures, modern Db2 releases (including Db2 11.5 and 12.1) natively support *Range Partitioned Tables* (using `PARTITION BY RANGE`). Native table partitioning eliminates the need for separate physical tables and views while enabling superior optimizer performance via automatic partition pruning.
+====
 

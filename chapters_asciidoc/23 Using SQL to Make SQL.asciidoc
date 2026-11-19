@@ -157,7 +157,7 @@ WITH temp1 (num) AS
        FROM syscat.tables tab
        WHERE tabschema = 'SYSCAT'
        AND tabname LIKE 'N%') AS xxx
-    , emp1
+    , temp1
 WHERE (num <= 2 AND aa = 1)
 OR    (num = 3)
 OR    (num = 4 AND dd = 1)

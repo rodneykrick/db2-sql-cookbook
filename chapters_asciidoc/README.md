@@ -1,6 +1,6 @@
 # Content 
 
-In this folder we save all chapters of the book. They are numbered and will come together as one document in the order of the numbers, i.e, the number of the file determines the order in the book.
+In this folder we save all chapters of the book. The root-level `book.adoc` master document includes them in reading order. Update that file when adding, removing, or reordering a chapter; the filename numbers are a helpful convention, but the include order is authoritative.
 
 Writing conventions:
 + always write the text in English

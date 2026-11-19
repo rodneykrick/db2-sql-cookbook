@@ -320,6 +320,20 @@ information on this function.
 (((LISTAGG)))
 Aggregates a set of string elements into one string by concatenating the strings. Optionally, a separator string can be provided which is inserted between contiguous input strings.
 
+[NOTE]
+====
+In modern Db2 releases (including Db2 11.5 and 12.1), `LISTAGG` supports the `WITHIN GROUP (ORDER BY ...)` clause to explicitly define the order of concatenated values[cite: 1]. Additionally, the `ON OVERFLOW` clause can be used to handle scenarios where the concatenated string exceeds the maximum allowable length:
+
+[source,sql]
+....
+SELECT dept
+     , LISTAGG(name, ', ') WITHIN GROUP (ORDER BY name) 
+       ON OVERFLOW TRUNCATE '...' WITH COUNT AS employee_list
+FROM staff
+GROUP BY dept;
+....
+====
+
 ==== MAX
 (((MAX)))
 Get the maximum value of a set of rows. The use of the DISTINCT option has no affect. If no rows match, the null value is returned.

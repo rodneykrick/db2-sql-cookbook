@@ -1215,4 +1215,18 @@ WHEN NOT MATCHED THEN
 |50|?    |5678.90
 |===
 
+[NOTE]
+====
+Modern Db2 versions (including Db2 11.5 and 12.1) also support using an explicit `VALUES` clause directly within the `USING` phrase of a `MERGE` statement[cite: 1]. This provides a lightweight alternative for merging ad-hoc datasets or single records without the need to construct full select subqueries or temporary source tables:
 
+[source,sql]
+....
+MERGE INTO target_table tt
+USING (VALUES (100, 'Updated Name', 4500.00)) AS src(id, name, salary)
+ON tt.id = src.id
+WHEN MATCHED THEN
+    UPDATE SET tt.name = src.name, tt.salary = src.salary
+WHEN NOT MATCHED THEN
+    INSERT VALUES (src.id, src.name, src.salary);
+....
+====

@@ -245,7 +245,7 @@ All of this can be done using a simple before trigger:
 [source,sql]
 ....
 CREATE TRIGGER cust_balance_ins1
-NO CASCADE BEFORE INSERT
+BEFORE INSERT
 ON customer_balance
 REFERENCING NEW AS nnn
 FOR EACH ROW
@@ -268,7 +268,7 @@ For each row updated in the Customer-Balance table we need to do:
 [source,sql]
 ....
 CREATE TRIGGER cust_balance_upd1 
-NO CASCADE BEFORE UPDATE OF cust_update_ts 
+BEFORE UPDATE OF cust_update_ts 
 ON customer_balance 
 REFERENCING NEW AS nnn 
 FOR EACH ROW
@@ -282,7 +282,7 @@ We can prevent updates to the insert-timestamp with the following trigger:
 [source,sql]
 ....
 CREATE TRIGGER cust_balance_upd2
-NO CASCADE BEFORE UPDATE OF cust_insert_ts
+BEFORE UPDATE OF cust_insert_ts
 ON customer_balance
 FOR EACH ROW
 MODE Db2SQL
@@ -296,7 +296,7 @@ We don't want users to update the two sales counters directly. But the two field
 [source,sql]
 ....
 CREATE TRIGGER cust_balance_upd3
-NO CASCADE BEFORE UPDATE OF num_sales
+BEFORE UPDATE OF num_sales
                           , total_sales
 ON customer_balance
 REFERENCING NEW AS nnn
@@ -338,7 +338,7 @@ Once we have the above, the following trigger will take of the first three items
 [source,sql]
 ....
 CREATE TRIGGER us_sales_ins1
-NO CASCADE BEFORE INSERT
+BEFORE INSERT
 ON us_sales
 REFERENCING NEW AS nnn
 FOR EACH ROW
@@ -376,7 +376,7 @@ The next trigger prevents updates to the Customer-ID and insert-timestamp:
 [source,sql]
 ....
 CREATE TRIGGER us_sales_upd2
-NO CASCADE BEFORE UPDATE OF cust_id
+BEFORE UPDATE OF cust_id
                           , sale_insert_ts
 ON us_sales
 FOR EACH ROW

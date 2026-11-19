@@ -40,6 +40,18 @@ VALUES ('ab','xy')
 
 ==== Order by Examples
 
+[NOTE]
+====
+In modern Db2 releases (including Db2 11.5 and 12.1), case-insensitive and locale-aware sorting can also be achieved using the `COLLATION_KEY()` function. This ensures proper linguistic sorting for European character sets (e.g., handling of umlauts and accents):
+
+[source,sql]
+....
+SELECT col1, col2
+FROM seq_data
+ORDER BY COLLATION_KEY(col1, 'LOCALE=de_DE') ASC;
+....
+====
+
 The following query presents the output in ascending order:
 
 .Simple ORDER BY

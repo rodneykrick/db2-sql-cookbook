@@ -762,7 +762,7 @@ For a complete description of this feature, see the SQL reference. Below are som
 * The temporary table name can be any valid Db2 table name. The table qualifier, if provided, must be SESSION. If the qualifier is not provided, it is assumed to be SESSION.
 * If the temporary table has been previously defined in this session, the WITH REPLACE clause can be used to override it. Alternatively, one can DROP the prior instance. 
 * An index can be defined on a global temporary table. The qualifier (i.e. SESSION) must be explicitly provided. 
-* Any column type can be used in the table, except for: BLOB, CLOB, DBCLOB, LONG VARCHAR, LONG VARGRAPHIC, DATALINK, reference, and structured data types.
+* Any column type can be used in the table, except for the legacy ones, like LONG VARCHAR, LONG VARGRAPHIC and DATALINK.
 * One can choose to preserve or delete (the default) the rows in the table when a commit occurs. Deleting the rows does not drop the table.
 * Standard identity column definitions can be used if desired. 
 * Changes are not logged. 
@@ -834,6 +834,11 @@ SELECT COUNT(*)
 FROM session.fred; --> Returns 0
 ....
 
+[NOTE]
+====
+When working with large data sets in declared global temporary tables, creating an index may not always be enough for optimal performance. Because DGTTs do not automatically collect catalog statistics, the Db2 query optimizer might choose suboptimal access paths. To resolve this, you can explicitly run `RUNSTATS ON TABLE session.fred` after populating the table to ensure the optimizer relies on accurate data distributions.
+====
+
 A temporary table has to be dropped to reuse the same name:
 
 .Dropping a temporary table
@@ -880,6 +885,11 @@ USING (FILE 'C:\Db2\TEMPFRED\FRED1' 1000
 
 GRANT USE OF TABLESPACE FRED TO PUBLIC;
 ....
+
+[NOTE]
+====
+In modern, managed IBM Db2 environments (including many cloud instances and default database setups), a standard `USER TEMPORARY` tablespace is often pre-configured by default. Users usually do not need to explicitly execute `CREATE USER TEMPORARY TABLESPACE` unless custom storage configurations, specific page sizes, or dedicated buffer pools are required.
+====
 
 === Do NOT use to Hold Output
 
