@@ -1689,7 +1689,7 @@ Returns a TIMESTAMP that is converted from Coordinated Universal Time to the tim
 Uses the system clock and node number to generate a value that is guaranteed unique (as long as one does not reset the clock). The output is of type CHAR(13) FOR BIT DATA. There are no arguments. The result is essentially a timestamp (set to universal time, not local time), with the node number appended to the back.
 [NOTE]
 ====
-While `GENERATE_UNIQUE()` remains fully supported for backward compatibility, modern Db2 releases (including Db2 11.5 and 12.1) also introduce standard UUID generation functions such as `UUID()` (or `SYS_GUID()`) and `GENERATE_UNIQUE_BYTES()`. These functions generate 128-bit RFC 4122 compliant UUIDs directly without requiring custom reversal algorithms.
+While `GENERATE_UNIQUE()` remains fully supported for backward compatibility, modern Db2 releases (including Db2 11.5 and 12.1) also introduce standard UUID generation functions such as `GENERATE_UUID()` and `GENERATE_UUID_BINARY()`. These functions generate 128-bit RFC 4122 compliant UUIDs directly without requiring custom reversal algorithms.
 ====
 
 .GENERATE_UNIQUE function examples. Note that the second field is unprintable
