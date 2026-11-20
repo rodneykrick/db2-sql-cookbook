@@ -116,6 +116,10 @@ Returns the minimum array index value of the array.
 (((ARRAY_LAST)))
 Returns the maximum array index value of the array.
 
+==== ARRAY_MAX_CARDINALITY
+(((ARRAY_MAX_CARDINALITY)))   
+The MAX_CARDINALITY function returns a value of type BIGINT representing the maximum number of elements that an array can contain. This is the cardinality that was specified in the CREATE TYPE statement for the ordinary array type. The ARRAY_MAX_CARDINALITY function is a synonym for the MAX_CARDINALITY scalar function.
+
 ==== ARRAY_NEXT
 (((ARRAY_NEXT)))
 Returns the next larger array index value for an array relative to the specified array index argument.
@@ -146,6 +150,10 @@ _ANSWER_
 |===
 
 *The CHR function is the inverse of the ASCII function.*
+
+==== ASCII_STR 
+(((ASCII_STR)))     
+The ASCII_STR function returns an ASCII version of the string.
 
 ==== ASIN
 (((ASIN)))
@@ -457,9 +465,19 @@ Below is the answer:
 Converts the input (1st argument) to a blob. The output length (2nd argument) is optional.
 
 ==== BOOLEAN
+(((BOOLEAN)))
 Returns the actual Boolean value that corresponds to a non-Boolean representation of a Boolean value.
 
+==== BPCHAR
+(((BPCHAR)))
+Returns a varying-length character string representation of a value of a different data type.
+
+==== BSON_TO_JSON
+(((BSON_TO_JSON)))  
+Converts a string that contains data that is formatted as BSON to a character string that contains data that is formatted as JSON.
+
 ==== BTRIM
+(((BTRIM)))
 Removes the characters that are specified in a trim string from the beginning and end of a source string.
 
 ==== CARDINALITY
@@ -1061,6 +1079,10 @@ Returns the cumulative count of all rows fetched by the specified cursor since t
 (((DATAPARTITIONNUM)))
 Returns the sequence number of the partition in which the row resides.
 
+==== DATA_MASK
+(((DATA_MASK)))
+You can use the DATA_MASK built-in scalar function to do partial redaction, format preserving masking, strong cryptographic obfuscation, and integrity preserving tokenization. The function produces masked data that can be used by analytics tools to create insights without revealing sensitive data. You use the DATA_MASK function in the masking definition of a CREATE MASK statement.
+
 ==== DATE
 (((DATE)))
 Converts the input into a date value. The nature of the conversion process depends upon the input type and length:
@@ -1111,6 +1133,10 @@ _ANSWER_
 |728000|1994-03-13
 |730120|2000-01-01
 |===
+
+==== DATETIME
+(((DATETIME)))
+Returns a timestamp from a value or a pair of values. The DATETIME scalar function is a synonym for the TIMESTAMP scalar function.
 
 ==== DATE_PART
 (((DATE_PART)))
@@ -1542,6 +1568,7 @@ _ANSWER_
 The CHAR function can sometimes be used as alternative to the DIGITS function. Their output differs slightly - see <<convert.number.to.character>> for a comparison.
 
 NOTE: Neither the DIGITS nor the CHAR function do a great job of converting numbers to characters. See <<convert.number.to.character>> for some user-defined functions that can be used instead.
+
 [[double.function]]
 ==== DOUBLE or DOUBLE_PRECISION
 (((DOUBLE))) (((DOUBLE_PRECISION)))
@@ -1656,6 +1683,14 @@ Returns a date or timestamp that represents the first day of the month of the ar
 (((FLOAT)))
 Same as <<double.function>>.
 
+==== FLOAT4
+(((FLOAT4)))
+Returns a single-precision floating-point representation of either a number or a string representation of a number.
+
+==== FLOAT8
+(((FLOAT8)))
+Returns a double-precision floating-point representation of either a number or a string representation of a number.
+
 ==== FLOOR
 (((FLOOR)))
 Returns the next largest integer value that is smaller than or equal to the input (e.g. 5.945 returns 5.000). The output field type will equal the input field type.
@@ -1717,7 +1752,7 @@ Observe that in the above example, each row gets a higher value. This is to be e
 Also notice that the second invocation of the function on the same row got a lower value (than the first). In the prior query, the HEX and DEC functions were used to convert the output value into a number.
 Alternatively, the TIMESTAMP function can be used to convert the date component of the data into a valid timestamp. In a system with multiple nodes, there is no guarantee that this timestamp (alone) is unique.
 
-==== Generate Unique Timestamps
+===== Generate Unique Timestamps
 
 The GENERATE_UNIQUE output can be processed using the TIMESTAMP function to obtain a unique timestamp value. Adding the CURRENT TIMEZONE special register to the TIMESTAMP output will convert it to local time:
 
@@ -1796,6 +1831,14 @@ FROM
 ORDER BY U2;
 ....
 
+==== GENERATE_UUID
+(((GENERATE_UUID)))
+Returns the formatted string representation of a Universally Unique Identifier (UUID) using the version 4 algorithm.
+
+==== GENERATE_UUID_BINARY
+(((GENERATE_UUID_BINARY)))
+Returns the binary string representation of a Universally Unique Identifier (UUID) using the version 4 algorithm.
+
 ==== GETHINT
 (((GETHINT)))
 Returns the password hint, if one is found in the encrypted data.
@@ -1844,8 +1887,8 @@ Returns the 32-bit checksum hash of the input data. The function provides 232 di
 (((HASH8)))
 Returns the 64-bit hash of an input string. The function provides 264 distinct return values and is intended for data retrieval (that is, lookups). The result for a particular input string differs depending on the endianness (big-endian or little-endian) of your system.
 
-==== HASHEDVALUE
-(((HASHEDVALUE)))
+==== HASHEDVALUE (HASHED_VALUE)
+(((HASHEDVALUE))) ((((HASHED_VALUE)))
 Returns the partition number of the row. The result is zero if the table is not partitioned. The output is of type integer, and is never null.
 
 .HASHEDVALUE function example
@@ -1997,6 +2040,10 @@ _ANSWER_
 |1.
 |===
 
+==== IFNULL
+(((IFNULL)))
+Returns the first non-null expression in a list of two expressions.
+
 ==== INITCAP
 (((INITCAP)))
 Returns a string with the first character of each word converted to uppercase, using the UPPER function semantics, and the other characters converted to lowercase, using the LOWER function semantics.
@@ -2041,8 +2088,8 @@ Returns the starting position, in 16-bit UTF-16 string units (CODEUNITS16), of a
 Returns the starting position, in 32-bit UTF-32 string units (CODEUNITS32), of a string within another string.
 
 ==== INSTRB
+(((INSTRB)))
 Returns the starting position, in bytes, of a string within another string.
-
 
 ==== INT or INTEGER
 (((INT))) (((INTEGER)))
@@ -2068,9 +2115,49 @@ _ANSWER_
 |1.8|1 |123|-123|123
 |===
 
+==== INTERVAL
+(((INTERVAL)))
+Converts a character string representation of an interval to a decimal duration.
+
+==== INT2
+(((INT2)))
+Returns a small integer (a binary integer with a precision of 15 bits) representation of a value of a different data type.
+
+==== INT4
+(((INT4)))
+Returns a large integer (a binary integer with a precision of 31 bits) representation of a value of a different data type.
+
+==== INT8
+(((INT8)))
+Returns a big integer (a binary integer with a precision of 63 bits) representation of a value of a different data type.
+
 ==== INTNAND , INTNOR, INTNXOR, and INTNNOT
 (((INTNAND))) (((INTNOR))) (((INTNXOR))) (((INTNNOT)))
 These bitwise functions operate on the "two's complement" representation of the integer value of the input arguments and return the result as a corresponding base 10 integer value.
+
+==== ISNULL
+(((ISNULL)))
+Returns the first non-null expression in a list of two expressions.
+
+==== JSON_ARRAY
+(((JSON_ARRAY)))
+Generates a JSON array by explicitly listing the array elements by using JSON-expression, or by using a query.
+
+==== JSON_OBJECT
+(((JSON_OBJECT)))
+Generates a JSON object by using the specified key:value pairs. If no key:value pairs are provided, an empty object is returned.
+
+==== JSON_QUERY
+(((JSON_QUERY)))
+Returns an SQL/JSON value from the specified JSON text by using an SQL/JSON path expression.
+
+==== JSON_TO_BSON
+(((JSON_TO_BSON)))
+Converts a string that contains data that is formatted for JSON to a binary string that contains data that is formatted as BSON.
+
+==== JSON_VALUE
+(((JSON_VALUE)))
+Returns an SQL scalar value from JSON text, by using an SQL/JSON path expression.
 
 ==== JULIAN_DAY
 (((JULIAN_DAY)))
@@ -2611,7 +2698,7 @@ _ANSWER_
 (((MONTH)))
 Returns an integer value in the range 1 to 12 that represents the month part of a date or timestamp (or equivalent) value.
 
-===== MONTHNAME
+==== MONTHNAME
 (((MONTHNAME)))
 Returns the name of the month (e.g. October) as contained in a date (or equivalent) value. The output format is varchar(100).
 
@@ -2680,6 +2767,10 @@ When doing ordinary multiplication of decimal values, the output precision and t
 ==== NCHAR
 (((NCHAR)))
 Returns a fixed-length national character string representation of a variety of data types.
+
+==== NCHR
+(((NCHR)))
+Returns a Unicode character with the specified UTF-32 Unicode code point.
 
 ==== NCLOB
 (((NCLOB)))
@@ -2777,6 +2868,10 @@ _ANSWER_
 |1 |1 |AB    |-
 |===
 
+==== NUMERIC
+(((NUMERIC)))
+This function is a synonym for the DECIMAL scalar function.
+
 ==== NVL
 (((NVL)))
 Same as COALESCE.
@@ -2852,6 +2947,10 @@ _ANSWER_
 ==== PARAMETER
 (((PARAMETER)))
 The PARAMETER function represents a position in an SQL statement where the value is provided dynamically by XQuery as part of the invocation of the db2-fn:sqlquery function.
+
+==== PI
+(((PI)))
+Returns the value of π, 3.141592653589793. There are no arguments.
 
 ==== POSITION
 (((POSITION)))
@@ -3032,6 +3131,14 @@ _ANSWER_
 (((QUARTER)))
 Returns an integer value in the range 1 to 4 that represents the quarter of the year from a date or timestamp (or equivalent) value.
 
+==== QUOTE_IDENT
+(((QUOTE_IDENT)))
+Returns a string that can be used as an identifier in an SQL statement.
+
+==== QUOTE_LITERAL
+(((QUOTE_LITERAL)))
+Returns a string that can be used as a string constant in an SQL statement.
+
 ==== RADIANS
 (((RADIANS)))
 Returns the number of radians converted from the input, which is expressed in degrees. The output format is double.
@@ -3062,8 +3169,9 @@ _ANSWER_
 
 The SIGNAL statement (see <<signal.statement>>) is the statement equivalent of this function.
 
-==== RAND
-(((RAND)))
+==== RAND RANDOM
+(((RAND))) (((RANDOM)))
+
 WARNING: Using the RAND function in a predicate can result in unpredictable results. See <<rand.in.predicate>> for a detailed description of this issue. To randomly sample the rows in a table reliably and efficiently, use the TABLESAMPLE feature. See <<randomly.sample.data>> for details.
 
 Returns a pseudo-random floating-point value in the range of zero to one inclusive. An optional seed value can be provided to get reproducible random results. This function is especially useful when one is trying to create somewhat realistic sample data.
@@ -4285,6 +4393,10 @@ RETURN (BIGINT(DAYS(in_hi))             * 86400000000
       + + BIGINT(MICROSECOND(in_lo)));
 ....
 
+==== TIMEZONE
+(((TIMEZONE)))
+Converts a date and time in one timezone into a timestamp in another timezone.
+
 ==== TO_CHAR
 (((TO_CHAR)))
 This function is a synonym for VARCHAR_FORMAT (see <<varchar_format.function>>). It converts a timestamp value into a string using a template to define the output layout.
@@ -4300,6 +4412,10 @@ This function is a synonym for TIMESTAMP_FORMAT (see <<timestamp_format.function
 ==== TO_HEX
 (((TO_HEX)))
 Converts a numeric expression into the hexadecimal representation.
+
+==== TO_MULTI_BYTE
+(((TO_MULTI_BYTE)))
+Returns a Unicode string in which the single-byte characters in a string-expression are converted to their multi-byte (full width) equivalents.
 
 ==== TO_NCHAR
 (((TO_NCHAR)))
@@ -4512,6 +4628,10 @@ _ANSWER_
 |Pernal |pernal |PERNAL
 |===
 
+==== UNICODE_STR
+(((UNICODE_STR)))
+Returns a string in Unicode UTF-8 or UTF-16, depending on the specified option. The string represents a Unicode encoding of the input string.
+
 ==== VALUE
 (((VALUE)))
 Same as COALESCE.
@@ -4595,6 +4715,10 @@ _ANSWER_
 |1234567890|1,234,567,890
 |===
 
+==== VARCHAR_FORMAT_BINARY
+(((VARCHAR_FORMAT_BINARY)))
+Returns a character string representation of a bit string that has been formatted using a format-string.
+
 ==== VARCHAR_FORMAT_BIT
 (((VARCHAR_FORMAT_BIT)))
 Returns a VARCHAR representation of a character bit-data string. See the SQL Reference for more details.
@@ -4602,6 +4726,26 @@ Returns a VARCHAR representation of a character bit-data string. See the SQL Ref
 ==== VARGRAPHIC
 (((VARGRAPHIC)))
 Converts the input (1st argument) to a VARGRAPHIC data type. The output length (2nd argument) is optional.
+
+==== VECTOR 
+(((VECTOR)))
+Converts a string representation of a vector to a VECTOR value with the specified dimension and coordinate-type.
+
+==== VECTOR_DIMENSION_COUNT 
+(((VECTOR_DIMENSION_COUNT)))
+Returns the dimension of a vector type. This is independent from the actual vector value.
+
+==== VECTOR_DISTANCE 
+(((VECTOR_DISTANCE)))
+Returns the distance between two vectors.
+
+==== VECTOR_NORM 
+(((VECTOR_NORM)))
+Calculates the distance of the given vector from the zero vector.
+
+==== VECTOR_SERIALIZE 
+(((VECTOR_SERIALIZE)))   
+Converts a VECTOR value into a string representation.
 
 ==== VERIFY_GROUP_FOR_USER
 (((VERIFY_GROUP_FOR_USER)))
